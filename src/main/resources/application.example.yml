@@ -1,0 +1,20 @@
+server:
+  use-forward-headers: true
+  servlet:
+    context-path: /
+spring:
+  security:
+    oauth2:
+      client:
+        provider:
+          eid:
+            issuer-uri: https://eid.egiz.gv.at
+        registration:
+          eid:
+            client-name: eid
+            client-id: http://www.example.com
+            authorization-grant-type: authorization_code
+            scope: openid
+            redirect-uri: http://www.example.com/login/oauth2/code/eid
+            client-authentication-method: post
+            client-secret: asdf
