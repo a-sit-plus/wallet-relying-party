@@ -65,6 +65,35 @@ Home: SFTP: asitapps-demo.iaik.tugraz.at
 
 
 
+Wallet
+eid.a-sit.at/wallet
+
+https://wallet.a-sit.at/mobile
+
+implementation group: 'at.asitplus.wallet', name: 'vclib', version: '1.7.2'
+
+DEPLOYMENT:
+1. prepare build
+   1. push version in build.gradle
+   2. make sure to use the release configuration in `application.yml`
+1. build with gradle task "buildJar"
+1. authenticate via sftp to server
+   1. `sftp stefan.kreiner@asitapps-demo.iaik.tugraz.at`
+1. push jar to server
+   1. `put build/libs/server-VERSION.jar terminal_sp.jar`
+1. authenticate via ssh to server and act as superuser 
+   1. ssh stefan.kreiner@asitapps-demo.iaik.tugraz.at
+   2. sudo -i
+1. make server jar executable and move to terminal_sp spring folder
+   1. cd /opt/spring/terminal_sp
+   1. mv /home/stefan.kreiner/terminal_sp.jar .
+   2. chmod +x terminal_sp.jar
+1. restart service
+    1. systemctl stop terminal_sp.service
+    1. systemctl start terminal_sp.service
+1. make sure the service runs on https://apps.egiz.gv.at/terminal_sp/
+   1. journalctl -u terminal_sp.service -f
+
 
 ## Getting started
 

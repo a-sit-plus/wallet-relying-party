@@ -4,6 +4,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 
 @Configuration
 public class WebSecurityConfiguration {
@@ -13,6 +14,11 @@ public class WebSecurityConfiguration {
         http.authorizeHttpRequests()
                 .requestMatchers("/terminal")
                 .authenticated().and().oauth2Login();
+//        siopv2Login(http.authorizeHttpRequests()
+//                .requestMatchers("/terminal/wallet")
+//                .authenticated().and())
+//                .failureHandler(new RedirectingAuthenticationFailureHandler());
+//                .permitAll();
         http.authorizeHttpRequests()
                 .anyRequest()
                 .permitAll();
