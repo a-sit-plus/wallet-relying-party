@@ -65,10 +65,8 @@ Home: SFTP: asitapps-demo.iaik.tugraz.at
 
 
 
-Wallet
-eid.a-sit.at/wallet
-
-https://wallet.a-sit.at/mobile
+Wallet app: eid.a-sit.at/wallet
+wallet app implicit intent url: https://wallet.a-sit.at/mobile
 
 implementation group: 'at.asitplus.wallet', name: 'vclib', version: '1.7.2'
 
@@ -80,7 +78,7 @@ DEPLOYMENT:
 1. authenticate via sftp to server
    1. `sftp stefan.kreiner@asitapps-demo.iaik.tugraz.at`
 1. push jar to server
-   1. `put build/libs/server-VERSION.jar terminal_sp.jar`
+   1. `put build/libs/terminal_sp_server-1.1.0-SNAPSHOT.jar terminal_sp.jar`
 1. authenticate via ssh to server and act as superuser 
    1. ssh stefan.kreiner@asitapps-demo.iaik.tugraz.at
    2. sudo -i

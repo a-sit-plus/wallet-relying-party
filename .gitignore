@@ -38,5 +38,3 @@ out/
 ### VS Code ###
 .vscode/
 /local.properties
-/src/main/resources/application__debug.yml
-/src/main/resources/application__release.yml
