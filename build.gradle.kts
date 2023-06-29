@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "at.asit.apps.terminal_sp.prototype.server"
-version = "1.1.0-SNAPSHOT"
+version = "2.1.0"
 
 java {
 	sourceCompatibility = JavaVersion.VERSION_17

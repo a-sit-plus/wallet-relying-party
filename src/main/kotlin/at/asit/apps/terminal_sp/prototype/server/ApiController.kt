@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidvci.decodeFromUrlQuery
 import io.github.aakira.napier.Napier
+import jakarta.servlet.ServletContext
 import org.springframework.security.core.AuthenticatedPrincipal
 import org.springframework.security.core.annotation.AuthenticationPrincipal
 import org.springframework.security.oauth2.core.oidc.user.OidcUser
@@ -28,12 +29,15 @@ import java.security.SecureRandom
 import java.util.*
 import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
-import kotlin.collections.HashMap
+import kotlin.concurrent.withLock
+
 
 class CodeNotFoundException(code: String) : Exception(code)
 
 @Controller
-class ApiController {
+class ApiController(
+    private val context: ServletContext,
+) {
 
     companion object {
         private val secureRandomGenerator = SecureRandom()
@@ -47,120 +51,143 @@ class ApiController {
         private val verifier: VerifierAgent =
             VerifierAgent.Companion.newDefaultInstance(verifierCryptoService.identifier)
 
-        private val verifierProtocol: OidcSiopVerifier = OidcSiopVerifier.newInstance(
-            verifier = verifier,
-            cryptoService = verifierCryptoService,
-        )
-//        private val verifierProtocolMap: MutableMap<String, OidcSiopVerifier?> = HashMap();
+        private val verifierProtocolMap: MutableMap<String, OidcSiopVerifier?> = HashMap()
         private val walletUrl = "https://wallet.a-sit.at/mobile"
     }
 
     @GetMapping(path = ["/terminal/oauth2"])
     fun customerLogin(model: Model, @AuthenticationPrincipal user: OidcUser): String {
-        lock.lock()
-        val codes = getExistingOrEmplacedCodes(user)
-        model["title"] = "Welcome!"
-        model["baseUrl"] = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString()
-        model["code"] = codes[0]
-        model["userCard"] = customerCard(user, codes)
-        lock.unlock()
-        return "customerCodeScreen"
+        lock.withLock {
+            model["baseUrl"] = context.contextPath
+
+            val codes = getExistingOrEmplacedCodes(user)
+            model["title"] = "Welcome!"
+            model["code"] = codes[0]
+            model["userCard"] = customerCard(user, codes)
+            return "customerCodeScreen"
+        }
     }
 
 
     @GetMapping("/terminal/siop2")
     fun siop2LoginPage(model: Model): String {
-//        var nonce: String
-//        do {
-//            val randomBytes = ByteArray(256 / 8)
-//            secureRandomGenerator.nextBytes(randomBytes)
-//            nonce = Base64.getEncoder().encodeToString(randomBytes)
-//        } while (verifierProtocolMap.containsKey(nonce))
-//
-//        val verifierProtocol: OidcSiopVerifier = OidcSiopVerifier.newInstance(
-//            verifier = verifier,
-//            cryptoService = verifierCryptoService,
-//            relyingPartyChallenge = nonce,
-//        )
-//        verifierProtocolMap[nonce] = verifierProtocol
+        lock.withLock {
+            val state = try {
+                var state: String
+                do {
+                    val randomBytes = ByteArray(256 / 8)
+                    secureRandomGenerator.nextBytes(randomBytes)
+                    state = Base64.getEncoder().encodeToString(randomBytes)
+                } while (verifierProtocolMap.containsKey(state))
+                state
+            } catch (exception: Exception) {
+                model["baseUrl"] = context.contextPath
 
-        val request = verifierProtocol.createAuthnRequestUrl(
-            walletUrl,
-            ServletUriComponentsBuilder.fromCurrentRequest().build().toUriString() + "/success",
-            OpenIdConstants.ResponseModes.QUERY,
-        )
-        return "redirect:$request"
+                model["title"] = "Exception"
+                model["message"] = exception.message ?: "Unknown"
+
+                return "customerSiop2ErrorScreen"
+            }
+
+            val verifierProtocol: OidcSiopVerifier = OidcSiopVerifier.newInstance(
+                verifier = verifier,
+                cryptoService = verifierCryptoService,
+                relyingPartyUrl = ServletUriComponentsBuilder.fromCurrentRequest().build().toUriString() + "/success",
+            )
+            verifierProtocolMap[state] = verifierProtocol
+
+            val request = verifierProtocol.createAuthnRequestUrl(
+                walletUrl,
+                OpenIdConstants.ResponseModes.QUERY,
+                state = state,
+            )
+
+            return "redirect:$request"
+        }
     }
 
     @GetMapping("/terminal/siop2/success")
     fun siop2SuccessPage(model: Model, @RequestParam allRequestParams: Map<String, String>): String {
-        lock.lock()
-        model["baseUrl"] = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString()
+        lock.withLock {
+            model["baseUrl"] = context.contextPath
 
-        val params: AuthenticationResponseParameters = allRequestParams.decodeFromUrlQuery()
-        val url = ServletUriComponentsBuilder.fromCurrentRequestUri().build().toUriString().split("?")[0]
-        Napier.i {
-            "Expected aud: $url"
-        }
-
-        val route = try {
-            val result = verifierProtocol.validateAuthnResponse(
-                params, url
-            )
-            when (result) {
-                is OidcSiopVerifier.AuthnResponseResult.Error -> {
-                    model["title"] = "Exception"
-                    model["message"] = result.reason
-
-                    "customerSiop2ErrorScreen"
-                }
-
-                is OidcSiopVerifier.AuthnResponseResult.Success -> {
-                    val user = IdaWalletSiop2User(result.vp)
-
-                    val codes = getExistingOrEmplacedCodes(user)
-                    model["title"] = "Welcome!"
-                    model["code"] = codes[0]
-                    model["userCard"] = customerCard(user, codes)
-
-                    "customerCodeScreen"
-                }
+            val params: AuthenticationResponseParameters = allRequestParams.decodeFromUrlQuery()
+            val url = ServletUriComponentsBuilder.fromCurrentRequestUri().build().toUriString().split("?")[0]
+            Napier.i {
+                "Expected aud: $url"
             }
-        } catch (error: Exception) {
-            System.out.print(error)
-            System.out.print(error.stackTrace)
 
-            model["title"] = "Exception"
-            model["message"] = error.toString()
-            "customerSiop2ErrorScreen"
+            val state = params.state
+            val verifierProtocol = verifierProtocolMap[state]
+
+            if(state == null || verifierProtocol == null) {
+                model["title"] = "Exception"
+                model["message"] = "Bad state"
+
+                return "customerSiop2ErrorScreen"
+            }
+
+            try {
+                val result = verifierProtocol.validateAuthnResponse(
+                    params
+                )
+                when (result) {
+                    is OidcSiopVerifier.AuthnResponseResult.Success -> {
+                        val user = IdaWalletSiop2User(result.vp)
+
+                        val codes = getExistingOrEmplacedCodes(user)
+                        model["title"] = "Welcome!"
+                        model["code"] = codes[0]
+                        model["userCard"] = customerCard(user, codes)
+
+                        return "customerCodeScreen"
+                    }
+
+                    is OidcSiopVerifier.AuthnResponseResult.Error -> {
+                        model["title"] = "Exception"
+                        model["message"] = result.reason
+
+                        return "customerSiop2ErrorScreen"
+                    }
+
+                    is OidcSiopVerifier.AuthnResponseResult.ValidationError -> {
+                        model["title"] = "Exception"
+                        model["message"] = "Validation failed for field: ${result.field}"
+
+                        return "customerSiop2ErrorScreen"
+                    }
+                }
+            } catch (error: Exception) {
+                model["title"] = "Exception"
+                model["message"] = error.toString()
+                return "customerSiop2ErrorScreen"
+            }
         }
-        lock.unlock()
-        return route
     }
 
     @GetMapping("/")
     fun listCustomers(model: Model, @RequestParam(required = false) removedCode: String?): String {
-        lock.lock()
-        model["baseUrl"] = ServletUriComponentsBuilder.fromCurrentContextPath().build().toUriString()
+        lock.withLock {
+            model["baseUrl"] = context.contextPath
 
-        if (removedCode != null) {
-            try {
-                removeUserPrincipalsByCode(removedCode)
-            } catch (_: Throwable) {
+            if (removedCode != null) {
+                try {
+                    removeUserPrincipalsByCode(removedCode)
+                } catch (_: Throwable) {
 
+                }
             }
+
+            val customerCards = codeToIdentifierMap.entries.map { code2subject ->
+                val user = identifierToPrincipalMap[code2subject.value.first()]
+                customerCard(user, listOf(code2subject.key))
+            }.joinToString("")
+
+            model["title"] = "Reception"
+            model["customerCards"] = customerCards
+
+            return "customerList"
         }
-
-        val customerCards = codeToIdentifierMap.entries.map { code2subject ->
-            val user = identifierToPrincipalMap[code2subject.value.first()]
-            customerCard(user, listOf(code2subject.key))
-        }.joinToString("")
-
-        model["title"] = "Reception"
-        model["customerCards"] = customerCards
-
-        lock.unlock()
-        return "customerList"
     }
 
 
@@ -278,23 +305,23 @@ class ApiController {
             <div class="container">
                 <h4><b>Kunde: ${data.familyName} ${data.givenName}, ${data.birthdate}</b></h4>
                 <p>Code${if (data.codes.size < 2) "s" else ""}: ${
-                    if (data.codes.isEmpty()) "Kein Code vorhanden..." else if (data.codes.size == 1) data.codes[0] else "<ul>${
-                        data.codes.joinToString("") {
-                            "<li>$it</li>"
-                        }
-                    }</ul>"
+            if (data.codes.isEmpty()) "Kein Code vorhanden..." else if (data.codes.size == 1) data.codes[0] else "<ul>${
+                data.codes.joinToString("") {
+                    "<li>$it</li>"
                 }
+            }</ul>"
+        }
                 <p>Sonstige Daten: <ul>
                 ${data.other}
                 </ul></p>
                 ${
-                    if (data.codes.isEmpty()) "" else """
+            if (data.codes.isEmpty()) "" else """
                     <p><a href="?removedCode=${
-                        URLEncoder.encode(
-                            data.codes[0], StandardCharsets.UTF_8
-                        )
-                    }"><button type="button">Entfernen</button></a></p>"""
-                }
+                URLEncoder.encode(
+                    data.codes[0], StandardCharsets.UTF_8
+                )
+            }"><button type="button">Entfernen</button></a></p>"""
+        }
             </div>
         </div>"""
     }
@@ -302,9 +329,6 @@ class ApiController {
     private fun customerCard(user: AuthenticatedPrincipal?, codes: List<String>): String {
         val cardData = when (user) {
             is OidcUser -> {
-                Napier.i {
-                    "OidcUser: $user"
-                }
                 CustomerCardData(
                     familyName = user.familyName,
                     givenName = user.givenName,
@@ -317,9 +341,6 @@ class ApiController {
             }
 
             is IdaWalletSiop2User -> {
-                Napier.i {
-                    "IdaWalletSiop2User: $user"
-                }
                 val idAustriaCredentials = user.presentation.verifiableCredentials.map {
                     it.vc.credentialSubject
                 }.filterIsInstance<IdAustriaCredential>()
@@ -343,7 +364,6 @@ class ApiController {
                     "<li>${it.key}: ${it.value}</li>"
                 }.joinToString("")
 
-                Napier.i { "Other data: $other" }
                 CustomerCardData(
                     familyName = idAustriaCredential?.firstname,
                     givenName = idAustriaCredential?.lastname,
@@ -355,7 +375,7 @@ class ApiController {
 
             else -> {
                 Napier.i {
-                    "Unknown user type: $user"
+                    "Unknown user type"
                 }
                 null
             }
@@ -372,7 +392,7 @@ class ApiController {
                 "nbf" to this.notBefore,
                 "vc" to this.vc.toCredentialInfo()
             ).map { "<li>${it.key}: ${it.value}</li>" }.joinToString("")
-        }</ul></ul>""";
+        }</ul></ul>"""
     }
 
     private fun VerifiableCredential.toCredentialInfo(): String {
@@ -386,7 +406,7 @@ class ApiController {
                 "issuanceDate" to this.issuanceDate,
                 "type" to this.type.joinToString(", ")
             ).map { "<li>${it.key}: ${it.value}</li>" }.joinToString("")
-        }</ul>""";
+        }</ul>"""
     }
 
     private fun CredentialSubject.toSubjectInfo(): String {
@@ -407,6 +427,6 @@ class ApiController {
                     )
                 }.entries
             ).joinToString("") { "<li>${it.key}: ${it.value}</li>" }
-        }</ul>""";
+        }</ul>"""
     }
 }
