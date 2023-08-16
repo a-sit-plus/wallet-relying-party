@@ -7,10 +7,11 @@ plugins {
 	id("io.spring.dependency-management") version "1.1.0"
 	kotlin("jvm") version "1.8.21"
 	kotlin("plugin.spring") version "1.8.21"
+	kotlin("plugin.serialization") version "1.8.21"
 }
 
 group = "at.asit.apps.terminal_sp.prototype.server"
-version = "2.1.0"
+version = "2.2.1"
 
 java {
 	sourceCompatibility = JavaVersion.VERSION_17
@@ -55,13 +56,19 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-mustache")
 	implementation("org.springframework.boot:spring-boot-starter")
 	implementation("org.jetbrains.kotlin:kotlin-reflect")
-	runtimeOnly("org.springframework.boot:spring-boot-devtools")
+	implementation("org.jetbrains.kotlin:kotlin-stdlib")
+//	runtimeOnly("org.springframework.boot:spring-boot-devtools")
 	testImplementation("org.springframework.boot:spring-boot-starter-test")
+
+//	implementation("org.springframework.boot:spring-boot-starter-data-redis")
+//	implementation("org.springframework.session:spring-session-data-redis")
+//
+//	implementation("io.lettuce:lettuce-core:{lettuce-core-version}")
 
 	implementation("io.github.aakira:napier:2.6.1")
 	// https://mvnrepository.com/artifact/at.asitplus.wallet/vclib
-	implementation("at.asitplus.wallet:vclib-openid:2.0.2-SNAPSHOT")
-	implementation("at.asitplus.wallet:idacredential:2.0.2-SNAPSHOT")
+	implementation("at.asitplus.wallet:vclib-openid:2.1.0-SNAPSHOT")
+	//  implementation("at.asitplus.wallet:idacredential:2.0.2-SNAPSHOT")
 }
 
 tasks.withType<KotlinCompile> {

@@ -1,0 +1,4 @@
+[submodule "kmm-vc-library"]
+	path = kmm-vc-library
+	url = https://github.com/a-sit-plus/kmm-vc-library
+	branch = feature/mdl-cbor-serializer-bp

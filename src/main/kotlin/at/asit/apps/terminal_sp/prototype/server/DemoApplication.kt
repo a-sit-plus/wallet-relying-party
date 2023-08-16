@@ -10,7 +10,7 @@ import org.springframework.boot.runApplication
 class DemoApplication
 
 fun main(args: Array<String>) {
-	Initializer.initWithVcLib()
 	Napier.base(AntilogSlf4jAdapter())
+	Initializer.initWithVcLib()
 	runApplication<DemoApplication>(*args)
 }

@@ -1,13 +1,17 @@
 package at.asit.apps.terminal_sp.prototype.server
 
 import at.asit.apps.terminal_sp.prototype.server.security.siop2.core.IdaWalletSiop2User
+import at.asit.apps.terminal_sp.prototype.server.security.siop2.core.WalletMdocUser
 import at.asitplus.wallet.idaustria.IdAustriaCredential
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.CredentialSubject
 import at.asitplus.wallet.lib.data.VerifiableCredential
 import at.asitplus.wallet.lib.data.VerifiableCredentialJws
+import at.asitplus.wallet.lib.iso.ElementValue
+import at.asitplus.wallet.lib.iso.IsoDataModelConstants
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseParameters
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
@@ -29,6 +33,7 @@ import java.security.SecureRandom
 import java.util.*
 import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
+import kotlin.NoSuchElementException
 import kotlin.concurrent.withLock
 
 
@@ -49,7 +54,7 @@ class ApiController(
 
         private val verifierCryptoService: CryptoService = DefaultCryptoService()
         private val verifier: VerifierAgent =
-            VerifierAgent.Companion.newDefaultInstance(verifierCryptoService.identifier)
+            VerifierAgent.newDefaultInstance(verifierCryptoService.identifier)
 
         private val verifierProtocolMap: MutableMap<String, OidcSiopVerifier?> = HashMap()
         private val walletUrl = "https://wallet.a-sit.at/mobile"
@@ -92,7 +97,48 @@ class ApiController(
             val verifierProtocol: OidcSiopVerifier = OidcSiopVerifier.newInstance(
                 verifier = verifier,
                 cryptoService = verifierCryptoService,
+                credentialScheme = at.asitplus.wallet.idaustria.ConstantIndex.IdAustriaCredential,
                 relyingPartyUrl = ServletUriComponentsBuilder.fromCurrentRequest().build().toUriString() + "/success",
+            )
+            verifierProtocolMap[state] = verifierProtocol
+
+            val request = verifierProtocol.createAuthnRequestUrl(
+                walletUrl,
+                OpenIdConstants.ResponseModes.QUERY,
+                state = state,
+            )
+
+            return "redirect:$request"
+        }
+    }
+
+
+    @GetMapping("/terminal/siop2/mdl")
+    fun siop2MdlLoginPage(model: Model): String {
+        lock.withLock {
+            val state = try {
+                var state: String
+                do {
+                    val randomBytes = ByteArray(256 / 8)
+                    secureRandomGenerator.nextBytes(randomBytes)
+                    state = Base64.getEncoder().encodeToString(randomBytes)
+                } while (verifierProtocolMap.containsKey(state))
+                state
+            } catch (exception: Exception) {
+                model["baseUrl"] = context.contextPath
+
+                model["title"] = "Exception"
+                model["message"] = exception.message ?: "Unknown"
+
+                return "customerSiop2ErrorScreen"
+            }
+
+            val verifierProtocol: OidcSiopVerifier = OidcSiopVerifier.newInstance(
+                verifier = verifier,
+                cryptoService = verifierCryptoService,
+                credentialScheme = ConstantIndex.MobileDrivingLicence2023,
+                relyingPartyUrl = ServletUriComponentsBuilder.fromCurrentRequest().build().toUriString()
+                    .replace("/siop2/mdl", "/siop2/success"),
             )
             verifierProtocolMap[state] = verifierProtocol
 
@@ -120,7 +166,7 @@ class ApiController(
             val state = params.state
             val verifierProtocol = verifierProtocolMap[state]
 
-            if(state == null || verifierProtocol == null) {
+            if (state == null || verifierProtocol == null) {
                 model["title"] = "Exception"
                 model["message"] = "Bad state"
 
@@ -128,9 +174,7 @@ class ApiController(
             }
 
             try {
-                val result = verifierProtocol.validateAuthnResponse(
-                    params
-                )
+                val result = verifierProtocol.validateAuthnResponse(params)
                 when (result) {
                     is OidcSiopVerifier.AuthnResponseResult.Success -> {
                         val user = IdaWalletSiop2User(result.vp)
@@ -139,6 +183,19 @@ class ApiController(
                         model["title"] = "Welcome!"
                         model["code"] = codes[0]
                         model["userCard"] = customerCard(user, codes)
+                        model["showLogout"] = true
+
+                        return "customerCodeScreen"
+                    }
+
+                    is OidcSiopVerifier.AuthnResponseResult.SuccessIso -> {
+                        val user = WalletMdocUser(result.document)
+
+                        val codes = getExistingOrEmplacedCodes(user)
+                        model["title"] = "Welcome!"
+                        model["code"] = codes[0]
+                        model["userCard"] = customerCard(user, codes)
+                        model["showLogout"] = false
 
                         return "customerCodeScreen"
                     }
@@ -178,10 +235,9 @@ class ApiController(
                 }
             }
 
-            val customerCards = codeToIdentifierMap.entries.map { code2subject ->
-                val user = identifierToPrincipalMap[code2subject.value.first()]
-                customerCard(user, listOf(code2subject.key))
-            }.joinToString("")
+            val customerCards = identifierToPrincipalMap.values.distinct().joinToString("") {
+                customerCard(it, getExistingUserCodes(it))
+            }
 
             model["title"] = "Reception"
             model["customerCards"] = customerCards
@@ -208,6 +264,12 @@ class ApiController(
                 }.filterIsInstance<IdAustriaCredential>().map {
                     it.id
                 }
+            }
+
+            is WalletMdocUser -> {
+                this.document.validItems.filter {
+                    it.elementIdentifier == IsoDataModelConstants.DataElements.DOCUMENT_NUMBER
+                }.map { it.elementValue.string }.filterNotNull()
             }
 
             else -> listOf()
@@ -326,6 +388,10 @@ class ApiController(
         </div>"""
     }
 
+    fun isIsoPortraitKey(key: String): Boolean {
+        return key == IsoDataModelConstants.NAMESPACE_MDL + ":" + IsoDataModelConstants.DataElements.PORTRAIT
+    }
+
     private fun customerCard(user: AuthenticatedPrincipal?, codes: List<String>): String {
         val cardData = when (user) {
             is OidcUser -> {
@@ -334,9 +400,15 @@ class ApiController(
                     givenName = user.givenName,
                     birthdate = user.birthdate,
                     codes = codes,
-                    other = user.claims.entries.map {
+                    other = (user.claims.entries.filter {
+                        isIsoPortraitKey(it.key)
+                    }.map {
+                        "<img src=\"data:image;base64,${it.value}\" alt=\"Portrait\" />"
+                    } + user.claims.entries.filterNot {
+                        isIsoPortraitKey(it.key)
+                    }.map {
                         "<li>${it.key}: ${it.value}</li>"
-                    }.joinToString("")
+                    }).joinToString("")
                 )
             }
 
@@ -373,6 +445,26 @@ class ApiController(
                 )
             }
 
+            is WalletMdocUser -> CustomerCardData(
+                familyName = user.document.validItems.filter { it.elementIdentifier == IsoDataModelConstants.DataElements.FAMILY_NAME }
+                    .firstOrNull()?.elementValue?.string,
+                givenName = user.document.validItems.filter { it.elementIdentifier == IsoDataModelConstants.DataElements.GIVEN_NAME }
+                    .firstOrNull()?.elementValue?.string,
+                birthdate = user.document.validItems.filter { it.elementIdentifier == IsoDataModelConstants.DataElements.BIRTH_DATE }
+                    .firstOrNull()?.elementValue?.date?.toString(),
+                codes = codes,
+                other = mapOf(
+                    "validItems" to "<ul>${user.document.validItems.map {
+                        "<li>${it.elementIdentifier}: ${it.elementValue.toHtmlList()}</li>"
+                    }.joinToString("")}</ul>",
+                    "invalidItems" to "<ul>${user.document.invalidItems.map {
+                        "<li>${it.elementIdentifier}: ${it.elementValue.toHtmlList()}</li>"
+                    }.joinToString("")}</ul>",
+                ).map {
+                    "<li>${it.key}: ${it.value}</li>"
+                }.joinToString("")
+            )
+
             else -> {
                 Napier.i {
                     "Unknown user type"
@@ -381,6 +473,47 @@ class ApiController(
             }
         }
         return if (cardData == null) "user not supported" else customerCard(cardData)
+    }
+
+    fun ElementValue.toHtmlList(): String {
+        return listOf(
+            this.string,
+            this.date?.let {
+                it.toString()
+            },
+            this.bytes?.let {
+                it.toString()
+            },
+            this.drivingPrivilege?.map {
+                "<li>${it.vehicleCategoryCode}<ul>${
+                    mapOf(
+                        "issueDate" to it.issueDate,
+                        "expiryDate" to it.expiryDate,
+                        "codes" to it.codes?.mapIndexed { index, it ->
+                            "$index<ul>${
+                                mapOf(
+                                    "code" to it.code,
+                                    "sign" to it.sign,
+                                    "value" to it.value,
+                                ).filter {
+                                    it.value != null
+                                }.map {
+                                    "<li>${it.key}: ${it.value}</li>"
+                                }.joinToString("")
+                            }</ul>"
+                        }?.let {
+                            "<ul>${it.joinToString("")}</ul>"
+                        }
+                    ).filter {
+                        it.value != null
+                    }.map {
+                        "<li>${it.key}: ${it.value}</li>"
+                    }.joinToString("")
+                }</ul>"
+            }?.joinToString("")?.let {
+                "<ul>$it</ul>"
+            }
+        ).filterNotNull().joinToString("")
     }
 
     private fun VerifiableCredentialJws.toCredentialJwsInfo(): String {

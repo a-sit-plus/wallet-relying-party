@@ -5,7 +5,7 @@
 1. authenticate via sftp to server
    1. `sftp stefan.kreiner@asitapps-demo.iaik.tugraz.at`
 1. push jar to server
-   1. `put build/libs/terminal_sp_server-2.1.0.jar terminal_sp.jar`
+   1. `put build/libs/terminal_sp_server-2.2.1.jar terminal_sp.jar`
 1. authenticate via ssh to server and act as superuser 
    1. `ssh stefan.kreiner@asitapps-demo.iaik.tugraz.at`
    2. `sudo -i`
