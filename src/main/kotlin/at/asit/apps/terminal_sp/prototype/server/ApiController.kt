@@ -33,7 +33,6 @@ import java.security.SecureRandom
 import java.util.*
 import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
-import kotlin.NoSuchElementException
 import kotlin.concurrent.withLock
 
 
@@ -139,6 +138,13 @@ class ApiController(
                 credentialScheme = ConstantIndex.MobileDrivingLicence2023,
                 relyingPartyUrl = ServletUriComponentsBuilder.fromCurrentRequest().build().toUriString()
                     .replace("/siop2/mdl", "/siop2/success"),
+                requestedAttributes = listOf(
+                    IsoDataModelConstants.DataElements.DOCUMENT_NUMBER,
+                    IsoDataModelConstants.DataElements.FAMILY_NAME,
+                    IsoDataModelConstants.DataElements.GIVEN_NAME,
+                    IsoDataModelConstants.DataElements.EXPIRY_DATE,
+                    IsoDataModelConstants.DataElements.DRIVING_PRIVILEGES,
+                )
             )
             verifierProtocolMap[state] = verifierProtocol
 
