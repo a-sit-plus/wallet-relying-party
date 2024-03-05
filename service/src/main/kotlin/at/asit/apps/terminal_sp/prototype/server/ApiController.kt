@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.runBlocking
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -112,9 +113,9 @@ class ApiController(
      * Link contained in `customer.html`
      */
     @GetMapping(path = ["/oauth2"])
-    fun customerLogin(@AuthenticationPrincipal user: OidcUser): String = lock.withLock {
+    fun customerLogin(@AuthenticationPrincipal user: OidcUser): ResponseEntity<String> = lock.withLock {
         authenticatedUsers[user.identifier] = user
-        return "redirect:/index.html"
+        ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, "index.html").build()
     }
 
     /**
@@ -122,19 +123,19 @@ class ApiController(
      * Link contained in `customer.html`
      */
     @GetMapping("/siopv2/start")
-    fun siopv2StartPost(): String = lock.withLock {
+    fun siopv2StartPost(): ResponseEntity<String> = lock.withLock {
         val state = createSafeState()
         val verifierProtocol = newVerifier()
         verifierProtocolMap[state] = verifierProtocol
 
         return runBlocking {
-            val request = verifierProtocol.createAuthnRequestUrl(
+            val location = verifierProtocol.createAuthnRequestUrl(
                 walletUrl = walletUrl,
                 representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
                 responseMode = OpenIdConstants.ResponseModes.POST,
                 state = state,
             )
-            "redirect:$request"
+            ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, location).build()
         }
     }
 
@@ -143,7 +144,7 @@ class ApiController(
      * Link contained in `customer.html`
      */
     @GetMapping("/siopv2/start-sd")
-    fun siopv2StartSdJwtPost(): String = lock.withLock {
+    fun siopv2StartSdJwtPost(): ResponseEntity<String> = lock.withLock {
         // TODO  Attributes.MAIN_ADDRESS
         val requestedAttributes =
             listOf(Attributes.PORTRAIT, Attributes.FIRSTNAME, Attributes.LASTNAME)
@@ -152,14 +153,14 @@ class ApiController(
         verifierProtocolMap[state] = verifierProtocol
 
         return runBlocking {
-            val request = verifierProtocol.createAuthnRequestUrl(
+            val location = verifierProtocol.createAuthnRequestUrl(
                 walletUrl = walletUrl,
                 representation = ConstantIndex.CredentialRepresentation.SD_JWT,
                 requestedAttributes = requestedAttributes,
                 responseMode = OpenIdConstants.ResponseModes.POST,
                 state = state,
             )
-            "redirect:$request"
+            ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, location).build()
         }
     }
 
@@ -170,7 +171,7 @@ class ApiController(
      */
     @ResponseBody
     @GetMapping("/siopv2/request")
-    fun siopv2RequestObject(): String = lock.withLock {
+    fun siopv2RequestObject(): ResponseEntity<String> = lock.withLock {
         // TODO Attributes.MAIN_ADDRESS
         val requestedAttributes =
             listOf(Attributes.PORTRAIT, Attributes.FIRSTNAME, Attributes.LASTNAME)
@@ -178,14 +179,16 @@ class ApiController(
         val verifierProtocol = newVerifier()
         verifierProtocolMap[state] = verifierProtocol
         return runBlocking {
-            val request = verifierProtocol.createAuthnRequestUrlWithRequestObject(
+            val location = verifierProtocol.createAuthnRequestUrlWithRequestObject(
                 walletUrl = walletUrl,
                 representation = ConstantIndex.CredentialRepresentation.SD_JWT,
                 requestedAttributes = requestedAttributes,
                 responseMode = OpenIdConstants.ResponseModes.POST,
                 state = state,
-            )
-            "redirect:$request"
+            ).getOrElse {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
+            }
+            ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, location).build()
         }
     }
 
@@ -208,7 +211,7 @@ class ApiController(
      * called from Wallet App upon answering authn request from [siopv2StartPost] or [siopv2StartSdJwtPost]
      */
     @PostMapping("/siopv2/postsuccess")
-    fun siopv2PostSuccessPage(@RequestBody requestBody: String): String = lock.withLock {
+    fun siopv2PostSuccessPage(@RequestBody requestBody: String): ResponseEntity<String> = lock.withLock {
         Napier.i("/siopv2/postsuccess called with $requestBody")
         val params: AuthenticationResponseParameters = requestBody.decodeFromPostBody()
         return runBlocking {
@@ -216,7 +219,7 @@ class ApiController(
         }
     }
 
-    private suspend fun validateSiopResponse(params: AuthenticationResponseParameters): String {
+    private suspend fun validateSiopResponse(params: AuthenticationResponseParameters): ResponseEntity<String> {
         Napier.i("validateSiopResponse with $params")
         val state = params.state ?: throw RuntimeException("Bad state")
         val verifierProtocol = verifierProtocolMap.remove(state) ?: throw RuntimeException("No Protocol")
@@ -229,7 +232,7 @@ class ApiController(
                     }
                     Napier.i("Storing user at ${apiItem.id}")
                     authenticatedUsers[apiItem.id] = this
-                    "redirect:/index.html"
+                    ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, "index.html").build()
                 }
 
             is OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt ->
@@ -240,7 +243,7 @@ class ApiController(
                     }
                     Napier.i("Storing user at ${apiItem.id}")
                     authenticatedUsers[apiItem.id] = this
-                    "redirect:/index.html"
+                    ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, "index.html").build()
                 }
 
             is OidcSiopVerifier.AuthnResponseResult.SuccessIso ->
@@ -251,7 +254,7 @@ class ApiController(
                     }
                     Napier.i("Storing user at ${apiItem.id}")
                     authenticatedUsers[apiItem.id] = this
-                    "redirect:/index.html"
+                    ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, "index.html").build()
                 }
 
             is OidcSiopVerifier.AuthnResponseResult.Error ->
