@@ -1,0 +1,12 @@
+# Changelog
+
+Version 2.4.0:
+ - Replace mustache templates with vue.js frontend from FH
+ - Remove notion of "codes" from API controller
+
+Version 2.3.0:
+ - Upgrade to vclib 3.3.0, idacredential 3.3.0
+ - Discard separate MDL use case, is integrated in IDA credential
+ - Support SIOPv2 authentication with POST and QUERY response modes
+ - Display QR code for SIOPv2 cross-device authentication flow
+ - Rework URLs to drop `/terminal` prefix

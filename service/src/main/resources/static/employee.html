@@ -1,0 +1,197 @@
+<!doctype html>
+<html lang="de">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Demo Service</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="styles.css">
+
+    <script type="importmap">
+      {
+        "imports": {
+          "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+        }
+      }
+    </script>
+
+    <script type="module">
+      import { createApp, ref, nextTick } from 'vue'
+
+      createApp({
+        setup() {
+          // --- CONFIG --------------------------------------------------------
+
+          const config = {
+            itemsUrl: 'api/items',
+            removeUrl: 'api/remove',
+            timeUpdateRate: 1000,
+            itemsUpdateRate: 5000,
+          };
+
+          // --- STATE ---------------------------------------------------------
+
+          const loginList = ref([]);
+
+          // --- UPDATE TIME ---------------------------------------------------
+          // periodically update text on elapsed time
+
+          function getTimeDifference(timestamp) {
+            const difference = Date.now() - timestamp;
+            const minutes = Math.floor(difference / (60*1000));
+            const seconds = Math.floor((difference - minutes*60*1000) / 1000);
+
+            var textMinutes;
+            if (minutes == 0)
+              textMinutes = '';
+            else if (minutes == 1)
+              textMinutes = minutes + ' Minute';
+            else if (minutes > 0)
+              textMinutes = minutes + ' Minuten';
+
+            var textSeconds = seconds + ' Sekunden';
+
+            return textMinutes + ' ' + textSeconds;
+          }
+
+          function updateTime() {
+            loginList.value.forEach(item => {
+                item.expiredTime = getTimeDifference(item.timestamp)
+            })
+          }
+          updateTime(); // initially
+          const timeInterval = setInterval(updateTime, config.timeUpdateRate); // periodically
+
+          // --- UPDATE ITEMS --------------------------------------------------
+          // periodically load items from server
+
+          function updateItems(data) {
+            loginList.value = data.reduce((newList, newItem) => {
+              const currentItem = loginList.value.find(x => x.id == newItem.id);
+              if (currentItem)
+                return newList.concat([currentItem]); // re-use existing item
+              else
+                return newList.concat([newItem]); // add new item
+            }, []);
+          }
+
+          async function updateData() {
+            try {
+              console.log('updateData')
+
+              let response = await fetch(config.itemsUrl);
+              const data = await response.json();
+              console.log('items: ', data)
+
+              updateItems(data);
+              updateTime();
+            } catch (error) {
+              console.log('error: ', error);
+            }
+          }
+          updateData(); // initially
+          const itemInterval = setInterval(updateData, config.itemsUpdateRate); // periodically
+
+          // --- ACTIONS -------------------------------------------------------
+
+          async function seen(item) {
+            try {
+              console.log('remove: ', item.id)
+
+              // notify server that record can be removed
+              const response = await fetch(config.removeUrl, {
+                method: 'POST',
+                body: item.id
+              });
+              const data = await response.json();
+              console.log('response: ', data)
+
+              // on OK, remove item from list
+              if (data.status.toLowerCase() == 'ok')
+                loginList.value.splice(loginList.value.indexOf(item), 1)
+            } catch (error) {
+              console.log('error: ', error);
+            }
+          }
+
+          function toggleDetails(item) {
+            // show details of item
+            item.showDetails = !(item.showDetails == true)
+          }
+
+          // --- RETURNS -------------------------------------------------------
+
+          return {
+            loginList,
+            seen,
+            toggleDetails,
+          }
+        }
+      }).mount('#app')
+    </script>
+  </head>
+  <body id="app" style="background-color: #f3f3f3">
+
+    <header class="p-3 text-bg-primary">
+      <div class="container">
+        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
+          <a href="employee.html" class="d-flex mb-2 mb-lg-0 me-md-auto text-white text-decoration-none fs-3 fw-bold">
+            POST (Demo Service)
+          </a>
+          <div class="ms-3 me-3 mb-2 mb-lg-0">
+            <strong>Post Filiale:</strong> Graz, St. Peter Hauptstraße, Schalter #3
+          </div>
+          <button type="button" class="btn btn-light">
+            Logout
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <div class="container my-5">
+      <h1>Kürzliche Anmeldungen</h1>
+    </div>
+
+    <div class="container my-5">
+      <p v-if="loginList.length == 0">Es liegen keine kürzlichen Anmeldungen vor.</p>
+
+      <transition-group tag="div" name="fade" class="row mb-2">
+
+        <div
+          v-for="item in loginList"
+          :key="item.id"
+          class="col-md-6">
+          <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm bg-light">
+            <div class="col-auto">
+              <img style="height: 300px" :src="item.imageDataBase64"></img>
+            </div>
+            <div class="col p-4 d-flex flex-column position-static">
+              <h3 class="mb-1 position-relative">
+                {{ item.firstname }} {{ item.lastname }}
+                <a class="position-absolute top-0 end-0" @click="toggleDetails(item)">
+                  <i class="bi-info-circle text-secondary"></i>
+                </a>
+              </h3>
+              <p class="card-text mb-1">{{ item.address }}</p>
+              <div class="text-body-tertiary">Angemeldet vor {{ item.expiredTime }}</div>
+              <ul v-if="item.showDetails" class="mb-1">
+                <li v-for="(value, key) in item" :key="key">
+                  {{ key }}: {{ value }}
+                </li>
+              </ul>
+              <div class="mt-auto ms-auto">
+                <button @click="seen(item)" type="button" id="item-1" class="btn-seen btn btn-outline-success">
+                  <i class="bi-check-lg"></i>
+                  Gesehen
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </transition-group>
+    </div>
+
+  </body>
+</html>
