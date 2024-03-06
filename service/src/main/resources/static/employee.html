@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Demo Service</title>
+    <title>Schalter Service: Angestellten-Seite</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="styles.css">
@@ -108,7 +108,7 @@
               console.log('response: ', data)
 
               // on OK, remove item from list
-              if (data.status.toLowerCase() == 'ok')
+              if (response.ok)
                 loginList.value.splice(loginList.value.indexOf(item), 1)
             } catch (error) {
               console.log('error: ', error);
@@ -120,12 +120,31 @@
             item.showDetails = !(item.showDetails == true)
           }
 
+          function process(item) {
+            alert("Diese Daten könnten weiter verarbeitet werden: \n" + JSON.stringify(item, null, 2));
+          }
+
+          // --- FORMATERS -----------------------------------------------------
+
+          function parseAddress(base64json) {
+            var address = JSON.parse(atob(base64json));
+            var result = address["Strasse"] + " " + address["Hausnummer"];
+            if (address["Stiege"] && address["Stiege"].trim())
+              result += "/" + address["Stiege"];
+            if (address["Tuer"] && address["Tuer"].trim())
+              result += "/" + address["Tuer"];
+            result += ", " + address["Postleitzahl"] + " " + address["Ortschaft"];
+            return result;
+          }
+
           // --- RETURNS -------------------------------------------------------
 
           return {
             loginList,
             seen,
             toggleDetails,
+            process,
+            parseAddress,
           }
         }
       }).mount('#app')
@@ -137,14 +156,11 @@
       <div class="container">
         <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start">
           <a href="employee.html" class="d-flex mb-2 mb-lg-0 me-md-auto text-white text-decoration-none fs-3 fw-bold">
-            POST (Demo Service)
+            Schalter Service: Angestellten-Seite
           </a>
           <div class="ms-3 me-3 mb-2 mb-lg-0">
-            <strong>Post Filiale:</strong> Graz, St. Peter Hauptstraße, Schalter #3
+            <strong>Filiale:</strong> Graz, St. Peter Hauptstraße, Schalter #3
           </div>
-          <button type="button" class="btn btn-light">
-            Logout
-          </button>
         </div>
       </div>
     </header>
@@ -173,17 +189,24 @@
                   <i class="bi-info-circle text-secondary"></i>
                 </a>
               </h3>
-              <p class="card-text mb-1">{{ item.address }}</p>
+              <p class="card-text mb-1">{{ parseAddress(item.address) }}</p>
               <div class="text-body-tertiary">Angemeldet vor {{ item.expiredTime }}</div>
-              <ul v-if="item.showDetails" class="mb-1">
-                <li v-for="(value, key) in item" :key="key">
-                  {{ key }}: {{ value }}
-                </li>
-              </ul>
-              <div class="mt-auto ms-auto">
-                <button @click="seen(item)" type="button" id="item-1" class="btn-seen btn btn-outline-success">
-                  <i class="bi-check-lg"></i>
-                  Gesehen
+              <div v-if="item.showDetails" class="mt-1 mb-1">
+                <p class="card-text mb-1">Details:</p>
+                <ul>
+                  <li v-for="(value, key) in item" :key="key">
+                    {{ key }}: {{ value }}
+                  </li>
+                </ul>
+              </div>
+              <div class="mt-auto ms-auto d-md-flex gap-2">
+                <button @click="seen(item)" type="button" class="btn btn-outline-danger">
+                  <i class="bi-x-lg"></i>
+                  Entfernen
+                </button>
+                <button @click="process(item)" type="button" class="btn btn-outline-success">
+                  <i class="bi-chevron-right"></i>
+                  Daten verarbeiten
                 </button>
               </div>
             </div>
