@@ -54,6 +54,10 @@ class ApiController(
         private val walletUrl = "https://wallet.a-sit.at/mobile"
     }
 
+    private val publicIndexUrl by lazy {
+        ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
+            .toUriString()
+    }
     private val postSuccessUrl by lazy {
         ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
             .pathSegment("siopv2").pathSegment("postsuccess")
@@ -71,7 +75,7 @@ class ApiController(
     private val qrCodeSiopUrl by lazy {
         ServletUriComponentsBuilder.fromUriString(walletUrl)
             .queryParam("request_uri", siopRequestUrl)
-            .queryParam("client_id", publicUrl)
+            .queryParam("client_id", postSuccessUrl)
             .queryParam("client_metadata_uri", metadataUrl)
             .toUriString()
     }
@@ -115,7 +119,7 @@ class ApiController(
     @GetMapping(path = ["/oauth2"])
     fun customerLogin(@AuthenticationPrincipal user: OidcUser): ResponseEntity<String> = lock.withLock {
         authenticatedUsers[user.identifier] = user
-        ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, "index.html").build()
+        ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, publicIndexUrl).build()
     }
 
     /**
@@ -232,7 +236,7 @@ class ApiController(
                     }
                     Napier.i("Storing user at ${apiItem.id}")
                     authenticatedUsers[apiItem.id] = this
-                    ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, "index.html").build()
+                    ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, publicIndexUrl).build()
                 }
 
             is OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt ->
@@ -243,7 +247,7 @@ class ApiController(
                     }
                     Napier.i("Storing user at ${apiItem.id}")
                     authenticatedUsers[apiItem.id] = this
-                    ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, "index.html").build()
+                    ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, publicIndexUrl).build()
                 }
 
             is OidcSiopVerifier.AuthnResponseResult.SuccessIso ->
@@ -254,7 +258,7 @@ class ApiController(
                     }
                     Napier.i("Storing user at ${apiItem.id}")
                     authenticatedUsers[apiItem.id] = this
-                    ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, "index.html").build()
+                    ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, publicIndexUrl).build()
                 }
 
             is OidcSiopVerifier.AuthnResponseResult.Error ->
