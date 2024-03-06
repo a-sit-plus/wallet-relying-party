@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "at.asitplus"
-version = "2.4.0-SNAPSHOT"
+version = "2.5.0-SNAPSHOT"
 
 kotlin {
     jvmToolchain(17)
@@ -21,13 +21,12 @@ repositories {
 }
 
 dependencies {
-    implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("io.github.g0dkar:qrcode-kotlin:4.0.6")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0-RC")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 
     implementation(napier())
