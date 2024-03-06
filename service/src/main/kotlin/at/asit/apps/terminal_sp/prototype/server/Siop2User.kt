@@ -6,8 +6,12 @@ import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.springframework.security.core.AuthenticatedPrincipal
+import java.security.MessageDigest
 import java.time.Instant
 
 class Siop2User(
@@ -35,9 +39,10 @@ class Siop2User(
             return Siop2User(name, apiItem)
         }
 
-        fun fromDisclosures(disclosures: List<SelectiveDisclosureItem>): Siop2User? {
+        fun fromDisclosures(disclosures: List<SelectiveDisclosureItem>): Siop2User {
             val authnInstant: Instant = Instant.now()
-            val identifier = disclosures.getClaimValue(IdAustriaScheme.Attributes.BPK) ?: return null
+            val identifier = disclosures.getClaimValue(IdAustriaScheme.Attributes.BPK)
+                ?: Json.encodeToString(disclosures).sha256()
             val apiItem = ApiItem(
                 id = identifier,
                 firstname = disclosures.getClaimValue(IdAustriaScheme.Attributes.FIRSTNAME) ?: "N/A",
@@ -51,9 +56,10 @@ class Siop2User(
             return Siop2User(name, apiItem)
         }
 
-        fun fromMdoc(document: IsoDocumentParsed): Siop2User? {
+        fun fromMdoc(document: IsoDocumentParsed): Siop2User {
             val authnInstant: Instant = Instant.now()
-            val identifier = document.elementValue(IdAustriaScheme.Attributes.BPK)?.string ?: return null
+            val identifier = document.elementValue(IdAustriaScheme.Attributes.BPK)?.string
+                ?: Json.encodeToString(document.validItems).sha256()
             val apiItem = ApiItem(
                 id = identifier,
                 firstname = document.elementValue(IdAustriaScheme.Attributes.FIRSTNAME)?.string ?: "N/A",
@@ -70,8 +76,12 @@ class Siop2User(
         private fun List<SelectiveDisclosureItem>.getClaimValue(claimName: String) =
             firstOrNull { it.claimName == claimName }?.claimValue?.toString()
 
-        private fun List<SelectiveDisclosureItem>.getClaimValueBytes(claimName: String): ByteArray? =
-            firstOrNull { it.claimName == claimName }?.claimValue as ByteArray?
+        private fun List<SelectiveDisclosureItem>.getClaimValueBytes(claimName: String): ByteArray? {
+            val claimValue = firstOrNull { it.claimName == claimName }?.claimValue
+            if (claimValue is ByteArray)
+                return claimValue
+            return runCatching { claimValue.toString().decodeToByteArray(Base64()) }.getOrNull()
+        }
 
         private fun IsoDocumentParsed.elementValue(elementIdentifier: String) =
             validItems.firstOrNull { it.elementIdentifier == elementIdentifier }?.elementValue
@@ -83,3 +93,7 @@ class Siop2User(
     }
 
 }
+
+private fun String.sha256() = runCatching {
+    MessageDigest.getInstance("SHA-256").digest(this.encodeToByteArray()).encodeToString(Base64())
+}.getOrElse { this.hashCode().toString() }

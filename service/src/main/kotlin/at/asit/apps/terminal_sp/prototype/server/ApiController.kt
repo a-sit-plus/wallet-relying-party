@@ -18,8 +18,6 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.AuthenticatedPrincipal
-import org.springframework.security.core.annotation.AuthenticationPrincipal
-import org.springframework.security.oauth2.core.oidc.user.OidcUser
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PostMapping
@@ -29,7 +27,6 @@ import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import qrcode.QRCode
 import java.security.SecureRandom
-import java.time.Instant
 import java.util.*
 import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
@@ -58,9 +55,14 @@ class ApiController(
         ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
             .toUriString()
     }
+    private val customerSuccessUrl by lazy {
+        ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
+            .pathSegment("customer-success.html")
+            .toUriString()
+    }
     private val postSuccessUrl by lazy {
         ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
-            .pathSegment("siopv2").pathSegment("postsuccess")
+            .pathSegment("siopv2", "postsuccess")
             .toUriString()
     }
     private val siopRequestUrl by lazy {
@@ -102,24 +104,14 @@ class ApiController(
     @GetMapping("/api/items")
     @ResponseBody
     fun apiItems(): List<ApiItem> = lock.withLock {
-        return authenticatedUsers.mapNotNull { it.value.toApiItem(it.key) }
+        return authenticatedUsers.mapNotNull { it.value.toApiItem() }
     }
 
     @PostMapping("/api/remove")
     @ResponseBody
     fun removeApiItem(@RequestBody id: String): ResponseEntity<ApiItem> = lock.withLock {
-        return authenticatedUsers.remove(id)?.toApiItem(id)?.let { ResponseEntity.ok(it) }
+        return authenticatedUsers.remove(id)?.toApiItem()?.let { ResponseEntity.ok(it) }
             ?: ResponseEntity.notFound().build<ApiItem>()
-    }
-
-    /**
-     * Triggers login in browser with IDA, see [WebSecurityConfiguration]
-     * Link contained in `customer.html`
-     */
-    @GetMapping(path = ["/oauth2"])
-    fun customerLogin(@AuthenticationPrincipal user: OidcUser): ResponseEntity<String> = lock.withLock {
-        authenticatedUsers[user.identifier] = user
-        ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, publicIndexUrl).build()
     }
 
     /**
@@ -234,29 +226,21 @@ class ApiController(
                         Napier.w("Cannot parse from VP: ${result.vp}")
                         throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot parse from VP")
                     }
-                    Napier.i("Storing user at ${apiItem.id}")
+                    Napier.i("Storing user at ${apiItem.id}: $this")
                     authenticatedUsers[apiItem.id] = this
                     ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, publicIndexUrl).build()
                 }
 
             is OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt ->
                 with(Siop2User.fromDisclosures(result.disclosures)) {
-                    if (this == null) {
-                        Napier.w("Cannot parse from disclosures: ${result.disclosures}")
-                        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot parse from disclosures")
-                    }
-                    Napier.i("Storing user at ${apiItem.id}")
+                    Napier.i("Storing user at ${apiItem.id}: $this")
                     authenticatedUsers[apiItem.id] = this
                     ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, publicIndexUrl).build()
                 }
 
             is OidcSiopVerifier.AuthnResponseResult.SuccessIso ->
                 with(Siop2User.fromMdoc(result.document)) {
-                    if (this == null) {
-                        Napier.w("Cannot parse from document: ${result.document}")
-                        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot parse from document")
-                    }
-                    Napier.i("Storing user at ${apiItem.id}")
+                    Napier.i("Storing user at ${apiItem.id}: $this")
                     authenticatedUsers[apiItem.id] = this
                     ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, publicIndexUrl).build()
                 }
@@ -269,13 +253,6 @@ class ApiController(
         }
     }
 
-    private val AuthenticatedPrincipal.identifier: String
-        get() = when (this) {
-            is OidcUser -> this.subject
-            is Siop2User -> apiItem.id
-            else -> "unknown"
-        }
-
     private fun createSafeState(): String {
         var state: String
         val randomBytes = ByteArray(32)
@@ -286,18 +263,9 @@ class ApiController(
         return state
     }
 
-    private fun AuthenticatedPrincipal.toApiItem(index: String) = when (this) {
-        is OidcUser -> this.toApiItem(index)
+    private fun AuthenticatedPrincipal.toApiItem() = when (this) {
         is Siop2User -> this.apiItem
         else -> null
     }
 
-    private fun OidcUser.toApiItem(index: String) = ApiItem(
-        id = index,
-        firstname = givenName,
-        lastname = familyName,
-        address = getClaimAsString("urn:eidgvat:attributes.mainAddress") ?: "N/A",
-        imageDataBase64 = "data:image;base64," + getClaimAsString("org.iso.18013.5.1:portrait"),
-        timestamp = (issuedAt ?: authenticatedAt ?: updatedAt ?: Instant.now()).toEpochMilli(),
-    )
 }

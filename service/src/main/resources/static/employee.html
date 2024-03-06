@@ -127,14 +127,18 @@
           // --- FORMATERS -----------------------------------------------------
 
           function parseAddress(base64json) {
-            var address = JSON.parse(atob(base64json));
-            var result = address["Strasse"] + " " + address["Hausnummer"];
-            if (address["Stiege"] && address["Stiege"].trim())
-              result += "/" + address["Stiege"];
-            if (address["Tuer"] && address["Tuer"].trim())
-              result += "/" + address["Tuer"];
-            result += ", " + address["Postleitzahl"] + " " + address["Ortschaft"];
-            return result;
+            try {
+              var address = JSON.parse(atob(base64json));
+              var result = address["Strasse"] + " " + address["Hausnummer"];
+              if (address["Stiege"] && address["Stiege"].trim())
+                result += "/" + address["Stiege"];
+              if (address["Tuer"] && address["Tuer"].trim())
+                result += "/" + address["Tuer"];
+              result += ", " + address["Postleitzahl"] + " " + address["Ortschaft"];
+              return result;
+            } catch {
+              return base64json;
+            }
           }
 
           // --- RETURNS -------------------------------------------------------
