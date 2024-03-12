@@ -32,6 +32,7 @@ dependencies {
     implementation(napier())
     implementation("at.asitplus.wallet:vclib-openid:3.5.0")
     implementation("at.asitplus.wallet:idacredential:3.4.0")
+    implementation("at.asitplus.wallet:eupidcredential:1.0.0")
 }
 
 

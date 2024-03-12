@@ -1,10 +1,13 @@
 package at.asit.apps.terminal_sp.prototype.server
 
+import at.asitplus.wallet.eupid.EuPidCredential
+import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.idaustria.IdAustriaCredential
 import at.asitplus.wallet.idaustria.IdAustriaScheme
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
+import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -21,56 +24,87 @@ class Siop2User(
 
     companion object {
         fun fromVerifiablePresentation(presentation: VerifiablePresentationParsed): Siop2User? {
-            val idAustriaCredential = presentation.verifiableCredentials
+            val credentialSubjects = presentation.verifiableCredentials
                 .map { it.vc.credentialSubject }
+            val idAustriaCredential = credentialSubjects
                 .filterIsInstance<IdAustriaCredential>()
-                .firstOrNull() ?: return null
-            val authnInstant: Instant = Instant.now()
-            val identifier = idAustriaCredential.bpk
-            val name = idAustriaCredential.firstname + " " + idAustriaCredential.lastname
+                .firstOrNull()
+            if (idAustriaCredential != null) {
+                return idAustriaCredential.toSiop2User()
+            }
+            val euPidCredential = credentialSubjects
+                .filterIsInstance<EuPidCredential>()
+                .firstOrNull()
+            if (euPidCredential != null) {
+                return euPidCredential.toSiop2User()
+            }
+            return null
+        }
+
+        private fun IdAustriaCredential.toSiop2User(): Siop2User {
             val apiItem = ApiItem(
-                id = identifier,
-                firstname = idAustriaCredential.firstname,
-                lastname = idAustriaCredential.lastname,
-                address = idAustriaCredential.mainAddress ?: "N/A",
-                imageDataBase64 = "data:image;base64," + idAustriaCredential.portrait?.encodeToString(Base64()),
-                timestamp = authnInstant.toEpochMilli(),
+                id = bpk,
+                firstname = firstname,
+                lastname = lastname,
+                address = mainAddress ?: "N/A",
+                imageDataBase64 = "data:image;base64," + portrait?.encodeToString(Base64()),
+                timestamp = Instant.now().toEpochMilli(),
             )
-            return Siop2User(name, apiItem)
+            return Siop2User("$firstname $lastname", apiItem)
+        }
+
+        private fun EuPidCredential.toSiop2User(): Siop2User {
+            val apiItem = ApiItem(
+                id = id,
+                firstname = givenName,
+                lastname = familyName,
+                address = this.residentAddress ?: "N/A",
+                imageDataBase64 = "",
+                timestamp = Instant.now().toEpochMilli(),
+            )
+            return Siop2User("$givenName $familyName", apiItem)
         }
 
         fun fromDisclosures(disclosures: List<SelectiveDisclosureItem>): Siop2User {
-            val authnInstant: Instant = Instant.now()
-            val identifier = disclosures.getClaimValue(IdAustriaScheme.Attributes.BPK)
-                ?: Json.encodeToString(disclosures).sha256()
             val apiItem = ApiItem(
-                id = identifier,
-                firstname = disclosures.getClaimValue(IdAustriaScheme.Attributes.FIRSTNAME) ?: "N/A",
-                lastname = disclosures.getClaimValue(IdAustriaScheme.Attributes.LASTNAME) ?: "N/A",
-                address = disclosures.getClaimValue(IdAustriaScheme.Attributes.MAIN_ADDRESS) ?: "N/A",
-                imageDataBase64 = "data:image;base64," + disclosures.getClaimValueBytes(IdAustriaScheme.Attributes.PORTRAIT)
-                    ?.encodeToString(Base64()),
-                timestamp = authnInstant.toEpochMilli(),
+                id = disclosures.getClaimValue(IdAustriaScheme.Attributes.BPK)
+                    ?: Json.encodeToString<List<SelectiveDisclosureItem>>(disclosures).sha256(),
+                firstname = disclosures.getClaimValue(IdAustriaScheme.Attributes.FIRSTNAME)
+                    ?: disclosures.getClaimValue(EuPidScheme.Attributes.GIVEN_NAME)
+                    ?: "N/A",
+                lastname = disclosures.getClaimValue(IdAustriaScheme.Attributes.LASTNAME)
+                    ?: disclosures.getClaimValue(EuPidScheme.Attributes.FAMILY_NAME)
+                    ?: "N/A",
+                address = disclosures.getClaimValue(IdAustriaScheme.Attributes.MAIN_ADDRESS)
+                    ?: disclosures.getClaimValue(EuPidScheme.Attributes.RESIDENT_ADDRESS)
+                    ?: "N/A",
+                imageDataBase64 = disclosures.getClaimValueBytes(IdAustriaScheme.Attributes.PORTRAIT)
+                    ?.let { "data:image;base64," + it.encodeToString(Base64()) }
+                    ?: "",
+                timestamp = Instant.now().toEpochMilli(),
             )
-            val name = apiItem.firstname + " " + apiItem.lastname
-            return Siop2User(name, apiItem)
+            return Siop2User("${apiItem.firstname} ${apiItem.lastname}", apiItem)
         }
 
         fun fromMdoc(document: IsoDocumentParsed): Siop2User {
-            val authnInstant: Instant = Instant.now()
-            val identifier = document.elementValue(IdAustriaScheme.Attributes.BPK)?.string
-                ?: Json.encodeToString(document.validItems).sha256()
             val apiItem = ApiItem(
-                id = identifier,
-                firstname = document.elementValue(IdAustriaScheme.Attributes.FIRSTNAME)?.string ?: "N/A",
-                lastname = document.elementValue(IdAustriaScheme.Attributes.LASTNAME)?.string ?: "N/A",
-                address = document.elementValue(IdAustriaScheme.Attributes.MAIN_ADDRESS)?.string ?: "N/A",
-                imageDataBase64 = "data:image;base64," + document.elementValue(IdAustriaScheme.Attributes.PORTRAIT)?.bytes
-                    ?.encodeToString(Base64()),
-                timestamp = authnInstant.toEpochMilli(),
+                id = document.elementValue(IdAustriaScheme.Attributes.BPK)?.string
+                    ?: Json.encodeToString<List<IssuerSignedItem>>(document.validItems).sha256(),
+                firstname = document.elementValue(IdAustriaScheme.Attributes.FIRSTNAME)?.string
+                    ?: document.elementValue(EuPidScheme.Attributes.GIVEN_NAME)?.string
+                    ?: "N/A",
+                lastname = document.elementValue(IdAustriaScheme.Attributes.LASTNAME)?.string
+                    ?: document.elementValue(EuPidScheme.Attributes.FAMILY_NAME)?.string
+                    ?: "N/A",
+                address = document.elementValue(IdAustriaScheme.Attributes.MAIN_ADDRESS)?.string
+                    ?: document.elementValue(EuPidScheme.Attributes.RESIDENT_ADDRESS)?.string
+                    ?: "N/A",
+                imageDataBase64 = document.elementValue(IdAustriaScheme.Attributes.PORTRAIT)?.bytes
+                    ?.let { "data:image;base64," + it.encodeToString(Base64()) }
+                    ?: "",
+                timestamp = Instant.now().toEpochMilli(),
             )
-            val name = apiItem.firstname + " " + apiItem.lastname
-            return Siop2User(name, apiItem)
+            return Siop2User("${apiItem.firstname} ${apiItem.lastname}", apiItem)
         }
 
         private fun List<SelectiveDisclosureItem>.getClaimValue(claimName: String) =

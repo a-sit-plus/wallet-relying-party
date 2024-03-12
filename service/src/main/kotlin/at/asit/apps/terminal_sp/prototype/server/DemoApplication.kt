@@ -1,7 +1,6 @@
 package at.asit.apps.terminal_sp.prototype.server
 
 import at.asit.apps.terminal_sp.prototype.server.util.AntilogSlf4jAdapter
-import at.asitplus.wallet.idaustria.Initializer
 import io.github.aakira.napier.Napier
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
@@ -11,6 +10,7 @@ class DemoApplication
 
 fun main(args: Array<String>) {
 	Napier.base(AntilogSlf4jAdapter())
-	Initializer.initWithVcLib()
+	at.asitplus.wallet.idaustria.Initializer.initWithVcLib()
+	at.asitplus.wallet.eupid.Initializer.initWithVcLib()
 	runApplication<DemoApplication>(*args)
 }
