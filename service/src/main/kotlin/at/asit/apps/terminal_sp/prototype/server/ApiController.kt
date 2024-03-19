@@ -51,10 +51,6 @@ class ApiController(
         private val walletUrl = "https://wallet.a-sit.at/mobile"
     }
 
-    private val publicIndexUrl by lazy {
-        ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
-            .toUriString()
-    }
     private val customerSuccessUrl by lazy {
         ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
             .pathSegment("customer-success.html")
@@ -89,7 +85,6 @@ class ApiController(
     private fun newVerifier(): OidcSiopVerifier = OidcSiopVerifier.newInstance(
         verifier = verifier,
         cryptoService = verifierCryptoService,
-        credentialScheme = IdAustriaScheme,
         relyingPartyUrl = postSuccessUrl,
     )
 
@@ -130,6 +125,7 @@ class ApiController(
                 representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
                 responseMode = OpenIdConstants.ResponseModes.POST,
                 state = state,
+                credentialScheme = IdAustriaScheme,
             )
             ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, location).build()
         }
@@ -155,6 +151,7 @@ class ApiController(
                 requestedAttributes = requestedAttributes,
                 responseMode = OpenIdConstants.ResponseModes.POST,
                 state = state,
+                credentialScheme = IdAustriaScheme,
             )
             ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, location).build()
         }
@@ -181,6 +178,7 @@ class ApiController(
                 requestedAttributes = requestedAttributes,
                 responseMode = OpenIdConstants.ResponseModes.POST,
                 state = state,
+                credentialScheme = IdAustriaScheme,
             ).getOrElse {
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
             }
@@ -211,11 +209,14 @@ class ApiController(
         Napier.i("/siopv2/postsuccess called with $requestBody")
         val params: AuthenticationResponseParameters = requestBody.decodeFromPostBody()
         return runBlocking {
-            validateSiopResponse(params)
+            val user = validateSiopResponse(params)
+            Napier.i("Storing user at ${user.apiItem.id}: $this")
+            authenticatedUsers[user.apiItem.id] = user
+            ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, customerSuccessUrl).build()
         }
     }
 
-    private suspend fun validateSiopResponse(params: AuthenticationResponseParameters): ResponseEntity<String> {
+    private suspend fun validateSiopResponse(params: AuthenticationResponseParameters): Siop2User {
         Napier.i("validateSiopResponse with $params")
         val state = params.state ?: throw RuntimeException("Bad state")
         val verifierProtocol = verifierProtocolMap.remove(state) ?: throw RuntimeException("No Protocol")
@@ -226,24 +227,14 @@ class ApiController(
                         Napier.w("Cannot parse from VP: ${result.vp}")
                         throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot parse from VP")
                     }
-                    Napier.i("Storing user at ${apiItem.id}: $this")
-                    authenticatedUsers[apiItem.id] = this
-                    ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, publicIndexUrl).build()
+                    this
                 }
 
             is OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt ->
-                with(Siop2User.fromDisclosures(result.disclosures)) {
-                    Napier.i("Storing user at ${apiItem.id}: $this")
-                    authenticatedUsers[apiItem.id] = this
-                    ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, publicIndexUrl).build()
-                }
+                Siop2User.fromDisclosures(result.disclosures)
 
             is OidcSiopVerifier.AuthnResponseResult.SuccessIso ->
-                with(Siop2User.fromMdoc(result.document)) {
-                    Napier.i("Storing user at ${apiItem.id}: $this")
-                    authenticatedUsers[apiItem.id] = this
-                    ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, publicIndexUrl).build()
-                }
+                Siop2User.fromMdoc(result.document)
 
             is OidcSiopVerifier.AuthnResponseResult.Error ->
                 throw RuntimeException(result.reason)
