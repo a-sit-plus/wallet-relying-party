@@ -2,7 +2,7 @@ import at.asitplus.gradle.napier
 import org.springframework.boot.gradle.tasks.bundling.BootJar
 
 plugins {
-    id("org.springframework.boot") version "3.1.6"
+    id("org.springframework.boot") version "3.1.9"
     id("io.spring.dependency-management") version "1.1.4"
     kotlin("jvm")
     kotlin("plugin.spring")

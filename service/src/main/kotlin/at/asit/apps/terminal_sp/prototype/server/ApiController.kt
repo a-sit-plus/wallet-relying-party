@@ -1,10 +1,9 @@
 package at.asit.apps.terminal_sp.prototype.server
 
-import at.asitplus.wallet.idaustria.IdAustriaScheme
-import at.asitplus.wallet.idaustria.IdAustriaScheme.Attributes
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseParameters
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
@@ -20,6 +19,7 @@ import org.springframework.http.ResponseEntity
 import org.springframework.security.core.AuthenticatedPrincipal
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
 import org.springframework.web.bind.annotation.ResponseBody
@@ -32,6 +32,7 @@ import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.collections.set
 import kotlin.concurrent.withLock
+import kotlin.random.Random
 
 
 @Controller
@@ -44,6 +45,7 @@ class ApiController(
         private val secureRandomGenerator = SecureRandom()
         private val lock: Lock = ReentrantLock()
         private val authenticatedUsers: MutableMap<String, AuthenticatedPrincipal> = HashMap()
+        private val pendingRequests: MutableMap<String, String> = HashMap()
         private val verifierCryptoService: CryptoService = DefaultCryptoService()
         private val verifier: VerifierAgent =
             VerifierAgent.newDefaultInstance(verifierCryptoService.jsonWebKey.identifier)
@@ -63,11 +65,13 @@ class ApiController(
     }
     private val siopRequestUrl by lazy {
         ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
-            .pathSegment("siopv2", "request").toUriString()
+            .pathSegment("siopv2", "request")
+            .toUriString()
     }
     private val metadataUrl by lazy {
         ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
-            .pathSegment("siopv2", "metadata").toUriString()
+            .pathSegment("siopv2", "metadata")
+            .toUriString()
     }
 
     private val qrCodeSiopUrl by lazy {
@@ -109,35 +113,55 @@ class ApiController(
             ?: ResponseEntity.notFound().build<ApiItem>()
     }
 
+    @PostMapping("/siopv2/generateQrCode")
+    @ResponseBody
+    fun generateQrCode(@RequestBody request: QrCodeRequest): ResponseEntity<ByteArray> = lock.withLock {
+        Napier.i("/siopv2/generateQrCode called with $request")
+        val state = createSafeState()
+        val verifierProtocol = newVerifier()
+        verifierProtocolMap[state] = verifierProtocol
+        return runBlocking {
+            val credentialScheme = AttributeIndex.resolveAttributeType(request.credentialScheme)
+                ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "credential type unknown")
+            val requestObjectUrl = verifierProtocol.createAuthnRequestUrlWithRequestObject(
+                walletUrl = walletUrl,
+                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+                requestedAttributes = request.attributes,
+                responseMode = OpenIdConstants.ResponseModes.POST,
+                state = state,
+                credentialScheme = credentialScheme,
+            ).getOrElse {
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
+            }
+            val requestObjectNonce = Base64.getUrlEncoder().encodeToString(Random.Default.nextBytes(64))
+            pendingRequests[requestObjectNonce] = requestObjectUrl
+            val requestUrl = ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
+                .pathSegment("siopv2", "request", requestObjectNonce)
+                .toUriString()
+            val qrCodeUrl = ServletUriComponentsBuilder.fromUriString(walletUrl)
+                .queryParam("request_uri", requestUrl)
+                .queryParam("client_id", postSuccessUrl)
+                .queryParam("client_metadata_uri", metadataUrl)
+                .toUriString()
+            val bytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
+            Napier.i("/siopv2/generateQrCode returns with qrCodeUrl $qrCodeUrl")
+            Napier.i("/siopv2/generateQrCode returns with bytes ${bytes.size}")
+            ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(bytes)
+        }
+    }
+
     /**
      * Creates SIOPv2 request object, with response_mode=post
      *
      * URL contained in [qrCodeSiopUrl].
      */
     @ResponseBody
-    @GetMapping("/siopv2/request")
-    fun siopv2RequestObject(): ResponseEntity<String> = lock.withLock {
-        // TODO Attributes.MAIN_ADDRESS
-        val requestedAttributes =
-            listOf(Attributes.PORTRAIT, Attributes.FIRSTNAME, Attributes.LASTNAME)
-        val state = createSafeState()
-        val verifierProtocol = newVerifier()
-        verifierProtocolMap[state] = verifierProtocol
-        return runBlocking {
-            val location = verifierProtocol.createAuthnRequestUrlWithRequestObject(
-                walletUrl = walletUrl,
-                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                requestedAttributes = requestedAttributes,
-                responseMode = OpenIdConstants.ResponseModes.POST,
-                state = state,
-                credentialScheme = IdAustriaScheme,
-            ).getOrElse {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
-            }
-            ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, location).build()
-        }
+    @GetMapping("/siopv2/request/{nonce}")
+    fun siopv2RequestObject(@PathVariable nonce: String): ResponseEntity<String> = lock.withLock {
+        val location = pendingRequests.remove(nonce)
+            ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "pending request not found")
+        return ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, location).build()
     }
-
 
     /**
      * Returns signed metadata.
@@ -154,7 +178,7 @@ class ApiController(
 
     /**
      * Expects SIOPv2 authn response as request body,
-     * called from Wallet App upon answering authn request from [siopv2StartPost] or [siopv2StartSdJwtPost]
+     * called from Wallet App upon answering authn request from [siopv2RequestObject].
      */
     @PostMapping("/siopv2/postsuccess")
     fun siopv2PostSuccessPage(@RequestBody requestBody: String): ResponseEntity<String> = lock.withLock {
