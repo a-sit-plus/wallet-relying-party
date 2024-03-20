@@ -110,54 +110,6 @@ class ApiController(
     }
 
     /**
-     * Redirects to Wallet URL with SIOPv2 authn request, with response_mode=post.
-     * Link contained in `customer.html`
-     */
-    @GetMapping("/siopv2/start")
-    fun siopv2StartPost(): ResponseEntity<String> = lock.withLock {
-        val state = createSafeState()
-        val verifierProtocol = newVerifier()
-        verifierProtocolMap[state] = verifierProtocol
-
-        return runBlocking {
-            val location = verifierProtocol.createAuthnRequestUrl(
-                walletUrl = walletUrl,
-                representation = ConstantIndex.CredentialRepresentation.PLAIN_JWT,
-                responseMode = OpenIdConstants.ResponseModes.POST,
-                state = state,
-                credentialScheme = IdAustriaScheme,
-            )
-            ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, location).build()
-        }
-    }
-
-    /**
-     * Redirects to Wallet URL with SIOPv2 authn request, with response_mode=post, and SD-JWTs
-     * Link contained in `customer.html`
-     */
-    @GetMapping("/siopv2/start-sd")
-    fun siopv2StartSdJwtPost(): ResponseEntity<String> = lock.withLock {
-        // TODO  Attributes.MAIN_ADDRESS
-        val requestedAttributes =
-            listOf(Attributes.PORTRAIT, Attributes.FIRSTNAME, Attributes.LASTNAME)
-        val state = createSafeState()
-        val verifierProtocol = newVerifier()
-        verifierProtocolMap[state] = verifierProtocol
-
-        return runBlocking {
-            val location = verifierProtocol.createAuthnRequestUrl(
-                walletUrl = walletUrl,
-                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
-                requestedAttributes = requestedAttributes,
-                responseMode = OpenIdConstants.ResponseModes.POST,
-                state = state,
-                credentialScheme = IdAustriaScheme,
-            )
-            ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, location).build()
-        }
-    }
-
-    /**
      * Creates SIOPv2 request object, with response_mode=post
      *
      * URL contained in [qrCodeSiopUrl].
