@@ -17,7 +17,7 @@
     </script>
 
     <script type="module">
-        import {createApp} from 'vue'
+        import {createApp, ref} from 'vue'
 
         createApp({
             setup() {
@@ -25,38 +25,194 @@
 
                 const config = {
                     qrCodeUrl: 'siopv2/generateQrCode',
+                    schemeTypes: [
+                      {
+                        label: 'mDL',
+                        value: 'MDL2023',
+                        attributes: [
+                          {label: 'todo', value: 'todo'},
+                        ]
+                      },
+                      {
+                        label: 'PID',
+                        value: 'EuPid2023',
+                        attributes: [
+                          {label: 'family_name', value: 'family_name'},
+                          {label: 'given_name', value: 'given_name'},
+                          {label: 'birth_date', value: 'birth_date'},
+                          {label: 'age_over_18', value: 'age_over_18'},
+                          {label: 'age_in_years', value: 'age_in_years'},
+                          {label: 'age_birth_year', value: 'age_birth_year'},
+                          {label: 'family_name_birth', value: 'family_name_birth'},
+                          {label: 'given_name_birth', value: 'given_name_birth'},
+                          {label: 'birth_place', value: 'birth_place'},
+                          {label: 'birth_country', value: 'birth_country'},
+                          {label: 'birth_state', value: 'birth_state'},
+                          {label: 'birth_city', value: 'birth_city'},
+                          {label: 'resident_address', value: 'resident_address'},
+                          {label: 'resident_country', value: 'resident_country'},
+                          {label: 'resident_state', value: 'resident_state'},
+                          {label: 'resident_city', value: 'resident_city'},
+                          {label: 'resident_postal_code', value: 'resident_postal_code'},
+                          {label: 'resident_street', value: 'resident_street'},
+                          {label: 'resident_house_number', value: 'resident_house_number'},
+                          {label: 'gender', value: 'gender'},
+                          {label: 'nationality', value: 'nationality'},
+                        ]
+                      },
+                      {
+                        label: 'IDA Credential',
+                        value: 'IdAustria2023',
+                        attributes: [
+                          {label: 'bpk', value: 'urn:pvpgvat:oidc.bpk'},
+                          {label: 'firstname', value: 'given_name'},
+                          {label: 'lastname', value: 'family_name'},
+                          {label: 'date-of-birth', value: 'birthdate'},
+                          {label: 'portrait', value: 'org.iso.18013.5.1:portrait'},
+                          {label: 'main-address', value: 'urn:eidgvat:attributes.mainAddress'},
+                          {label: 'age-over-14', value: 'org.iso.18013.5.1:age_over_14'},
+                          {label: 'age-over-16', value: 'org.iso.18013.5.1:age_over_16'},
+                          {label: 'age-over-18', value: 'org.iso.18013.5.1:age_over_18'},
+                          {label: 'age-over-21', value: 'org.iso.18013.5.1:age_over_21'},
+                        ]
+                      }
+                    ],
+                    presentationTypes: [
+                      {label: 'Plain JWT', value: 'jwt_vp'},
+                      {label: 'JWT-SD', value: 'jwt_sd'},
+                      {label: 'ISO-mDoc', value: 'mso_mdoc'}
+                    ],
+                    profiles: [
+                      {
+                        label: 'Custom',
+                        schemeType: null,
+                        presentationType: null,
+                        attributes: []
+                      },
+                      {
+                        label: 'ID Verification',
+                        schemeType: 'IdAustria2023',
+                        presentationType: 'jwt_sd',
+                        attributes: [
+                          {label: 'firstname', value: 'given_name', isSelected: true},
+                          {label: 'lastname', value: 'family_name', isSelected: true},
+                          {label: 'portrait', value: 'org.iso.18013.5.1:portrait', isSelected: true},
+                        ]
+                      },
+                      {
+                        label: 'Age Verification',
+                        schemeType: 'IdAustria2023',
+                        presentationType: 'jwt_sd',
+                        attributes: [
+                          {label: 'age-over-14', value: 'org.iso.18013.5.1:age_over_14', isSelected: true},
+                          {label: 'age-over-16', value: 'org.iso.18013.5.1:age_over_16', isSelected: true},
+                          {label: 'age-over-18', value: 'org.iso.18013.5.1:age_over_18', isSelected: true},
+                          {label: 'age-over-21', value: 'org.iso.18013.5.1:age_over_21', isSelected: true},
+                        ]
+                      }
+                    ]
                 };
 
+                // --- STATE ---------------------------------------------------
+
+                const reqSelection = ref({})
+                updateProfile(config.profiles[0])
+
+                const error = ref({message: null})
+                const qrCode = ref({src: null})
+
+                // --- FUNCTIONS -----------------------------------------------
+
+                async function updateProfile(profile) {
+                    console.log('updateProfile', profile)
+                    reqSelection.value = { ...profile }
+
+                    const schemeType = config.schemeTypes.find((type) => type.value == profile.schemeType)
+
+                    const presentationType = config.presentationTypes.find((type) => type.value == profile.presentationType)
+
+                    if (schemeType) {
+                      const selected = profile.attributes.reduce(function(acc, attr){
+                        if (attr.isSelected) acc.push(attr.value)
+                        return acc
+                      }, [])
+
+                      var attrs = schemeType.attributes.map(function(attr){
+                        attr.isSelected = selected.includes(attr.value)
+                        return attr
+                      })
+
+                      reqSelection.value.attributes = attrs
+                    }
+                }
+
+                async function updateSchemeType(schemeType) {
+                    console.log('updateSchemeType', schemeType)
+                    reqSelection.value.schemeType = schemeType.value
+                    reqSelection.value.attributes = schemeType.attributes
+                }
+
+                async function updatePresentationType(presentationType) {
+                    console.log('updatePresentationType', presentationType)
+                    reqSelection.value.presentationType = presentationType.value
+                }
+
+                async function updateAttribute(attribute) {
+                    console.log('updateAttribute', attribute)
+                    attribute.isSelected = !attribute.isSelected;
+                }
+
                 async function generateQrCode() {
+                    console.log('generateQrCode', reqSelection.value)
+
                     try {
+                        const attrs = reqSelection.value.attributes.filter(function (attr) {
+                          return attr.isSelected
+                        }).map(function (attr) {
+                          return attr.value
+                        })
+
                         const request = {
-                            credentialScheme: document.querySelector('#credentialScheme').value,
-                            attributes: [...document.querySelectorAll('.attributes')].map(el => el.value),
-                        };
-                        console.log(`generateQrCode: fetching ${JSON.stringify(request)}`);
+                            credentialType: reqSelection.value.schemeType,
+                            presentationType: reqSelection.value.presentationType,
+                            attributes: attrs,
+                        }
+                        console.log(`generateQrCode: fetching ${JSON.stringify(request)}`)
+
                         const response = await fetch(config.qrCodeUrl, {
                             method: 'POST',
                             headers: {"Content-Type": "application/json"},
                             body: JSON.stringify(request),
-                        });
+                        })
                         if (response.ok) {
                             const data = (await response.blob());
-                            console.log(`generateQrCode: got ${data.size} bytes`);
-                            document.querySelector('#qrcode').src = URL.createObjectURL(data);
+                            console.log(`generateQrCode: got ${data.size} bytes`)
+                            qrCode.value.src = URL.createObjectURL(data)
+                            error.value.message = null
                         } else {
-                            const data = (await response.text());
-                            console.log(`generateQrCode: error ${data}`);
-                            document.querySelector('#error').textContent = "Error: " + data;
-                            document.querySelector('#qrcode').src = null;
+                            const data = (await response.text())
+                            console.log(`generateQrCode: error ${data}`)
+                            throw data
                         }
-                    } catch (error) {
-                        console.log(`error: ${error}`);
-                        console.log(error);
+                    } catch (err) {
+                        console.log(`error: ${err}`)
+                        qrCode.value.src = null
+                        error.value.message = "Error: " + err
                     }
                 }
 
+                // --- RETURNS -------------------------------------------------
+
                 return {
-                    generateQrCode
+                    config,
+                    reqSelection,
+                    error,
+                    qrCode,
+                    updateProfile,
+                    updateSchemeType,
+                    updatePresentationType,
+                    updateAttribute,
+                    generateQrCode,
                 }
             }
         }).mount('#app')
@@ -71,32 +227,86 @@
                 Kunden-Seite
             </h3>
             <p>
-                Bitte eine Auswahl treffen, um den QR Code erzeugen zu können.
+                Der Kunde startet den Anmeldevorgang, indem er den QR-Code scannt, der auf dem Schalter angebracht ist.
+                Bitte eine Auswahl treffen, um den QR Code zu erzeugen:
             </p>
-            <p>
-                <label for="credentialScheme">Credential Scheme: </label><br>
-                <input id="credentialScheme" type="text" value="IdAustria2023"/><br><br>
-                <label for="attribute1">Attributes: </label><br>
-                <input id="attribute1" class="attributes" type="text" value="firstname" /><br>
-                <input id="attribute2" class="attributes" type="text" value="lastname" /><br>
-                <input id="attribute3" class="attributes" type="text" value="date-of-birth" /><br>
-            </p>
-            <button @click="generateQrCode()" type="button" class="btn">
-                QR-Code erzeugen
-            </button>
-            <p id="error"></p>
-            <p>
-                <img id="qrcode" class="image" width="300px">
-            </p>
+            <ul class="nav nav-tabs mb-3">
+                <li
+                  v-for="item in config.profiles"
+                  :key="item.label"
+                  class="nav-item">
+                  <a :class="'nav-link'+ (item.label == reqSelection.label ? ' active' : '')" href="#" @click="updateProfile(item)">{{ item.label }}</a>
+                </li>
+            </ul>
+            <div>
+                <fieldset class="row mb-3">
+                    <legend class="col-form-label col-sm-4 pt-0">Credential Type</legend>
+                    <div class="col-sm-8">
+                        <div
+                          v-for="item in config.schemeTypes"
+                          :key="item.value"
+                          class="form-check">
+                            <input class="form-check-input" type="radio" name="credentialScheme" :value="item.value" :checked="reqSelection.schemeType == item.value" @click="updateSchemeType(item)">
+                            <label class="form-check-label">
+                                {{ item.label }}
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="row mb-3">
+                    <legend class="col-form-label col-sm-4 pt-0">Presentation Type</legend>
+                    <div class="col-sm-8">
+                        <div
+                          v-for="item in config.presentationTypes"
+                          :key="item.value"
+                          class="form-check">
+                            <input class="form-check-input" type="radio" name="presentationType" :value="item.value"  :checked="reqSelection.presentationType == item.value" @click="updatePresentationType(item)">
+                            <label class="form-check-label">
+                                {{ item.label }}
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="row mb-3">
+                    <legend class="col-form-label col-sm-4 pt-0">Attributes</legend>
+                    <div class="col-sm-8">
+                        <p v-if="reqSelection.attributes.length == 0">Bitte Credential Type auswählen.</p>
+                        <div
+                          v-for="item in reqSelection.attributes"
+                          :key="item.value"
+                          class="form-check">
+                            <input class="attributes form-check-input" type="checkbox" name="attributes" :value="item.value" :checked="item.isSelected" @click="updateAttribute(item)">
+                            <label class="form-check-label" for="attributes1">
+                                {{ item.label }}
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <button @click="generateQrCode()" class="btn btn-primary mb-3">Generate QR</button>
+            </div>
+
+            <div v-if="error.message" class="alert alert-danger" role="alert">
+                {{ error.message }}
+            </div>
+
+            <div v-if="qrCode.src" class="alert alert-success" role="alert">
+                QR Code wurde erfolgreich generiert:
+                <img id="qrcode" width="300px" :src="qrCode.src" />
+            </div>
         </div>
         <div class="feature col">
             <h3 class="fs-2 text-body-emphasis">
                 <i width="1em" height="1em" class="bi-bank"></i>
                 Angestellten-Seite
             </h3>
-            <p>Den Angestellten werden auf der Angestellten-Seite alle kürzlichen Anmeldungen präsentiert. Anhand diesen
+            <p>
+                Den Angestellten werden auf der Angestellten-Seite alle kürzlichen Anmeldungen präsentiert. Anhand diesen
                 Anmeldedaten kann verglichen werden, ob die richtige Person vor dem Schalter steht, und authentische
-                Identitätsdaten eingesehen werden.</p>
+                Identitätsdaten eingesehen werden.
+            </p>
             <a href="employee.html" class="icon-link">
                 Gehe zur Angestellten-Seite
                 <i class="bi-chevron-right"></i>
