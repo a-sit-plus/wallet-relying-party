@@ -5,6 +5,7 @@ import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseParameters
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
@@ -121,11 +122,11 @@ class ApiController(
         val verifierProtocol = newVerifier()
         verifierProtocolMap[state] = verifierProtocol
         return runBlocking {
-            val credentialScheme = AttributeIndex.resolveAttributeType(request.credentialScheme)
+            val credentialScheme = AttributeIndex.resolveAttributeType(request.credentialType)
                 ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "credential type unknown")
             val requestObjectUrl = verifierProtocol.createAuthnRequestUrlWithRequestObject(
                 walletUrl = walletUrl,
-                representation = ConstantIndex.CredentialRepresentation.SD_JWT,
+                representation = CredentialRepresentation.entries.first { it.name == request.presentationType },
                 requestedAttributes = request.attributes,
                 responseMode = OpenIdConstants.ResponseModes.POST,
                 state = state,

@@ -114,9 +114,9 @@
                       }
                     ],
                     presentationTypes: [
-                      {label: 'Plain JWT', value: 'jwt_vp'},
-                      {label: 'JWT-SD', value: 'jwt_sd'},
-                      {label: 'ISO-mDoc', value: 'mso_mdoc'}
+                      {label: 'Plain JWT', value: 'PLAIN_JWT'},
+                      {label: 'SD-JWT', value: 'SD_JWT'},
+                      {label: 'ISO mDoc', value: 'ISO_MDOC'}
                     ],
                     profiles: [
                       {
@@ -128,7 +128,7 @@
                       {
                         label: 'ID Verification',
                         schemeType: 'IdAustria2023',
-                        presentationType: 'jwt_sd',
+                        presentationType: 'SD_JWT',
                         attributes: [
                           {label: 'firstname', value: 'given_name', isSelected: true},
                           {label: 'lastname', value: 'family_name', isSelected: true},
@@ -138,7 +138,7 @@
                       {
                         label: 'Age Verification',
                         schemeType: 'IdAustria2023',
-                        presentationType: 'jwt_sd',
+                        presentationType: 'SD_JWT',
                         attributes: [
                           {label: 'age-over-14', value: 'org.iso.18013.5.1:age_over_14', isSelected: true},
                           {label: 'age-over-16', value: 'org.iso.18013.5.1:age_over_16', isSelected: true},
