@@ -124,7 +124,7 @@
             alert("Diese Daten könnten weiter verarbeitet werden: \n" + JSON.stringify(item, null, 2));
           }
 
-          // --- FORMATERS -----------------------------------------------------
+          // --- FORMATTERS ----------------------------------------------------
 
           function parseAddress(base64json) {
             try {
@@ -141,6 +141,12 @@
             }
           }
 
+          // --- CHECKER -------------------------------------------------------
+
+          function isSet(value) {
+            return value && value != "N/A";
+          }
+
           // --- RETURNS -------------------------------------------------------
 
           return {
@@ -149,6 +155,7 @@
             toggleDetails,
             process,
             parseAddress,
+            isSet,
           }
         }
       }).mount('#app')
@@ -183,26 +190,34 @@
           :key="item.id"
           class="col-md-6">
           <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm bg-light">
-            <div class="col-auto">
-              <img style="height: 300px" :src="item.imageDataBase64"></img>
+            <div v-if="isSet(item.imageDataBase64)" class="col-lg-4 text-bg-dark" style="text-align: center">
+              <img style="max-height: 400px;max-width: 100%" :src="item.imageDataBase64"></img>
             </div>
-            <div class="col p-4 d-flex flex-column position-static">
-              <h3 class="mb-1 position-relative">
+            <div :class="isSet(item.imageDataBase64) ? 'col-lg-8' : 'col-lg-12'" class="p-4 d-flex flex-column position-static">
+              <h3 v-if="isSet(item.firstname) || isSet(item.lastname)" class="mb-1 position-relative">
                 {{ item.firstname }} {{ item.lastname }}
-                <a class="position-absolute top-0 end-0" @click="toggleDetails(item)">
-                  <i class="bi-info-circle text-secondary"></i>
-                </a>
               </h3>
-              <p class="card-text mb-1">{{ parseAddress(item.address) }}</p>
-              <div class="text-body-tertiary">Angemeldet vor {{ item.expiredTime }}</div>
-              <div v-if="item.showDetails" class="mt-1 mb-1">
-                <p class="card-text mb-1">Details:</p>
-                <ul>
-                  <li v-for="(value, key) in item" :key="key">
-                    {{ key }}: {{ value }}
-                  </li>
-                </ul>
+
+              <div class="foldout mb-3" :class="item.showDetails ? '' : 'foldout-preview'">
+                <p class="card-text mb-1">{{ parseAddress(item.address) }}</p>
+                <p v-for="(value, key) in item" :key="key" class="text-truncate mb-1" style="max-width: 100%;">
+                  <span class="fw-semibold">{{ key }}</span>: {{ value }}
+                </p>
+                <div v-if="!item.showDetails" class="foldout-button">
+                  <button type="button" class="btn btn-outline-primary btn-sm" @click="toggleDetails(item)">
+                    Mehr Details
+                    <i class="bi-caret-down-fill text-secondary"></i>
+                  </button>
+                </div>
+                <div v-if="item.showDetails"class="foldout-button">
+                  <button type="button" class="btn btn-outline-primary btn-sm" @click="toggleDetails(item)">
+                    Weniger Details
+                    <i class="bi-caret-up-fill text-secondary"></i>
+                  </button>
+                </div>
               </div>
+
+              <div class="text-body-tertiary mb-1">Angemeldet vor {{ item.expiredTime }}</div>
               <div class="mt-auto ms-auto d-md-flex gap-2">
                 <button @click="seen(item)" type="button" class="btn btn-outline-danger">
                   <i class="bi-x-lg"></i>

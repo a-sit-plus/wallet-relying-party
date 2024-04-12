@@ -17,3 +17,22 @@
 .fade-leave-active {
   position: absolute;
 }
+
+.foldout {
+  position: relative;
+  overflow: hidden;
+  padding-bottom: 2em;
+}
+
+.foldout-preview {
+  max-height: 110px;
+}
+
+.foldout-button {
+  position: absolute;
+  bottom: 0;
+  width: 100%;
+  background: linear-gradient(to top, rgba(var(--bs-light-rgb), 1) 35%, rgba(255,255,255, 0) 100%);
+  padding-top: 2em;
+  text-align: right;
+}
