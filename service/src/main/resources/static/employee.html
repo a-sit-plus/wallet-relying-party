@@ -194,27 +194,31 @@
               <img style="max-height: 400px;max-width: 100%" :src="item.imageDataBase64"></img>
             </div>
             <div :class="isSet(item.imageDataBase64) ? 'col-lg-8' : 'col-lg-12'" class="p-4 d-flex flex-column position-static">
-              <h3 v-if="isSet(item.firstname) || isSet(item.lastname)" class="mb-1 position-relative">
-                {{ item.firstname }} {{ item.lastname }}
-              </h3>
-
-              <div class="foldout mb-3" :class="item.showDetails ? '' : 'foldout-preview'">
-                <p class="card-text mb-1">{{ parseAddress(item.address) }}</p>
-                <p v-for="(value, key) in item" :key="key" class="text-truncate mb-1" style="max-width: 100%;">
-                  <span class="fw-semibold">{{ key }}</span>: {{ value }}
-                </p>
+              <div class="foldout mb-1" :class="item.showDetails ? '' : 'foldout-preview'">
                 <div v-if="!item.showDetails" class="foldout-button">
-                  <button type="button" class="btn btn-outline-primary btn-sm" @click="toggleDetails(item)">
+                  <button type="button" class="btn btn-outline-secondary btn-sm" @click="toggleDetails(item)">
                     Mehr Details
-                    <i class="bi-caret-down-fill text-secondary"></i>
+                    <i class="bi-caret-down-fill"></i>
                   </button>
                 </div>
                 <div v-if="item.showDetails"class="foldout-button">
-                  <button type="button" class="btn btn-outline-primary btn-sm" @click="toggleDetails(item)">
+                  <button type="button" class="btn btn-outline-secondary btn-sm" @click="toggleDetails(item)">
                     Weniger Details
-                    <i class="bi-caret-up-fill text-secondary"></i>
+                    <i class="bi-caret-up-fill"></i>
                   </button>
                 </div>
+
+                <h3 v-if="isSet(item.firstname) || isSet(item.lastname)" class="mb-1">
+                  {{ item.firstname }} {{ item.lastname }}
+                </h3>
+
+                <p class="card-text mb-1">{{ parseAddress(item.address) }}</p>
+
+                <p v-for="(value, key) in item" :key="key" class="text-truncate mb-1" style="max-width: 100%;">
+                  <span class="fw-semibold">{{ key }}</span>: {{ value }}
+                </p>
+
+                <div class="foldout-fade"></div>
               </div>
 
               <div class="text-body-tertiary mb-1">Angemeldet vor {{ item.expiredTime }}</div>

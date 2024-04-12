@@ -21,18 +21,24 @@
 .foldout {
   position: relative;
   overflow: hidden;
-  padding-bottom: 2em;
 }
 
 .foldout-preview {
-  max-height: 110px;
+  max-height: 150px;
 }
 
 .foldout-button {
-  position: absolute;
-  bottom: 0;
-  width: 100%;
-  background: linear-gradient(to top, rgba(var(--bs-light-rgb), 1) 35%, rgba(255,255,255, 0) 100%);
-  padding-top: 2em;
-  text-align: right;
+  float:right;
+}
+.foldout-preview .foldout-fade {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    height: 3em;
+    width: 100%;
+    background: linear-gradient(to top,
+       rgba(var(--bs-light-rgb), 1) 0%,
+       rgba(var(--bs-light-rgb), 0) 100%
+    );
+    pointer-events: none; /* so the text is still selectable */
 }
