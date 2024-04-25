@@ -4,7 +4,6 @@ import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AttributeIndex
-import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseParameters
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
@@ -20,9 +19,9 @@ import org.springframework.http.ResponseEntity
 import org.springframework.security.core.AuthenticatedPrincipal
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.PostMapping
 import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
@@ -33,7 +32,6 @@ import java.util.concurrent.locks.Lock
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.collections.set
 import kotlin.concurrent.withLock
-import kotlin.random.Random
 
 
 @Controller
@@ -46,7 +44,6 @@ class ApiController(
         private val secureRandomGenerator = SecureRandom()
         private val lock: Lock = ReentrantLock()
         private val authenticatedUsers: MutableMap<String, AuthenticatedPrincipal> = HashMap()
-        private val pendingRequests: MutableMap<String, String> = HashMap()
         private val verifierCryptoService: CryptoService = DefaultCryptoService()
         private val verifier: VerifierAgent =
             VerifierAgent.newDefaultInstance(verifierCryptoService.jsonWebKey.identifier)
@@ -118,26 +115,12 @@ class ApiController(
     @ResponseBody
     fun generateQrCode(@RequestBody request: QrCodeRequest): ResponseEntity<ByteArray> = lock.withLock {
         Napier.i("/siopv2/generateQrCode called with $request")
-        val state = createSafeState()
-        val verifierProtocol = newVerifier()
-        verifierProtocolMap[state] = verifierProtocol
         return runBlocking {
-            val credentialScheme = AttributeIndex.resolveAttributeType(request.credentialType)
-                ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "credential type unknown")
-            val requestObjectUrl = verifierProtocol.createAuthnRequestUrlWithRequestObject(
-                walletUrl = walletUrl,
-                representation = CredentialRepresentation.entries.first { it.name == request.presentationType },
-                requestedAttributes = request.attributes,
-                responseMode = OpenIdConstants.ResponseModes.POST,
-                state = state,
-                credentialScheme = credentialScheme,
-            ).getOrElse {
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
-            }
-            val requestObjectNonce = Base64.getUrlEncoder().encodeToString(Random.Default.nextBytes(64))
-            pendingRequests[requestObjectNonce] = requestObjectUrl
             val requestUrl = ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
-                .pathSegment("siopv2", "request", requestObjectNonce)
+                .pathSegment("siopv2", "request")
+                .queryParam("credentialType", request.credentialType)
+                .queryParam("representation", request.representation)
+                .queryParam("attributes", request.attributes)
                 .toUriString()
             val qrCodeUrl = ServletUriComponentsBuilder.fromUriString(walletUrl)
                 .queryParam("request_uri", requestUrl)
@@ -157,11 +140,31 @@ class ApiController(
      * URL contained in [qrCodeSiopUrl].
      */
     @ResponseBody
-    @GetMapping("/siopv2/request/{nonce}")
-    fun siopv2RequestObject(@PathVariable nonce: String): ResponseEntity<String> = lock.withLock {
-        val location = pendingRequests.remove(nonce)
-            ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "pending request not found")
-        return ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, location).build()
+    @GetMapping("/siopv2/request")
+    fun siopv2RequestObject(
+        @RequestParam attributes: Collection<String>,
+        @RequestParam representation: String,
+        @RequestParam credentialType: String
+    ): ResponseEntity<String> = lock.withLock {
+        val state = createSafeState()
+        val verifierProtocol = newVerifier()
+        verifierProtocolMap[state] = verifierProtocol
+        return runBlocking {
+            val credentialScheme = AttributeIndex.resolveAttributeType(credentialType)
+                ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "credential type unknown")
+            val requestObjectUrl = verifierProtocol.createAuthnRequestUrlWithRequestObject(
+                walletUrl = walletUrl,
+                responseMode = OpenIdConstants.ResponseModes.POST,
+                representation = CredentialRepresentation.entries.first { it.name == representation },
+                state = state,
+                credentialScheme = credentialScheme,
+                requestedAttributes = attributes.ifEmpty { null }?.toList(),
+            ).getOrElse {
+                Napier.w("/siopv2/request error", it)
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
+            }
+            ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, requestObjectUrl).build()
+        }
     }
 
     /**
