@@ -28,7 +28,7 @@
                     schemeTypes: [
                       {
                         label: 'mDL',
-                        value: 'MDL2023',
+                        value: 'MobileDrivingLicence',
                         attributes: [
                           {label: 'family_name', value: 'org.iso.18013.5.1:family_name'},
                           {label: 'given_name', value: 'org.iso.18013.5.1:given_name'},
@@ -113,7 +113,7 @@
                         ]
                       }
                     ],
-                    presentationTypes: [
+                    representation: [
                       {label: 'Plain JWT', value: 'PLAIN_JWT'},
                       {label: 'SD-JWT', value: 'SD_JWT'},
                       {label: 'ISO mDoc', value: 'ISO_MDOC'}
@@ -122,13 +122,13 @@
                       {
                         label: 'Custom',
                         schemeType: null,
-                        presentationType: null,
+                        representation: null,
                         attributes: []
                       },
                       {
                         label: 'ID Verification',
                         schemeType: 'IdAustria2023',
-                        presentationType: 'SD_JWT',
+                        representation: 'SD_JWT',
                         attributes: [
                           {label: 'firstname', value: 'given_name', isSelected: true},
                           {label: 'lastname', value: 'family_name', isSelected: true},
@@ -138,7 +138,7 @@
                       {
                         label: 'Age Verification',
                         schemeType: 'IdAustria2023',
-                        presentationType: 'SD_JWT',
+                        representation: 'SD_JWT',
                         attributes: [
                           {label: 'age-over-14', value: 'org.iso.18013.5.1:age_over_14', isSelected: true},
                           {label: 'age-over-16', value: 'org.iso.18013.5.1:age_over_16', isSelected: true},
@@ -165,7 +165,7 @@
 
                     const schemeType = config.schemeTypes.find((type) => type.value == profile.schemeType)
 
-                    const presentationType = config.presentationTypes.find((type) => type.value == profile.presentationType)
+                    const representation = config.representation.find((type) => type.value == profile.representation)
 
                     if (schemeType) {
                       const selected = profile.attributes.reduce(function(acc, attr){
@@ -188,9 +188,9 @@
                     reqSelection.value.attributes = schemeType.attributes
                 }
 
-                async function updatePresentationType(presentationType) {
-                    console.log('updatePresentationType', presentationType)
-                    reqSelection.value.presentationType = presentationType.value
+                async function updateRepresentation(representation) {
+                    console.log('updateRepresentation', representation)
+                    reqSelection.value.representation = representation.value
                 }
 
                 async function updateAttribute(attribute) {
@@ -210,7 +210,7 @@
 
                         const request = {
                             credentialType: reqSelection.value.schemeType,
-                            presentationType: reqSelection.value.presentationType,
+                            representation: reqSelection.value.representation,
                             attributes: attrs,
                         }
                         console.log(`generateQrCode: fetching ${JSON.stringify(request)}`)
@@ -246,7 +246,7 @@
                     qrCode,
                     updateProfile,
                     updateSchemeType,
-                    updatePresentationType,
+                    updateRepresentation,
                     updateAttribute,
                     generateQrCode,
                 }
@@ -294,10 +294,10 @@
                     <legend class="col-form-label col-sm-4 pt-0">Presentation Type</legend>
                     <div class="col-sm-8">
                         <div
-                          v-for="item in config.presentationTypes"
+                          v-for="item in config.representation"
                           :key="item.value"
                           class="form-check">
-                            <input class="form-check-input" type="radio" name="presentationType" :value="item.value"  :checked="reqSelection.presentationType == item.value" @click="updatePresentationType(item)">
+                            <input class="form-check-input" type="radio" name="representation" :value="item.value"  :checked="reqSelection.representation == item.value" @click="updateRepresentation(item)">
                             <label class="form-check-label">
                                 {{ item.label }}
                             </label>
