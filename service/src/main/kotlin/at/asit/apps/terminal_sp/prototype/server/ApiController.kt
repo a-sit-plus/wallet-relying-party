@@ -108,7 +108,7 @@ class ApiController(
     @ResponseBody
     fun removeApiItem(@RequestBody id: String): ResponseEntity<ApiItem> = lock.withLock {
         return authenticatedUsers.remove(id)?.toApiItem()?.let { ResponseEntity.ok(it) }
-            ?: ResponseEntity.notFound().build<ApiItem>()
+            ?: ResponseEntity.notFound().build()
     }
 
     @PostMapping("/siopv2/generateQrCode")
@@ -154,11 +154,13 @@ class ApiController(
                 ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "credential type unknown")
             val requestObjectUrl = verifierProtocol.createAuthnRequestUrlWithRequestObject(
                 walletUrl = walletUrl,
-                responseMode = OpenIdConstants.ResponseModes.POST,
-                representation = CredentialRepresentation.entries.first { it.name == representation },
-                state = state,
-                credentialScheme = credentialScheme,
-                requestedAttributes = attributes.ifEmpty { null }?.toList(),
+                requestOptions = OidcSiopVerifier.RequestOptions(
+                    responseMode = OpenIdConstants.ResponseModes.DIRECT_POST,
+                    representation = CredentialRepresentation.entries.first { it.name == representation },
+                    state = state,
+                    credentialScheme = credentialScheme,
+                    requestedAttributes = attributes.ifEmpty { null }?.toList(),
+                ),
             ).getOrElse {
                 Napier.w("/siopv2/request error", it)
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
