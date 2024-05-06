@@ -48,7 +48,6 @@ class ApiController(
         private val verifier: VerifierAgent =
             VerifierAgent.newDefaultInstance(verifierCryptoService.jsonWebKey.identifier)
         private val verifierProtocolMap: MutableMap<String, OidcSiopVerifier?> = HashMap()
-        private val walletUrl = "https://wallet.a-sit.at/mobile"
     }
 
     private val customerSuccessUrl by lazy {
@@ -61,22 +60,9 @@ class ApiController(
             .pathSegment("siopv2", "postsuccess")
             .toUriString()
     }
-    private val siopRequestUrl by lazy {
-        ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
-            .pathSegment("siopv2", "request")
-            .toUriString()
-    }
     private val metadataUrl by lazy {
         ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
             .pathSegment("siopv2", "metadata")
-            .toUriString()
-    }
-
-    private val qrCodeSiopUrl by lazy {
-        ServletUriComponentsBuilder.fromUriString(walletUrl)
-            .queryParam("request_uri", siopRequestUrl)
-            .queryParam("client_id", postSuccessUrl)
-            .queryParam("client_metadata_uri", metadataUrl)
             .toUriString()
     }
 
@@ -89,14 +75,6 @@ class ApiController(
         cryptoService = verifierCryptoService,
         relyingPartyUrl = postSuccessUrl,
     )
-
-    @GetMapping("/api/qrcodesiop")
-    @ResponseBody
-    fun apiQrCodeSiop(): ResponseEntity<ByteArray> = lock.withLock {
-        return ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(
-            QRCode.ofSquares().build(qrCodeSiopUrl).render().getBytes()
-        )
-    }
 
     @GetMapping("/api/items")
     @ResponseBody
@@ -120,9 +98,10 @@ class ApiController(
                 .pathSegment("siopv2", "request")
                 .queryParam("credentialType", request.credentialType)
                 .queryParam("representation", request.representation)
+                .queryParam("urlprefix", request.urlprefix)
                 .queryParam("attributes", request.attributes)
                 .toUriString()
-            val qrCodeUrl = ServletUriComponentsBuilder.fromUriString(walletUrl)
+            val qrCodeUrl = ServletUriComponentsBuilder.fromUriString(request.urlprefix)
                 .queryParam("request_uri", requestUrl)
                 .queryParam("client_id", postSuccessUrl)
                 .queryParam("client_metadata_uri", metadataUrl)
@@ -136,14 +115,13 @@ class ApiController(
 
     /**
      * Creates SIOPv2 request object, with response_mode=post
-     *
-     * URL contained in [qrCodeSiopUrl].
      */
     @ResponseBody
     @GetMapping("/siopv2/request")
     fun siopv2RequestObject(
         @RequestParam attributes: Collection<String>,
         @RequestParam representation: String,
+        @RequestParam urlprefix: String,
         @RequestParam credentialType: String
     ): ResponseEntity<String> = lock.withLock {
         val state = createSafeState()
@@ -153,7 +131,7 @@ class ApiController(
             val credentialScheme = AttributeIndex.resolveAttributeType(credentialType)
                 ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "credential type unknown")
             val requestObjectUrl = verifierProtocol.createAuthnRequestUrlWithRequestObject(
-                walletUrl = walletUrl,
+                walletUrl = urlprefix,
                 requestOptions = OidcSiopVerifier.RequestOptions(
                     responseMode = OpenIdConstants.ResponseModes.DIRECT_POST,
                     representation = CredentialRepresentation.entries.first { it.name == representation },
@@ -171,7 +149,6 @@ class ApiController(
 
     /**
      * Returns signed metadata.
-     * URL contained in [qrCodeSiopUrl].
      */
     @ResponseBody
     @GetMapping("/siopv2/metadata")

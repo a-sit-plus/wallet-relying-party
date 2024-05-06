@@ -118,17 +118,25 @@
                       {label: 'SD-JWT', value: 'SD_JWT'},
                       {label: 'ISO mDoc', value: 'ISO_MDOC'}
                     ],
+                    urlprefix: [
+                        { label: 'HAIP', value: 'haip://' },
+                        { label: 'EUDI', value: 'eudi-openid4vp://' },
+                        { label: 'MDOC OpenId4VP', value: 'mdoc-openid4vp://' },
+                        { label: 'A-SIT Wallet', value: 'https://wallet.a-sit.at/mobile' }
+                    ],
                     profiles: [
                       {
                         label: 'Custom',
                         schemeType: null,
                         representation: null,
+                        urlprefix: null,
                         attributes: []
                       },
                       {
                         label: 'ID Verification',
                         schemeType: 'IdAustria2023',
                         representation: 'SD_JWT',
+                        urlprefix: 'A-SIT Wallet',
                         attributes: [
                           {label: 'firstname', value: 'given_name', isSelected: true},
                           {label: 'lastname', value: 'family_name', isSelected: true},
@@ -139,6 +147,7 @@
                         label: 'Age Verification',
                         schemeType: 'IdAustria2023',
                         representation: 'SD_JWT',
+                        urlprefix: 'A-SIT Wallet',
                         attributes: [
                           {label: 'age-over-14', value: 'org.iso.18013.5.1:age_over_14', isSelected: true},
                           {label: 'age-over-16', value: 'org.iso.18013.5.1:age_over_16', isSelected: true},
@@ -164,7 +173,6 @@
                     reqSelection.value = { ...profile }
 
                     const schemeType = config.schemeTypes.find((type) => type.value == profile.schemeType)
-
                     const representation = config.representation.find((type) => type.value == profile.representation)
 
                     if (schemeType) {
@@ -193,6 +201,11 @@
                     reqSelection.value.representation = representation.value
                 }
 
+                async function updateUrlprefix(urlprefix) {
+                    console.log('updateUrlprefix', urlprefix)
+                    reqSelection.value.urlprefix = urlprefix.value
+                }
+
                 async function updateAttribute(attribute) {
                     console.log('updateAttribute', attribute)
                     attribute.isSelected = !attribute.isSelected;
@@ -211,6 +224,7 @@
                         const request = {
                             credentialType: reqSelection.value.schemeType,
                             representation: reqSelection.value.representation,
+                            urlprefix: reqSelection.value.urlprefix,
                             attributes: attrs,
                         }
                         console.log(`generateQrCode: fetching ${JSON.stringify(request)}`)
@@ -247,6 +261,7 @@
                     updateProfile,
                     updateSchemeType,
                     updateRepresentation,
+                    updateUrlprefix,
                     updateAttribute,
                     generateQrCode,
                 }
@@ -294,10 +309,25 @@
                     <legend class="col-form-label col-sm-4 pt-0">Presentation Type</legend>
                     <div class="col-sm-8">
                         <div
-                          v-for="item in config.representation"
-                          :key="item.value"
-                          class="form-check">
+                                v-for="item in config.representation"
+                                :key="item.value"
+                                class="form-check">
                             <input class="form-check-input" type="radio" name="representation" :value="item.value"  :checked="reqSelection.representation == item.value" @click="updateRepresentation(item)">
+                            <label class="form-check-label">
+                                {{ item.label }}
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="row mb-3">
+                    <legend class="col-form-label col-sm-4 pt-0">URL Prefix</legend>
+                    <div class="col-sm-8">
+                        <div
+                                v-for="item in config.urlprefix"
+                                :key="item.value"
+                                class="form-check">
+                            <input class="form-check-input" type="radio" name="urlprefix" :value="item.value"  :checked="reqSelection.urlprefix == item.value" @click="updateUrlprefix(item)">
                             <label class="form-check-label">
                                 {{ item.label }}
                             </label>
