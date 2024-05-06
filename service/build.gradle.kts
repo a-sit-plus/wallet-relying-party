@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "at.asitplus"
-version = "3.5.0-SNAPSHOT"
+version = "3.7.0-SNAPSHOT"
 
 kotlin {
     jvmToolchain(17)
