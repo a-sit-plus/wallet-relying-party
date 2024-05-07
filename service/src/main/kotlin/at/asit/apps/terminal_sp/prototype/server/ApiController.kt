@@ -1,5 +1,6 @@
 package at.asit.apps.terminal_sp.prototype.server
 
+import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.VerifierAgent
@@ -119,22 +120,25 @@ class ApiController(
     @ResponseBody
     @GetMapping("/siopv2/request")
     fun siopv2RequestObject(
-        @RequestParam attributes: Collection<String>,
-        @RequestParam representation: String,
-        @RequestParam urlprefix: String,
-        @RequestParam credentialType: String
+        @RequestParam(required = false, defaultValue = "[]") attributes: Collection<String>,
+        @RequestParam(required = false, defaultValue = "SD_JWT") representation: String,
+        @RequestParam(required = false, defaultValue = "https://wallet.a-sit.at/mobile") urlprefix: String,
+        @RequestParam(required = false, defaultValue = "EuPid2023") credentialType: String,
     ): ResponseEntity<String> = lock.withLock {
+        Napier.i("/siopv2/request called with $urlprefix, $representation, $credentialType, $attributes")
         val state = createSafeState()
         val verifierProtocol = newVerifier()
         verifierProtocolMap[state] = verifierProtocol
         return runBlocking {
-            val credentialScheme = AttributeIndex.resolveAttributeType(credentialType)
-                ?: throw ResponseStatusException(HttpStatus.BAD_REQUEST, "credential type unknown")
+            val credentialScheme = credentialType.let { AttributeIndex.resolveAttributeType(it) }
+                ?: EuPidScheme
+            val parsedRep = CredentialRepresentation.entries.firstOrNull { it.name == representation }
+                ?: CredentialRepresentation.SD_JWT
             val requestObjectUrl = verifierProtocol.createAuthnRequestUrlWithRequestObject(
                 walletUrl = urlprefix,
                 requestOptions = OidcSiopVerifier.RequestOptions(
                     responseMode = OpenIdConstants.ResponseModes.DIRECT_POST,
-                    representation = CredentialRepresentation.entries.first { it.name == representation },
+                    representation = parsedRep,
                     state = state,
                     credentialScheme = credentialScheme,
                     requestedAttributes = attributes.ifEmpty { null }?.toList(),
