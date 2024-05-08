@@ -26,6 +26,7 @@ import org.springframework.web.bind.annotation.RequestParam
 import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
+import org.springframework.web.util.UriComponentsBuilder
 import qrcode.QRCode
 import java.security.SecureRandom
 import java.util.*
@@ -120,34 +121,34 @@ class ApiController(
     @ResponseBody
     @GetMapping("/siopv2/request")
     fun siopv2RequestObject(
-        @RequestParam(required = false, defaultValue = "[]") attributes: Collection<String>,
-        @RequestParam(required = false, defaultValue = "SD_JWT") representation: String,
-        @RequestParam(required = false, defaultValue = "https://wallet.a-sit.at/mobile") urlprefix: String,
-        @RequestParam(required = false, defaultValue = "EuPid2023") credentialType: String,
+        @RequestParam attributes: Collection<String>?,
+        @RequestParam representation: String?,
+        @RequestParam urlprefix: String?,
+        @RequestParam credentialType: String?,
     ): ResponseEntity<String> = lock.withLock {
         Napier.i("/siopv2/request called with $urlprefix, $representation, $credentialType, $attributes")
         val state = createSafeState()
         val verifierProtocol = newVerifier()
         verifierProtocolMap[state] = verifierProtocol
         return runBlocking {
-            val credentialScheme = credentialType.let { AttributeIndex.resolveAttributeType(it) }
+            val credentialScheme = credentialType?.let { AttributeIndex.resolveAttributeType(it) }
                 ?: EuPidScheme
             val parsedRep = CredentialRepresentation.entries.firstOrNull { it.name == representation }
                 ?: CredentialRepresentation.SD_JWT
-            val requestObjectUrl = verifierProtocol.createAuthnRequestUrlWithRequestObject(
-                walletUrl = urlprefix,
+            verifierProtocol.createAuthnRequestAsSignedRequestObject()
+            val requestObjectJws = verifierProtocol.createAuthnRequestAsSignedRequestObject(
                 requestOptions = OidcSiopVerifier.RequestOptions(
                     responseMode = OpenIdConstants.ResponseModes.DIRECT_POST,
                     representation = parsedRep,
                     state = state,
                     credentialScheme = credentialScheme,
-                    requestedAttributes = attributes.ifEmpty { null }?.toList(),
+                    requestedAttributes = attributes?.ifEmpty { null }?.toList(),
                 ),
             ).getOrElse {
                 Napier.w("/siopv2/request error", it)
                 throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
             }
-            ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, requestObjectUrl).build()
+            ResponseEntity.ok(requestObjectJws.serialize())
         }
     }
 
@@ -156,10 +157,12 @@ class ApiController(
      */
     @ResponseBody
     @GetMapping("/siopv2/metadata")
-    fun siopv2Metadata(): String {
+    fun siopv2Metadata(): ResponseEntity<String> {
         Napier.i("/siopv2/metadata called")
         return runBlocking {
-            verifierProtocol.createSignedMetadata().getOrThrow().serialize()
+            ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(verifierProtocol.createSignedMetadata().getOrThrow().payload.decodeToString())
         }
     }
 
