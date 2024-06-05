@@ -1,5 +1,12 @@
 package at.asit.apps.terminal_sp.prototype.server
 
+import at.asitplus.crypto.datatypes.asn1.Asn1
+import at.asitplus.crypto.datatypes.asn1.Asn1EncapsulatingOctetString
+import at.asitplus.crypto.datatypes.asn1.Asn1Primitive
+import at.asitplus.crypto.datatypes.asn1.Asn1String
+import at.asitplus.crypto.datatypes.asn1.KnownOIDs
+import at.asitplus.crypto.datatypes.pki.SubjectAltNameImplicitTags
+import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
@@ -41,17 +48,24 @@ class ApiController(
     @Value("\${app.public-url}")
     private val publicUrl: String
 ) {
-
-    companion object {
-        private val secureRandomGenerator = SecureRandom()
-        private val lock: Lock = ReentrantLock()
-        private val authenticatedUsers: MutableMap<String, AuthenticatedPrincipal> = HashMap()
-        private val verifierCryptoService: CryptoService = DefaultCryptoService()
-        private val verifier: VerifierAgent =
-            VerifierAgent.newDefaultInstance(verifierCryptoService.jsonWebKey.identifier)
-        private val verifierProtocolMap: MutableMap<String, OidcSiopVerifier?> = HashMap()
-    }
-
+    private val secureRandomGenerator = SecureRandom()
+    private val lock: Lock = ReentrantLock()
+    private val authenticatedUsers: MutableMap<String, AuthenticatedPrincipal> = HashMap()
+    private val extensions = listOf(X509CertificateExtension(
+        KnownOIDs.subjectAltName_2_5_29_17,
+        critical = false,
+        Asn1EncapsulatingOctetString(listOf(
+            Asn1.Sequence {
+                +Asn1Primitive(
+                    SubjectAltNameImplicitTags.dNSName,
+                    Asn1String.UTF8(publicUrl.getDnsName()).encodeToTlv().content
+                )
+            }
+        ))))
+    private val verifierCryptoService: CryptoService = DefaultCryptoService.withSelfSignedCert(extensions)
+    private val verifier: VerifierAgent =
+        VerifierAgent.newDefaultInstance(verifierCryptoService.jsonWebKey.identifier)
+    private val verifierProtocolMap: MutableMap<String, OidcSiopVerifier?> = HashMap()
     private val customerSuccessUrl by lazy {
         ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
             .pathSegment("customer-success.html")
@@ -67,15 +81,14 @@ class ApiController(
             .pathSegment("siopv2", "metadata")
             .toUriString()
     }
-
-    private val verifierProtocol: OidcSiopVerifier by lazy {
-        newVerifier()
-    }
+    private val verifierProtocol: OidcSiopVerifier by lazy { newVerifier() }
 
     private fun newVerifier(): OidcSiopVerifier = OidcSiopVerifier.newInstance(
         verifier = verifier,
         cryptoService = verifierCryptoService,
         relyingPartyUrl = postSuccessUrl,
+        responseUrl = postSuccessUrl,
+        x5c = listOf(verifierCryptoService.certificate!!),
     )
 
     @GetMapping("/api/items")
@@ -157,13 +170,11 @@ class ApiController(
      */
     @ResponseBody
     @GetMapping("/siopv2/metadata")
-    fun siopv2Metadata(): ResponseEntity<String> {
+    fun siopv2Metadata(): ResponseEntity<String> = runBlocking {
         Napier.i("/siopv2/metadata called")
-        return runBlocking {
-            ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(verifierProtocol.createSignedMetadata().getOrThrow().payload.decodeToString())
-        }
+        ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(verifierProtocol.createSignedMetadata().getOrThrow().payload.decodeToString())
     }
 
     /**
@@ -184,8 +195,10 @@ class ApiController(
 
     private suspend fun validateSiopResponse(params: AuthenticationResponseParameters): Siop2User {
         Napier.i("validateSiopResponse with $params")
-        val state = params.state ?: throw RuntimeException("Bad state")
-        val verifierProtocol = verifierProtocolMap.remove(state) ?: throw RuntimeException("No Protocol")
+        val state = params.state
+            ?: throw RuntimeException("Bad state")
+        val verifierProtocol = verifierProtocolMap.remove(state)
+            ?: throw RuntimeException("No Protocol")
         return when (val result = verifierProtocol.validateAuthnResponse(params)) {
             is OidcSiopVerifier.AuthnResponseResult.Success ->
                 with(Siop2User.fromVerifiablePresentation(result.vp)) {
@@ -229,3 +242,5 @@ class ApiController(
     }
 
 }
+
+private fun String.getDnsName() = UriComponentsBuilder.fromUriString(this).build().host ?: "wallet.a-sit.at"
