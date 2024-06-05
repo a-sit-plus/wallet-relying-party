@@ -1,5 +1,5 @@
 plugins {
-    id("at.asitplus.gradle.conventions") version "1.9.23+20240319"
+    id("at.asitplus.gradle.conventions") version "1.9.23+20240501"
 }
 
 buildscript {

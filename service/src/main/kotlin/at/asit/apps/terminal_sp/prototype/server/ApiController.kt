@@ -138,7 +138,7 @@ class ApiController(
             verifierProtocol.createAuthnRequestAsSignedRequestObject()
             val requestObjectJws = verifierProtocol.createAuthnRequestAsSignedRequestObject(
                 requestOptions = OidcSiopVerifier.RequestOptions(
-                    responseMode = OpenIdConstants.ResponseModes.DIRECT_POST,
+                    responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
                     representation = parsedRep,
                     state = state,
                     credentialScheme = credentialScheme,
@@ -207,6 +207,9 @@ class ApiController(
 
             is OidcSiopVerifier.AuthnResponseResult.ValidationError ->
                 throw RuntimeException("Validation failed for field: ${result.field}")
+
+            is OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults ->
+                throw RuntimeException("Not expected VerifiablePresentationValidationResults: $result")
         }
     }
 

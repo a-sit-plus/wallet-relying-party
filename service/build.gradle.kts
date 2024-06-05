@@ -17,7 +17,7 @@ kotlin {
 }
 
 repositories {
-    maven("https://s01.oss.sonatype.org/content/repositories/snapshots/")
+    maven("https://oss.sonatype.org/content/repositories/snapshots/")
     mavenLocal()
 }
 
@@ -31,11 +31,11 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 
     implementation(napier())
-    implementation("at.asitplus.wallet:vclib-openid:3.7.0-SNAPSHOT")
-    implementation("at.asitplus.crypto:datatypes-cose:2.6.0")
-    implementation("at.asitplus.crypto:datatypes-jws:2.6.0")
+    implementation("at.asitplus.wallet:vclib-openid:3.7.0")
+    implementation("at.asitplus.crypto:datatypes-cose:3.1.0")
+    implementation("at.asitplus.crypto:datatypes-jws:3.1.0")
     implementation("at.asitplus.wallet:idacredential:3.4.0")
-    implementation("at.asitplus.wallet:eupidcredential:1.0.0")
+    implementation("at.asitplus.wallet:eupidcredential:2.0.1")
 }
 
 
