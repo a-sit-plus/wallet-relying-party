@@ -109,24 +109,36 @@ class ApiController(
     fun generateQrCode(@RequestBody request: QrCodeRequest): ResponseEntity<ByteArray> = lock.withLock {
         Napier.i("/siopv2/generateQrCode called with $request")
         return runBlocking {
-            val requestUrl = ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
-                .pathSegment("siopv2", "request")
-                .queryParam("credentialType", request.credentialType)
-                .queryParam("representation", request.representation)
-                .queryParam("urlprefix", request.urlprefix)
-                .queryParam("attributes", request.attributes)
-                .toUriString()
-            val qrCodeUrl = ServletUriComponentsBuilder.fromUriString(request.urlprefix)
-                .queryParam("request_uri", requestUrl)
-                .queryParam("client_id", postSuccessUrl)
-                .queryParam("client_metadata_uri", metadataUrl)
-                .toUriString()
+            val qrCodeUrl = buildQrCodeUrl(request)
             val bytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
             Napier.i("/siopv2/generateQrCode returns with qrCodeUrl $qrCodeUrl")
             Napier.i("/siopv2/generateQrCode returns with bytes ${bytes.size}")
             ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(bytes)
         }
     }
+
+    @PostMapping("/siopv2/generateQrCodeUrl")
+    @ResponseBody
+    fun qrCodeUrl(@RequestBody request: QrCodeRequest): ResponseEntity<String> = lock.withLock {
+        Napier.i("/siopv2/generateQrCodeUrl called with $request")
+        return runBlocking {
+            ResponseEntity.ok().body(buildQrCodeUrl(request))
+        }
+    }
+
+    private fun buildQrCodeUrl(request: QrCodeRequest) = ServletUriComponentsBuilder.fromUriString(request.urlprefix)
+        .queryParam(
+            "request_uri", ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
+                .pathSegment("siopv2", "request")
+                .queryParam("credentialType", request.credentialType)
+                .queryParam("representation", request.representation)
+                .queryParam("urlprefix", request.urlprefix)
+                .queryParam("attributes", request.attributes)
+                .toUriString()
+        )
+        .queryParam("client_id", postSuccessUrl)
+        .queryParam("client_metadata_uri", metadataUrl)
+        .toUriString()
 
     /**
      * Creates SIOPv2 request object, with response_mode=post

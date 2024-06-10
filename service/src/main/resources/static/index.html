@@ -25,6 +25,7 @@
 
                 const config = {
                     qrCodeUrl: 'siopv2/generateQrCode',
+                    qrCodeUrlUrl: 'siopv2/generateQrCodeUrl',
                     schemeTypes: [
                       {
                         label: 'mDL',
@@ -143,7 +144,7 @@
                         label: 'ID Verification',
                         schemeType: 'IdAustria2023',
                         representation: 'SD_JWT',
-                        urlprefix: 'A-SIT Wallet',
+                        urlprefix: 'https://wallet.a-sit.at/mobile',
                         attributes: [
                           {label: 'firstname', value: 'given_name', isSelected: true},
                           {label: 'lastname', value: 'family_name', isSelected: true},
@@ -154,7 +155,7 @@
                         label: 'Age Verification',
                         schemeType: 'IdAustria2023',
                         representation: 'SD_JWT',
-                        urlprefix: 'A-SIT Wallet',
+                        urlprefix: 'https://wallet.a-sit.at/mobile',
                         attributes: [
                           {label: 'age-over-14', value: 'org.iso.18013.5.1:age_over_14', isSelected: true},
                           {label: 'age-over-16', value: 'org.iso.18013.5.1:age_over_16', isSelected: true},
@@ -172,6 +173,7 @@
 
                 const error = ref({message: null})
                 const qrCode = ref({src: null})
+                const qrCodeUrl = ref({message: null})
 
                 // --- FUNCTIONS -----------------------------------------------
 
@@ -251,6 +253,16 @@
                             console.log(`generateQrCode: error ${data}`)
                             throw data
                         }
+                        const urlResponse = await fetch(config.qrCodeUrlUrl, {
+                            method: 'POST',
+                            headers: {"Content-Type": "application/json"},
+                            body: JSON.stringify(request),
+                        })
+                        if (urlResponse.ok) {
+                            qrCodeUrl.value.message = await urlResponse.text()
+                        } else {
+                            qrCodeUrl.value.message = null
+                        }
                     } catch (err) {
                         console.log(`error: ${err}`)
                         qrCode.value.src = null
@@ -265,6 +277,7 @@
                     reqSelection,
                     error,
                     qrCode,
+                    qrCodeUrl,
                     updateProfile,
                     updateSchemeType,
                     updateRepresentation,
@@ -368,6 +381,10 @@
             <div v-if="qrCode.src" class="alert alert-success" role="alert">
                 QR Code wurde erfolgreich generiert:
                 <img id="qrcode" width="300px" :src="qrCode.src" />
+            </div>
+
+            <div v-if="qrCodeUrl.message">
+                <a target="_blank" :href="qrCodeUrl.message">{{ qrCodeUrl.message }}</a>
             </div>
         </div>
         <div class="feature col">
