@@ -86,7 +86,7 @@ class ApiController(
     private fun newVerifier(): OidcSiopVerifier = OidcSiopVerifier.newInstance(
         verifier = verifier,
         cryptoService = verifierCryptoService,
-        relyingPartyUrl = postSuccessUrl,
+        relyingPartyUrl = publicUrl.getDnsName(),
         responseUrl = postSuccessUrl,
         x5c = listOf(verifierCryptoService.certificate!!),
     )
@@ -136,7 +136,7 @@ class ApiController(
                 .queryParam("attributes", request.attributes)
                 .toUriString()
         )
-        .queryParam("client_id", postSuccessUrl)
+        .queryParam("client_id", publicUrl.getDnsName())
         .queryParam("client_metadata_uri", metadataUrl)
         .toUriString()
 
