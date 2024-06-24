@@ -12,5 +12,6 @@ fun main(args: Array<String>) {
 	Napier.base(AntilogSlf4jAdapter())
 	at.asitplus.wallet.idaustria.Initializer.initWithVcLib()
 	at.asitplus.wallet.eupid.Initializer.initWithVcLib()
+	at.asitplus.wallet.mdl.Initializer.initWithVcLib()
 	runApplication<DemoApplication>(*args)
 }

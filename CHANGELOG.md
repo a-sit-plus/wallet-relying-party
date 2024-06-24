@@ -1,5 +1,8 @@
 # Changelog
 
+Version 3.8.0:
+ - Update to vclib 3.8.0
+
 Version 2.4.0:
  - Replace mustache templates with vue.js frontend from FH
  - Remove notion of "codes" from API controller

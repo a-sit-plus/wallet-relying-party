@@ -88,18 +88,18 @@ class Siop2User(
 
         fun fromMdoc(document: IsoDocumentParsed): Siop2User {
             val apiItem = ApiItem(
-                id = document.elementValue(IdAustriaScheme.Attributes.BPK)?.string
+                id = document.elementValue(IdAustriaScheme.Attributes.BPK)?.toString()
                     ?: Json.encodeToString<List<IssuerSignedItem>>(document.validItems).sha256(),
-                firstname = document.elementValue(IdAustriaScheme.Attributes.FIRSTNAME)?.string
-                    ?: document.elementValue(EuPidScheme.Attributes.GIVEN_NAME)?.string
+                firstname = document.elementValue(IdAustriaScheme.Attributes.FIRSTNAME)?.toString()
+                    ?: document.elementValue(EuPidScheme.Attributes.GIVEN_NAME)?.toString()
                     ?: "N/A",
-                lastname = document.elementValue(IdAustriaScheme.Attributes.LASTNAME)?.string
-                    ?: document.elementValue(EuPidScheme.Attributes.FAMILY_NAME)?.string
+                lastname = document.elementValue(IdAustriaScheme.Attributes.LASTNAME)?.toString()
+                    ?: document.elementValue(EuPidScheme.Attributes.FAMILY_NAME)?.toString()
                     ?: "N/A",
-                address = document.elementValue(IdAustriaScheme.Attributes.MAIN_ADDRESS)?.string
-                    ?: document.elementValue(EuPidScheme.Attributes.RESIDENT_ADDRESS)?.string
+                address = document.elementValue(IdAustriaScheme.Attributes.MAIN_ADDRESS)?.toString()
+                    ?: document.elementValue(EuPidScheme.Attributes.RESIDENT_ADDRESS)?.toString()
                     ?: "N/A",
-                imageDataBase64 = document.elementValue(IdAustriaScheme.Attributes.PORTRAIT)?.bytes
+                imageDataBase64 = (document.elementValue(IdAustriaScheme.Attributes.PORTRAIT) as? ByteArray)
                     ?.let { "data:image;base64," + it.encodeToString(Base64()) }
                     ?: "",
                 timestamp = Instant.now().toEpochMilli(),

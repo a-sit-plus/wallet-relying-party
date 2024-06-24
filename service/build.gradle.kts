@@ -2,7 +2,7 @@ import at.asitplus.gradle.napier
 import org.springframework.boot.gradle.tasks.bundling.BootJar
 
 plugins {
-    id("org.springframework.boot") version "3.1.9"
+    id("org.springframework.boot") version "3.1.12"
     id("io.spring.dependency-management") version "1.1.4"
     kotlin("jvm")
     kotlin("plugin.spring")
@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "at.asitplus"
-version = "3.7.0-SNAPSHOT"
+version = "3.8.0-SNAPSHOT"
 
 kotlin {
     jvmToolchain(17)
@@ -31,11 +31,10 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 
     implementation(napier())
-    implementation("at.asitplus.wallet:vclib-openid:3.7.0")
-    implementation("at.asitplus.crypto:datatypes-cose:3.1.0")
-    implementation("at.asitplus.crypto:datatypes-jws:3.1.0")
-    implementation("at.asitplus.wallet:idacredential:3.4.0")
-    implementation("at.asitplus.wallet:eupidcredential:2.0.1")
+    implementation("at.asitplus.wallet:vclib-openid:3.8.0")
+    implementation("at.asitplus.wallet:idacredential:3.8.1")
+    implementation("at.asitplus.wallet:eupidcredential:2.1.1")
+    implementation("at.asitplus.wallet:mobiledrivinglicence:1.0.0")
 }
 
 
