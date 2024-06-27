@@ -147,6 +147,27 @@
                                 {label: 'document_number', value: 'document_number'},
                                 {label: 'administrative_number', value: 'administrative_number'}
                             ]
+                        },
+                        {
+                            label: 'Certificate of Residence (CoR)',
+                            value: 'CertificateOfResidence',
+                            attributes: [
+                                {label: 'family_name', value: 'family_name'},
+                                {label: 'given_name', value: 'given_name'},
+                                {label: 'birth_date', value: 'birth_date'},
+                                {label: 'nationality', value: 'nationality'},
+                                {label: 'birth_place', value: 'birth_place'},
+                                {label: 'arrival_date', value: 'arrival_date'},
+                                {label: 'residence_address', value: 'residence_address'},
+                                {label: 'gender', value: 'gender'},
+                                {label: 'issue_date', value: 'issue_date'},
+                                {label: 'expiry_date', value: 'expiry_date'},
+                                {label: 'issuing_authority', value: 'issuing_authority'},
+                                {label: 'issuing_country', value: 'issuing_country'},
+                                {label: 'issuing_jurisdiction', value: 'issuing_jurisdiction'},
+                                {label: 'document_number', value: 'document_number'},
+                                {label: 'administrative_number', value: 'administrative_number'}
+                            ]
                         }
                     ],
                     representation: [
@@ -202,6 +223,28 @@
                                 {label: 'eService', value: 'eService', isSelected: true},
                                 {label: 'effective_from_date', value: 'effective_from_date', isSelected: true},
                                 {label: 'effective_until_date', value: 'effective_until_date', isSelected: true},
+                                {label: 'issue_date', value: 'issue_date', isSelected: true},
+                                {label: 'expiry_date', value: 'expiry_date', isSelected: true},
+                                {label: 'issuing_authority', value: 'issuing_authority', isSelected: true},
+                                {label: 'issuing_country', value: 'issuing_country', isSelected: true},
+                                {label: 'issuing_jurisdiction', value: 'issuing_jurisdiction', isSelected: true},
+                                {label: 'document_number', value: 'document_number', isSelected: true},
+                                {label: 'administrative_number', value: 'administrative_number', isSelected: true}
+                            ]
+                        },
+                        {
+                            label: 'CoR',
+                            schemeType: 'CertificateOfResidence',
+                            representation: 'SD_JWT',
+                            urlprefix: 'https://wallet.a-sit.at/mobile',
+                            attributes: [
+                                {label: 'family_name', value: 'family_name', isSelected: true},
+                                {label: 'given_name', value: 'given_name', isSelected: true},
+                                {label: 'birth_date', value: 'birth_date', isSelected: true},
+                                {label: 'nationality', value: 'nationality', isSelected: true},
+                                {label: 'birth_place', value: 'birth_place', isSelected: true},
+                                {label: 'arrival_date', value: 'arrival_date', isSelected: true},
+                                {label: 'residence_address', value: 'residence_address', isSelected: true},
                                 {label: 'issue_date', value: 'issue_date', isSelected: true},
                                 {label: 'expiry_date', value: 'expiry_date', isSelected: true},
                                 {label: 'issuing_authority', value: 'issuing_authority', isSelected: true},
