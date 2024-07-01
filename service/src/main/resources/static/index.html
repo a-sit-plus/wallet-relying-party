@@ -27,142 +27,151 @@
                     qrCodeUrl: 'siopv2/generateQrCode',
                     qrCodeUrlUrl: 'siopv2/generateQrCodeUrl',
                     schemeTypes: [
-                      {
-                        label: 'mDL',
-                        value: 'MobileDrivingLicence',
-                        attributes: [
-                          {label: 'family_name', value: 'org.iso.18013.5.1:family_name'},
-                          {label: 'given_name', value: 'org.iso.18013.5.1:given_name'},
-                          {label: 'birth_date', value: 'org.iso.18013.5.1:birth_date'},
-                          {label: 'issue_date', value: 'org.iso.18013.5.1:issue_date'},
-                          {label: 'expiry_date', value: 'org.iso.18013.5.1:expiry_date'},
-                          {label: 'issuing_country', value: 'org.iso.18013.5.1:issuing_country'},
-                          {label: 'issuing_authority', value: 'org.iso.18013.5.1:issuing_authority'},
-                          {label: 'document_number', value: 'org.iso.18013.5.1:document_number'},
-                          {label: 'portrait', value: 'org.iso.18013.5.1:portrait'},
-                          {label: 'driving_privileges', value: 'org.iso.18013.5.1:driving_privileges'},
-                          {label: 'un_distinguishing_sign', value: 'org.iso.18013.5.1:un_distinguishing_sign'},
-                          {label: 'administrative_number', value: 'org.iso.18013.5.1:administrative_number'},
-                          {label: 'sex', value: 'org.iso.18013.5.1:sex'},
-                          {label: 'height', value: 'org.iso.18013.5.1:height'},
-                          {label: 'weight', value: 'org.iso.18013.5.1:weight'},
-                          {label: 'eye_colour', value: 'org.iso.18013.5.1:eye_colour'},
-                          {label: 'hair_colour', value: 'org.iso.18013.5.1:hair_colour'},
-                          {label: 'birth_place', value: 'org.iso.18013.5.1:birth_place'},
-                          {label: 'resident_address', value: 'org.iso.18013.5.1:resident_address'},
-                          {label: 'portrait_capture_date', value: 'org.iso.18013.5.1:portrait_capture_date'},
-                          {label: 'age_in_years', value: 'org.iso.18013.5.1:age_in_years'},
-                          {label: 'age_birth_year', value: 'org.iso.18013.5.1:age_birth_year'},
-                          {label: 'age_over_14', value: 'org.iso.18013.5.1:age_over_14'},
-                          {label: 'age_over_16', value: 'org.iso.18013.5.1:age_over_16'},
-                          {label: 'age_over_18', value: 'org.iso.18013.5.1:age_over_18'},
-                          {label: 'age_over_21', value: 'org.iso.18013.5.1:age_over_21'}, // or any other in 00-99
-                          {label: 'issuing_jurisdiction', value: 'org.iso.18013.5.1:issuing_jurisdiction'},
-                          {label: 'nationality', value: 'org.iso.18013.5.1:nationality'},
-                          {label: 'resident_city', value: 'org.iso.18013.5.1:resident_city'},
-                          {label: 'resident_state', value: 'org.iso.18013.5.1:resident_state'},
-                          {label: 'resident_postal_code', value: 'org.iso.18013.5.1:resident_postal_code'},
-                          {label: 'resident_country', value: 'org.iso.18013.5.1:resident_country'},
-                          {label: 'biometric_template_face', value: 'org.iso.18013.5.1:biometric_template_face'},
-                          {label: 'biometric_template_signature_sign', value: 'org.iso.18013.5.1:biometric_template_signature_sign'},
-                          {label: 'family_name_national_character', value: 'org.iso.18013.5.1:family_name_national_character'}, // more in ISO 19785-3:2020, Table 7
-                          {label: 'given_name_national_character', value: 'org.iso.18013.5.1:given_name_national_character'},
-                          {label: 'signature_usual_mark', value: 'org.iso.18013.5.1:signature_usual_mark'},
-                        ]
-                      },
-                      {
-                        label: 'PID',
-                        value: 'EuPid2023',
-                        attributes: [
-                          {label: 'family_name', value: 'family_name'},
-                          {label: 'given_name', value: 'given_name'},
-                          {label: 'birth_date', value: 'birth_date'},
-                          {label: 'age_over_18', value: 'age_over_18'},
-                          {label: 'age_in_years', value: 'age_in_years'},
-                          {label: 'age_birth_year', value: 'age_birth_year'},
-                          {label: 'family_name_birth', value: 'family_name_birth'},
-                          {label: 'given_name_birth', value: 'given_name_birth'},
-                          {label: 'birth_place', value: 'birth_place'},
-                          {label: 'birth_country', value: 'birth_country'},
-                          {label: 'birth_state', value: 'birth_state'},
-                          {label: 'birth_city', value: 'birth_city'},
-                          {label: 'resident_address', value: 'resident_address'},
-                          {label: 'resident_country', value: 'resident_country'},
-                          {label: 'resident_state', value: 'resident_state'},
-                          {label: 'resident_city', value: 'resident_city'},
-                          {label: 'resident_postal_code', value: 'resident_postal_code'},
-                          {label: 'resident_street', value: 'resident_street'},
-                          {label: 'resident_house_number', value: 'resident_house_number'},
-                          {label: 'gender', value: 'gender'},
-                          {label: 'nationality', value: 'nationality'},
-                          {label: 'issuance_date', value: 'issuance_date'},
-                          {label: 'expiry_date', value: 'expiry_date'},
-                          {label: 'issuing_authority', value: 'issuing_authority'},
-                          {label: 'document_number', value: 'document_number'},
-                          {label: 'administrative_number', value: 'administrative_number'},
-                          {label: 'issuing_country', value: 'issuing_country'},
-                          {label: 'issuing_jurisdiction', value: 'issuing_jurisdiction'},
-                        ]
-                      },
-                      {
-                        label: 'IDA Credential',
-                        value: 'IdAustria2023',
-                        attributes: [
-                          {label: 'bpk', value: 'urn:pvpgvat:oidc.bpk'},
-                          {label: 'firstname', value: 'given_name'},
-                          {label: 'lastname', value: 'family_name'},
-                          {label: 'date-of-birth', value: 'birthdate'},
-                          {label: 'portrait', value: 'org.iso.18013.5.1:portrait'},
-                          {label: 'main-address', value: 'urn:eidgvat:attributes.mainAddress'},
-                          {label: 'age-over-14', value: 'org.iso.18013.5.1:age_over_14'},
-                          {label: 'age-over-16', value: 'org.iso.18013.5.1:age_over_16'},
-                          {label: 'age-over-18', value: 'org.iso.18013.5.1:age_over_18'},
-                          {label: 'age-over-21', value: 'org.iso.18013.5.1:age_over_21'},
-                        ]
-                      }
+                        {
+                            label: 'mDL',
+                            value: 'MobileDrivingLicence',
+                            attributes: [
+                                {label: 'family_name', value: 'org.iso.18013.5.1:family_name'},
+                                {label: 'given_name', value: 'org.iso.18013.5.1:given_name'},
+                                {label: 'birth_date', value: 'org.iso.18013.5.1:birth_date'},
+                                {label: 'issue_date', value: 'org.iso.18013.5.1:issue_date'},
+                                {label: 'expiry_date', value: 'org.iso.18013.5.1:expiry_date'},
+                                {label: 'issuing_country', value: 'org.iso.18013.5.1:issuing_country'},
+                                {label: 'issuing_authority', value: 'org.iso.18013.5.1:issuing_authority'},
+                                {label: 'document_number', value: 'org.iso.18013.5.1:document_number'},
+                                {label: 'portrait', value: 'org.iso.18013.5.1:portrait'},
+                                {label: 'driving_privileges', value: 'org.iso.18013.5.1:driving_privileges'},
+                                {label: 'un_distinguishing_sign', value: 'org.iso.18013.5.1:un_distinguishing_sign'},
+                                {label: 'administrative_number', value: 'org.iso.18013.5.1:administrative_number'},
+                                {label: 'sex', value: 'org.iso.18013.5.1:sex'},
+                                {label: 'height', value: 'org.iso.18013.5.1:height'},
+                                {label: 'weight', value: 'org.iso.18013.5.1:weight'},
+                                {label: 'eye_colour', value: 'org.iso.18013.5.1:eye_colour'},
+                                {label: 'hair_colour', value: 'org.iso.18013.5.1:hair_colour'},
+                                {label: 'birth_place', value: 'org.iso.18013.5.1:birth_place'},
+                                {label: 'resident_address', value: 'org.iso.18013.5.1:resident_address'},
+                                {label: 'portrait_capture_date', value: 'org.iso.18013.5.1:portrait_capture_date'},
+                                {label: 'age_in_years', value: 'org.iso.18013.5.1:age_in_years'},
+                                {label: 'age_birth_year', value: 'org.iso.18013.5.1:age_birth_year'},
+                                {label: 'age_over_14', value: 'org.iso.18013.5.1:age_over_14'},
+                                {label: 'age_over_16', value: 'org.iso.18013.5.1:age_over_16'},
+                                {label: 'age_over_18', value: 'org.iso.18013.5.1:age_over_18'},
+                                {label: 'age_over_21', value: 'org.iso.18013.5.1:age_over_21'}, // or any other in 00-99
+                                {label: 'issuing_jurisdiction', value: 'org.iso.18013.5.1:issuing_jurisdiction'},
+                                {label: 'nationality', value: 'org.iso.18013.5.1:nationality'},
+                                {label: 'resident_city', value: 'org.iso.18013.5.1:resident_city'},
+                                {label: 'resident_state', value: 'org.iso.18013.5.1:resident_state'},
+                                {label: 'resident_postal_code', value: 'org.iso.18013.5.1:resident_postal_code'},
+                                {label: 'resident_country', value: 'org.iso.18013.5.1:resident_country'},
+                                {label: 'biometric_template_face', value: 'org.iso.18013.5.1:biometric_template_face'},
+                                {
+                                    label: 'biometric_template_signature_sign',
+                                    value: 'org.iso.18013.5.1:biometric_template_signature_sign'
+                                },
+                                {
+                                    label: 'family_name_national_character',
+                                    value: 'org.iso.18013.5.1:family_name_national_character'
+                                }, // more in ISO 19785-3:2020, Table 7
+                                {
+                                    label: 'given_name_national_character',
+                                    value: 'org.iso.18013.5.1:given_name_national_character'
+                                },
+                                {label: 'signature_usual_mark', value: 'org.iso.18013.5.1:signature_usual_mark'},
+                            ]
+                        },
+                        {
+                            label: 'PID',
+                            value: 'EuPid2023',
+                            attributes: [
+                                {label: 'family_name', value: 'family_name'},
+                                {label: 'given_name', value: 'given_name'},
+                                {label: 'birth_date', value: 'birth_date'},
+                                {label: 'age_over_18', value: 'age_over_18'},
+                                {label: 'age_in_years', value: 'age_in_years'},
+                                {label: 'age_birth_year', value: 'age_birth_year'},
+                                {label: 'family_name_birth', value: 'family_name_birth'},
+                                {label: 'given_name_birth', value: 'given_name_birth'},
+                                {label: 'birth_place', value: 'birth_place'},
+                                {label: 'birth_country', value: 'birth_country'},
+                                {label: 'birth_state', value: 'birth_state'},
+                                {label: 'birth_city', value: 'birth_city'},
+                                {label: 'resident_address', value: 'resident_address'},
+                                {label: 'resident_country', value: 'resident_country'},
+                                {label: 'resident_state', value: 'resident_state'},
+                                {label: 'resident_city', value: 'resident_city'},
+                                {label: 'resident_postal_code', value: 'resident_postal_code'},
+                                {label: 'resident_street', value: 'resident_street'},
+                                {label: 'resident_house_number', value: 'resident_house_number'},
+                                {label: 'gender', value: 'gender'},
+                                {label: 'nationality', value: 'nationality'},
+                                {label: 'issuance_date', value: 'issuance_date'},
+                                {label: 'expiry_date', value: 'expiry_date'},
+                                {label: 'issuing_authority', value: 'issuing_authority'},
+                                {label: 'document_number', value: 'document_number'},
+                                {label: 'administrative_number', value: 'administrative_number'},
+                                {label: 'issuing_country', value: 'issuing_country'},
+                                {label: 'issuing_jurisdiction', value: 'issuing_jurisdiction'},
+                            ]
+                        },
+                        {
+                            label: 'IDA Credential',
+                            value: 'IdAustria2023',
+                            attributes: [
+                                {label: 'bpk', value: 'bpk'},
+                                {label: 'firstname', value: 'firstname'},
+                                {label: 'lastname', value: 'lastname'},
+                                {label: 'date-of-birth', value: 'date-of-birth'},
+                                {label: 'portrait', value: 'portrait'},
+                                {label: 'main-address', value: 'main-address'},
+                                {label: 'age-over-14', value: 'age-over-14'},
+                                {label: 'age-over-16', value: 'age-over-16'},
+                                {label: 'age-over-18', value: 'age-over-18'},
+                                {label: 'age-over-21', value: 'age-over-21'},
+                            ]
+                        }
                     ],
                     representation: [
-                      {label: 'Plain JWT', value: 'PLAIN_JWT'},
-                      {label: 'SD-JWT', value: 'SD_JWT'},
-                      {label: 'ISO mDoc', value: 'ISO_MDOC'}
+                        {label: 'Plain JWT', value: 'PLAIN_JWT'},
+                        {label: 'SD-JWT', value: 'SD_JWT'},
+                        {label: 'ISO mDoc', value: 'ISO_MDOC'}
                     ],
                     urlprefix: [
-                        { label: 'HAIP', value: 'haip://' },
-                        { label: 'EUDI', value: 'eudi-openid4vp://' },
-                        { label: 'MDOC OpenId4VP', value: 'mdoc-openid4vp://' },
-                        { label: 'A-SIT Wallet', value: 'https://wallet.a-sit.at/mobile' }
+                        {label: 'HAIP', value: 'haip://'},
+                        {label: 'EUDI', value: 'eudi-openid4vp://'},
+                        {label: 'MDOC OpenId4VP', value: 'mdoc-openid4vp://'},
+                        {label: 'A-SIT Wallet', value: 'https://wallet.a-sit.at/mobile'}
                     ],
                     profiles: [
-                      {
-                        label: 'Custom',
-                        schemeType: null,
-                        representation: null,
-                        urlprefix: null,
-                        attributes: []
-                      },
-                      {
-                        label: 'ID Verification',
-                        schemeType: 'IdAustria2023',
-                        representation: 'SD_JWT',
-                        urlprefix: 'https://wallet.a-sit.at/mobile',
-                        attributes: [
-                          {label: 'firstname', value: 'given_name', isSelected: true},
-                          {label: 'lastname', value: 'family_name', isSelected: true},
-                          {label: 'portrait', value: 'org.iso.18013.5.1:portrait', isSelected: true},
-                        ]
-                      },
-                      {
-                        label: 'Age Verification',
-                        schemeType: 'IdAustria2023',
-                        representation: 'SD_JWT',
-                        urlprefix: 'https://wallet.a-sit.at/mobile',
-                        attributes: [
-                          {label: 'age-over-14', value: 'org.iso.18013.5.1:age_over_14', isSelected: true},
-                          {label: 'age-over-16', value: 'org.iso.18013.5.1:age_over_16', isSelected: true},
-                          {label: 'age-over-18', value: 'org.iso.18013.5.1:age_over_18', isSelected: true},
-                          {label: 'age-over-21', value: 'org.iso.18013.5.1:age_over_21', isSelected: true},
-                        ]
-                      }
+                        {
+                            label: 'Custom',
+                            schemeType: null,
+                            representation: null,
+                            urlprefix: null,
+                            attributes: []
+                        },
+                        {
+                            label: 'ID Verification',
+                            schemeType: 'IdAustria2023',
+                            representation: 'SD_JWT',
+                            urlprefix: 'https://wallet.a-sit.at/mobile',
+                            attributes: [
+                                {label: 'firstname', value: 'firstname', isSelected: true},
+                                {label: 'lastname', value: 'lastname', isSelected: true},
+                                {label: 'portrait', value: 'portrait', isSelected: true},
+                            ]
+                        },
+                        {
+                            label: 'Age Verification',
+                            schemeType: 'IdAustria2023',
+                            representation: 'SD_JWT',
+                            urlprefix: 'https://wallet.a-sit.at/mobile',
+                            attributes: [
+                                {label: 'age-over-14', value: 'age-over-14', isSelected: true},
+                                {label: 'age-over-16', value: 'age-over-16', isSelected: true},
+                                {label: 'age-over-18', value: 'age-over-18', isSelected: true},
+                                {label: 'age-over-21', value: 'age-over-21', isSelected: true},
+                            ]
+                        }
                     ]
                 };
 
@@ -179,23 +188,23 @@
 
                 async function updateProfile(profile) {
                     console.log('updateProfile', profile)
-                    reqSelection.value = { ...profile }
+                    reqSelection.value = {...profile}
 
                     const schemeType = config.schemeTypes.find((type) => type.value == profile.schemeType)
                     const representation = config.representation.find((type) => type.value == profile.representation)
 
                     if (schemeType) {
-                      const selected = profile.attributes.reduce(function(acc, attr){
-                        if (attr.isSelected) acc.push(attr.value)
-                        return acc
-                      }, [])
+                        const selected = profile.attributes.reduce(function (acc, attr) {
+                            if (attr.isSelected) acc.push(attr.value)
+                            return acc
+                        }, [])
 
-                      var attrs = schemeType.attributes.map(function(attr){
-                        attr.isSelected = selected.includes(attr.value)
-                        return attr
-                      })
+                        var attrs = schemeType.attributes.map(function (attr) {
+                            attr.isSelected = selected.includes(attr.value)
+                            return attr
+                        })
 
-                      reqSelection.value.attributes = attrs
+                        reqSelection.value.attributes = attrs
                     }
                 }
 
@@ -225,9 +234,9 @@
 
                     try {
                         const attrs = reqSelection.value.attributes.filter(function (attr) {
-                          return attr.isSelected
+                            return attr.isSelected
                         }).map(function (attr) {
-                          return attr.value
+                            return attr.value
                         })
 
                         const request = {
@@ -303,10 +312,11 @@
             </p>
             <ul class="nav nav-tabs mb-3">
                 <li
-                  v-for="item in config.profiles"
-                  :key="item.label"
-                  class="nav-item">
-                  <a :class="'nav-link'+ (item.label == reqSelection.label ? ' active' : '')" href="#" @click="updateProfile(item)">{{ item.label }}</a>
+                        v-for="item in config.profiles"
+                        :key="item.label"
+                        class="nav-item">
+                    <a :class="'nav-link'+ (item.label == reqSelection.label ? ' active' : '')" href="#"
+                       @click="updateProfile(item)">{{ item.label }}</a>
                 </li>
             </ul>
             <div>
@@ -314,10 +324,11 @@
                     <legend class="col-form-label col-sm-4 pt-0">Credential Type</legend>
                     <div class="col-sm-8">
                         <div
-                          v-for="item in config.schemeTypes"
-                          :key="item.value"
-                          class="form-check">
-                            <input class="form-check-input" type="radio" name="credentialScheme" :value="item.value" :checked="reqSelection.schemeType == item.value" @click="updateSchemeType(item)">
+                                v-for="item in config.schemeTypes"
+                                :key="item.value"
+                                class="form-check">
+                            <input class="form-check-input" type="radio" name="credentialScheme" :value="item.value"
+                                   :checked="reqSelection.schemeType == item.value" @click="updateSchemeType(item)">
                             <label class="form-check-label">
                                 {{ item.label }}
                             </label>
@@ -332,7 +343,9 @@
                                 v-for="item in config.representation"
                                 :key="item.value"
                                 class="form-check">
-                            <input class="form-check-input" type="radio" name="representation" :value="item.value"  :checked="reqSelection.representation == item.value" @click="updateRepresentation(item)">
+                            <input class="form-check-input" type="radio" name="representation" :value="item.value"
+                                   :checked="reqSelection.representation == item.value"
+                                   @click="updateRepresentation(item)">
                             <label class="form-check-label">
                                 {{ item.label }}
                             </label>
@@ -347,7 +360,8 @@
                                 v-for="item in config.urlprefix"
                                 :key="item.value"
                                 class="form-check">
-                            <input class="form-check-input" type="radio" name="urlprefix" :value="item.value"  :checked="reqSelection.urlprefix == item.value" @click="updateUrlprefix(item)">
+                            <input class="form-check-input" type="radio" name="urlprefix" :value="item.value"
+                                   :checked="reqSelection.urlprefix == item.value" @click="updateUrlprefix(item)">
                             <label class="form-check-label">
                                 {{ item.label }}
                             </label>
@@ -360,10 +374,11 @@
                     <div class="col-sm-8">
                         <p v-if="reqSelection.attributes.length == 0">Bitte Credential Type auswählen.</p>
                         <div
-                          v-for="item in reqSelection.attributes"
-                          :key="item.value"
-                          class="form-check">
-                            <input class="attributes form-check-input" type="checkbox" name="attributes" :value="item.value" :checked="item.isSelected" @click="updateAttribute(item)">
+                                v-for="item in reqSelection.attributes"
+                                :key="item.value"
+                                class="form-check">
+                            <input class="attributes form-check-input" type="checkbox" name="attributes"
+                                   :value="item.value" :checked="item.isSelected" @click="updateAttribute(item)">
                             <label class="form-check-label" for="attributes1">
                                 {{ item.label }}
                             </label>
@@ -380,7 +395,7 @@
 
             <div v-if="qrCode.src" class="alert alert-success" role="alert">
                 QR Code wurde erfolgreich generiert:
-                <img id="qrcode" width="300px" :src="qrCode.src" />
+                <img id="qrcode" width="300px" :src="qrCode.src"/>
             </div>
 
             <div v-if="qrCodeUrl.message">
@@ -393,7 +408,8 @@
                 Angestellten-Seite
             </h3>
             <p>
-                Den Angestellten werden auf der Angestellten-Seite alle kürzlichen Anmeldungen präsentiert. Anhand diesen
+                Den Angestellten werden auf der Angestellten-Seite alle kürzlichen Anmeldungen präsentiert. Anhand
+                diesen
                 Anmeldedaten kann verglichen werden, ob die richtige Person vor dem Schalter steht, und authentische
                 Identitätsdaten eingesehen werden.
             </p>
