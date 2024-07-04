@@ -156,7 +156,7 @@ class ApiController(
         val verifierProtocol = newVerifier()
         verifierProtocolMap[state] = verifierProtocol
         return runBlocking {
-            val credentialScheme = credentialType?.let { AttributeIndex.resolveAttributeType(it) }
+            val credentialScheme = credentialType?.let { AttributeIndex.resolveAttributeType(it) ?: AttributeIndex.resolveSdJwtAttributeType(it) ?: AttributeIndex.resolveIsoDoctype(it)}
                 ?: EuPidScheme
             val parsedRep = CredentialRepresentation.entries.firstOrNull { it.name == representation }
                 ?: CredentialRepresentation.SD_JWT
