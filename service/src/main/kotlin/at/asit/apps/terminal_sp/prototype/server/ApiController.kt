@@ -1,10 +1,6 @@
 package at.asit.apps.terminal_sp.prototype.server
 
-import at.asitplus.crypto.datatypes.asn1.Asn1
-import at.asitplus.crypto.datatypes.asn1.Asn1EncapsulatingOctetString
-import at.asitplus.crypto.datatypes.asn1.Asn1Primitive
-import at.asitplus.crypto.datatypes.asn1.Asn1String
-import at.asitplus.crypto.datatypes.asn1.KnownOIDs
+import at.asitplus.crypto.datatypes.asn1.*
 import at.asitplus.crypto.datatypes.pki.SubjectAltNameImplicitTags
 import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
 import at.asitplus.wallet.eupid.EuPidScheme
@@ -26,11 +22,7 @@ import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.AuthenticatedPrincipal
 import org.springframework.stereotype.Controller
-import org.springframework.web.bind.annotation.GetMapping
-import org.springframework.web.bind.annotation.PostMapping
-import org.springframework.web.bind.annotation.RequestBody
-import org.springframework.web.bind.annotation.RequestParam
-import org.springframework.web.bind.annotation.ResponseBody
+import org.springframework.web.bind.annotation.*
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import org.springframework.web.util.UriComponentsBuilder
@@ -156,8 +148,11 @@ class ApiController(
         val verifierProtocol = newVerifier()
         verifierProtocolMap[state] = verifierProtocol
         return runBlocking {
-            val credentialScheme = credentialType?.let { AttributeIndex.resolveAttributeType(it) ?: AttributeIndex.resolveSdJwtAttributeType(it) ?: AttributeIndex.resolveIsoDoctype(it)}
-                ?: EuPidScheme
+            val credentialScheme = credentialType?.let {
+                AttributeIndex.resolveAttributeType(it)
+                    ?: AttributeIndex.resolveSdJwtAttributeType(it)
+                    ?: AttributeIndex.resolveIsoDoctype(it)
+            } ?: EuPidScheme
             val parsedRep = CredentialRepresentation.entries.firstOrNull { it.name == representation }
                 ?: CredentialRepresentation.SD_JWT
             verifierProtocol.createAuthnRequestAsSignedRequestObject()

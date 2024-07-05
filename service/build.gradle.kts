@@ -17,7 +17,8 @@ kotlin {
 }
 
 repositories {
-    maven("https://oss.sonatype.org/content/repositories/snapshots/")
+    maven(url = uri("https://s01.oss.sonatype.org/content/repositories/atasitplus-1173/"))
+    maven(url = uri("https://s01.oss.sonatype.org/content/repositories/atasitplus-1175/"))
     mavenLocal()
 }
 
@@ -35,6 +36,8 @@ dependencies {
     implementation("at.asitplus.wallet:idacredential:3.8.1")
     implementation("at.asitplus.wallet:eupidcredential:2.1.1")
     implementation("at.asitplus.wallet:mobiledrivinglicence:1.0.0")
+    implementation("at.asitplus.wallet:powerofrepresentation:1.0.0")
+    implementation("at.asitplus.wallet:certificateofresidence:1.0.0")
 }
 
 
