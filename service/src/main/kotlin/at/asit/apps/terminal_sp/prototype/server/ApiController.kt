@@ -6,6 +6,7 @@ import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.CryptoService
 import at.asitplus.wallet.lib.agent.DefaultCryptoService
+import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
@@ -54,9 +55,9 @@ class ApiController(
                 )
             }
         ))))
-    private val verifierCryptoService: CryptoService = DefaultCryptoService.withSelfSignedCert(extensions)
-    private val verifier: VerifierAgent =
-        VerifierAgent.newDefaultInstance(verifierCryptoService.jsonWebKey.identifier)
+    private val verifierKeyAdapter = RandomKeyPairAdapter(extensions)
+    private val verifierCryptoService: CryptoService = DefaultCryptoService(verifierKeyAdapter)
+    private val verifier: VerifierAgent = VerifierAgent(verifierKeyAdapter)
     private val verifierProtocolMap: MutableMap<String, OidcSiopVerifier?> = HashMap()
     private val customerSuccessUrl by lazy {
         ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
@@ -77,10 +78,9 @@ class ApiController(
 
     private fun newVerifier(): OidcSiopVerifier = OidcSiopVerifier.newInstance(
         verifier = verifier,
-        cryptoService = verifierCryptoService,
         relyingPartyUrl = publicUrl.getDnsName(),
         responseUrl = postSuccessUrl,
-        x5c = listOf(verifierCryptoService.certificate!!),
+        x5c = listOf(verifierKeyAdapter.certificate!!),
     )
 
     @GetMapping("/api/items")
