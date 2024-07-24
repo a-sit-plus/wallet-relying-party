@@ -1,5 +1,8 @@
 # Changelog
 
+Version 4.0.0:
+ - Update to vclib 4.0.0
+
 Version 3.8.0:
  - Update to vclib 3.8.0
 

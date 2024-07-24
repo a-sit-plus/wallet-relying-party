@@ -33,11 +33,11 @@ dependencies {
 
     implementation(napier())
     implementation("at.asitplus.wallet:vclib-openid:4.0.0")
-    implementation("at.asitplus.wallet:idacredential:3.8.1")
-    implementation("at.asitplus.wallet:eupidcredential:2.1.1")
-    implementation("at.asitplus.wallet:mobiledrivinglicence:1.0.0")
-    implementation("at.asitplus.wallet:powerofrepresentation:1.0.0")
-    implementation("at.asitplus.wallet:certificateofresidence:1.0.0")
+    implementation("at.asitplus.wallet:idacredential:3.8.2")
+    implementation("at.asitplus.wallet:eupidcredential:2.1.2")
+    implementation("at.asitplus.wallet:mobiledrivinglicence:1.0.1")
+    implementation("at.asitplus.wallet:powerofrepresentation:1.0.1")
+    implementation("at.asitplus.wallet:certificateofresidence:1.0.1")
 }
 
 
