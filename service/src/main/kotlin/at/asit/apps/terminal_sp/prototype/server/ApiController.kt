@@ -155,7 +155,6 @@ class ApiController(
             } ?: EuPidScheme
             val parsedRep = CredentialRepresentation.entries.firstOrNull { it.name == representation }
                 ?: CredentialRepresentation.SD_JWT
-            verifierProtocol.createAuthnRequestAsSignedRequestObject()
             val requestObjectJws = verifierProtocol.createAuthnRequestAsSignedRequestObject(
                 requestOptions = OidcSiopVerifier.RequestOptions(
                     responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
