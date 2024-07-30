@@ -46,11 +46,11 @@
             if (minutes == 0)
               textMinutes = '';
             else if (minutes == 1)
-              textMinutes = minutes + ' Minute';
+              textMinutes = minutes + ' minute';
             else if (minutes > 0)
-              textMinutes = minutes + ' Minuten';
+              textMinutes = minutes + ' minutes';
 
-            var textSeconds = seconds + ' Sekunden';
+            var textSeconds = seconds + ' seconds';
 
             return textMinutes + ' ' + textSeconds;
           }
@@ -121,30 +121,50 @@
           }
 
           function process(item) {
-            alert("Diese Daten könnten weiter verarbeitet werden: \n" + JSON.stringify(item, null, 2));
+            alert("Full data: \n" + JSON.stringify(item["allFields"], null, 2));
           }
 
           // --- FORMATTERS ----------------------------------------------------
 
-          function parseAddress(base64json) {
+          function parseAddressBase64(input) {
             try {
-              var address = JSON.parse(atob(base64json));
-              var result = address["Strasse"] + " " + address["Hausnummer"];
-              if (address["Stiege"] && address["Stiege"].trim())
-                result += "/" + address["Stiege"];
-              if (address["Tuer"] && address["Tuer"].trim())
-                result += "/" + address["Tuer"];
-              result += ", " + address["Postleitzahl"] + " " + address["Ortschaft"];
-              return result;
+              return JSON.parse(atob(input));
             } catch {
-              return base64json;
+              try {
+                return JSON.parse(input);
+              } catch {
+                return {}
+              }
+            }
+          }
+
+          function parseAddress(input) {
+            try {
+              var address = parseAddressBase64(input);
+              if (address["Strasse"] && address["Strasse"] !== "") {
+                var result = address["Strasse"] + " " + address["Hausnummer"];
+                if (address["Stiege"] && address["Stiege"].trim())
+                  result += "/" + address["Stiege"];
+                if (address["Tuer"] && address["Tuer"].trim())
+                  result += "/" + address["Tuer"];
+                result += ", " + address["Postleitzahl"] + " " + address["Ortschaft"];
+                return result;
+              } else if (address["thoroughfare"] && address["thoroughfare"] !== "") {
+                var result = address["thoroughfare"] + " " + address["locator_designator"];
+                result += ", " + address["post_code"] + " " + address["post_name"];
+                return result;
+              } else {
+                return input;
+              }
+            } catch {
+              return input;
             }
           }
 
           // --- CHECKER -------------------------------------------------------
 
           function isSet(value) {
-            return value && value != "N/A";
+            return value && value != "N/A" && value != "data:image;base64,null" ;
           }
 
           // --- RETURNS -------------------------------------------------------
@@ -170,7 +190,7 @@
             Terminal Service: Employee-Page
           </a>
           <div class="ms-3 me-3 mb-2 mb-lg-0">
-            <strong>Branch:</strong> Graz, St. Peter Hauptstraße, Schalter #3
+            <strong>Branch:</strong> Graz, St. Peter Hauptstraße, Counter #3
           </div>
         </div>
       </div>
@@ -191,13 +211,13 @@
           class="col-md-6">
           <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm bg-light">
             <div v-if="isSet(item.imageDataBase64)" class="col-lg-4 text-bg-dark" style="text-align: center">
-              <img style="max-height: 400px;max-width: 100%" :src="item.imageDataBase64"></img>
+              <img style="max-height: 400px;max-width: 100%" :src="item.imageDataBase64" />
             </div>
             <div :class="isSet(item.imageDataBase64) ? 'col-lg-8' : 'col-lg-12'" class="p-4 d-flex flex-column position-static">
               <div class="foldout mb-1" :class="item.showDetails ? '' : 'foldout-preview'">
                 <div v-if="!item.showDetails" class="foldout-button">
                   <button type="button" class="btn btn-outline-secondary btn-sm" @click="toggleDetails(item)">
-                    Mode Details
+                    More Details
                     <i class="bi-caret-down-fill"></i>
                   </button>
                 </div>

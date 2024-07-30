@@ -5,6 +5,7 @@ data class ApiItem(
     val firstname: String,
     val lastname: String,
     val address: String,
-    val imageDataBase64: String,
-    val timestamp: Long
+    val imageDataBase64: String?,
+    val timestamp: Long,
+    val allFields: Map<String, String>,
 )

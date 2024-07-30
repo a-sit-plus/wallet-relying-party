@@ -193,7 +193,7 @@ class ApiController(
         val params: AuthenticationResponseParameters = requestBody.decodeFromPostBody()
         return runBlocking {
             val user = validateSiopResponse(params)
-            Napier.i("Storing user at ${user.apiItem.id}: $this")
+            Napier.i("Storing user at ${user.apiItem.id}: $user")
             authenticatedUsers[user.apiItem.id] = user
             ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, customerSuccessUrl).build()
         }
