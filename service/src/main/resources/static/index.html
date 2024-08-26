@@ -28,6 +28,15 @@
                     qrCodeUrlUrl: 'siopv2/generateQrCodeUrl',
                     schemeTypes: [
                         {
+                            label: 'e-Prescription',
+                            value: 'eu.europa.ehealth.eprescription.1',
+                            attributes: [
+                                {label: 'one_time_token', value: 'one_time_token'},
+                                {label: 'coutry_code', value: 'country_code'},
+                                {label: 'valid_until', value: 'valid_until'}
+                            ]
+                        },
+                        {
                             label: 'mDL',
                             value: 'org.iso.18013.5.1.mDL',
                             attributes: [
@@ -169,7 +178,7 @@
                         {label: 'HAIP', value: 'haip://'},
                         {label: 'EUDI', value: 'eudi-openid4vp://'},
                         {label: 'MDOC OpenId4VP', value: 'mdoc-openid4vp://'},
-                        {label: 'A-SIT Wallet', value: 'https://wallet.a-sit.at/mobile'}
+                        {label: 'A-SIT Wallet', value: 'https://wallet.a-sit.at/mobile'},
                     ],
                     profiles: [
                         {
@@ -180,8 +189,19 @@
                             attributes: []
                         },
                         {
+                            label: 'E-Prescription',
+                            schemeType: 'eu.europa.ehealth.eprescription.1',
+                            representation: 'SD_JWT',
+                            urlprefix: 'https://wallet.a-sit.at/mobile',
+                            attributes: [
+                                {label: 'one_time_token', value: 'one_time_token', isSelected: true},
+                                {label: 'coutry_code', value: 'country_code', isSelected: true},
+                                {label: 'valid_until', value: 'valid_until', isSelected: true}
+                            ]
+                        },
+                        {
                             label: 'ID Verification',
-                            schemeType: 'IdAustria2023',
+                            schemeType: 'at.gv.id-austria.2023.1',
                             representation: 'SD_JWT',
                             urlprefix: 'https://wallet.a-sit.at/mobile',
                             attributes: [
@@ -192,7 +212,7 @@
                         },
                         {
                             label: 'Age Verification',
-                            schemeType: 'IdAustria2023',
+                            schemeType: 'at.gv.id-austria.2023.1',
                             representation: 'SD_JWT',
                             urlprefix: 'https://wallet.a-sit.at/mobile',
                             attributes: [

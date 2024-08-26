@@ -1,5 +1,14 @@
 # Changelog
 
+Version 4.1.0:
+ - Remove unused code: locks, state-map
+
+Version 4.0.1:
+ - Update to VCK (renamed VcLib)
+ - Update credentials
+ - Add E-Prescription support
+ - Add simple.html which is used as presentation demo
+
 Version 4.0.0:
  - Update to vclib 4.0.0
 

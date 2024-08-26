@@ -1,25 +1,43 @@
 <!doctype html>
 <html lang="de">
-  <head>
+<head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Terminal Service: Employee-Page</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
-  </head>
-  <body style="background-color: #f3f3f3">
+</head>
+<body style="background-color: #f3f3f3">
 
-    <header class="p-3 text-bg-dark">
-      <div class="container">
+<header class="p-3 text-bg-dark">
+    <div class="container">
         <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start d-flex mb-2 mb-lg-0 me-md-auto text-white fs-3 fw-bold">
             Terminal Service
         </div>
-      </div>
-    </header>
-
-    <div class="container my-5">
-      <h1>Authentication successful!</h1>
-      <p>The authentication process has been completed successfully.</p>
     </div>
-  </body>
+</header>
+
+<div class="container my-5">
+    <h1>Authentication successful!</h1>
+    <p>The authentication process has been completed successfully.</p>
+    <p id="counter">You will be redirected in 5 seconds.</p>
+</div>
+<script type="text/javascript">
+    var countdown = 5;
+    var counterElement = document.getElementById("counter");
+
+    function updateCounter() {
+        if (countdown > 0) {
+            counterElement.textContent = "You will be redirected in " + countdown + " seconds.";
+            countdown--;
+        } else {
+            window.location.href = "employee.html";
+        }
+    }
+
+    // Update the counter every second
+    setInterval(updateCounter, 1000);
+</script>
+</body>
 </html>

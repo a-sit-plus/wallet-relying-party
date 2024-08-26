@@ -11,10 +11,11 @@ class DemoApplication
 fun main(args: Array<String>) {
 	Napier.takeLogarithm()
 	Napier.base(AntilogSlf4jAdapter())
-	at.asitplus.wallet.idaustria.Initializer.initWithVcLib()
-	at.asitplus.wallet.eupid.Initializer.initWithVcLib()
-	at.asitplus.wallet.mdl.Initializer.initWithVcLib()
-	at.asitplus.wallet.cor.Initializer.initWithVcLib()
-	at.asitplus.wallet.por.Initializer.initWithVcLib()
+	at.asitplus.wallet.idaustria.Initializer.initWithVCK()
+	at.asitplus.wallet.eupid.Initializer.initWithVCK()
+	at.asitplus.wallet.mdl.Initializer.initWithVck()
+	at.asitplus.wallet.cor.Initializer.initWithVCK()
+	at.asitplus.wallet.por.Initializer.initWithVCK()
+	at.asitplus.wallet.eprescription.Initializer.initWithVCK()
 	runApplication<DemoApplication>(*args)
 }

@@ -1,11 +1,9 @@
 package at.asit.apps.terminal_sp.prototype.server
 
-import at.asitplus.crypto.datatypes.asn1.*
-import at.asitplus.crypto.datatypes.pki.SubjectAltNameImplicitTags
-import at.asitplus.crypto.datatypes.pki.X509CertificateExtension
+import at.asitplus.signum.indispensable.asn1.*
+import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
+import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.lib.agent.CryptoService
-import at.asitplus.wallet.lib.agent.DefaultCryptoService
 import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AttributeIndex
@@ -28,21 +26,16 @@ import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import org.springframework.web.util.UriComponentsBuilder
 import qrcode.QRCode
-import java.security.SecureRandom
 import java.util.*
-import java.util.concurrent.locks.Lock
-import java.util.concurrent.locks.ReentrantLock
 import kotlin.collections.set
-import kotlin.concurrent.withLock
+import kotlin.random.Random
 
 
 @Controller
 class ApiController(
     @Value("\${app.public-url}")
-    private val publicUrl: String
+    private val publicUrl: String,
 ) {
-    private val secureRandomGenerator = SecureRandom()
-    private val lock: Lock = ReentrantLock()
     private val authenticatedUsers: MutableMap<String, AuthenticatedPrincipal> = HashMap()
     private val extensions = listOf(X509CertificateExtension(
         KnownOIDs.subjectAltName_2_5_29_17,
@@ -56,9 +49,7 @@ class ApiController(
             }
         ))))
     private val verifierKeyAdapter = RandomKeyPairAdapter(extensions)
-    private val verifierCryptoService: CryptoService = DefaultCryptoService(verifierKeyAdapter)
     private val verifier: VerifierAgent = VerifierAgent(verifierKeyAdapter)
-    private val verifierProtocolMap: MutableMap<String, OidcSiopVerifier?> = HashMap()
     private val customerSuccessUrl by lazy {
         ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
             .pathSegment("customer-success.html")
@@ -85,37 +76,30 @@ class ApiController(
 
     @GetMapping("/api/items")
     @ResponseBody
-    fun apiItems(): List<ApiItem> = lock.withLock {
-        return authenticatedUsers.mapNotNull { it.value.toApiItem() }
-    }
+    fun apiItems(): List<ApiItem> = authenticatedUsers.mapNotNull { it.value.toApiItem() }
 
     @PostMapping("/api/remove")
     @ResponseBody
-    fun removeApiItem(@RequestBody id: String): ResponseEntity<ApiItem> = lock.withLock {
-        return authenticatedUsers.remove(id)?.toApiItem()?.let { ResponseEntity.ok(it) }
+    fun removeApiItem(@RequestBody id: String): ResponseEntity<ApiItem> =
+        authenticatedUsers.remove(id)?.toApiItem()?.let { ResponseEntity.ok(it) }
             ?: ResponseEntity.notFound().build()
-    }
 
     @PostMapping("/siopv2/generateQrCode")
     @ResponseBody
-    fun generateQrCode(@RequestBody request: QrCodeRequest): ResponseEntity<ByteArray> = lock.withLock {
+    fun generateQrCode(@RequestBody request: QrCodeRequest): ResponseEntity<ByteArray> = runBlocking {
         Napier.i("/siopv2/generateQrCode called with $request")
-        return runBlocking {
-            val qrCodeUrl = buildQrCodeUrl(request)
-            val bytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
-            Napier.i("/siopv2/generateQrCode returns with qrCodeUrl $qrCodeUrl")
-            Napier.i("/siopv2/generateQrCode returns with bytes ${bytes.size}")
-            ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(bytes)
-        }
+        val qrCodeUrl = buildQrCodeUrl(request)
+        val bytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
+        Napier.i("/siopv2/generateQrCode returns with qrCodeUrl $qrCodeUrl")
+        Napier.i("/siopv2/generateQrCode returns with bytes ${bytes.size}")
+        ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(bytes)
     }
 
     @PostMapping("/siopv2/generateQrCodeUrl")
     @ResponseBody
-    fun qrCodeUrl(@RequestBody request: QrCodeRequest): ResponseEntity<String> = lock.withLock {
+    fun qrCodeUrl(@RequestBody request: QrCodeRequest): ResponseEntity<String> = runBlocking {
         Napier.i("/siopv2/generateQrCodeUrl called with $request")
-        return runBlocking {
-            ResponseEntity.ok().body(buildQrCodeUrl(request))
-        }
+        ResponseEntity.ok().body(buildQrCodeUrl(request))
     }
 
     private fun buildQrCodeUrl(request: QrCodeRequest) = ServletUriComponentsBuilder.fromUriString(request.urlprefix)
@@ -142,33 +126,29 @@ class ApiController(
         @RequestParam representation: String?,
         @RequestParam urlprefix: String?,
         @RequestParam credentialType: String?,
-    ): ResponseEntity<String> = lock.withLock {
+    ): ResponseEntity<String> = runBlocking {
         Napier.i("/siopv2/request called with $urlprefix, $representation, $credentialType, $attributes")
         val state = createSafeState()
-        val verifierProtocol = newVerifier()
-        verifierProtocolMap[state] = verifierProtocol
-        return runBlocking {
-            val credentialScheme = credentialType?.let {
-                AttributeIndex.resolveAttributeType(it)
-                    ?: AttributeIndex.resolveSdJwtAttributeType(it)
-                    ?: AttributeIndex.resolveIsoDoctype(it)
-            } ?: EuPidScheme
-            val parsedRep = CredentialRepresentation.entries.firstOrNull { it.name == representation }
-                ?: CredentialRepresentation.SD_JWT
-            val requestObjectJws = verifierProtocol.createAuthnRequestAsSignedRequestObject(
-                requestOptions = OidcSiopVerifier.RequestOptions(
-                    responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
-                    representation = parsedRep,
-                    state = state,
-                    credentialScheme = credentialScheme,
-                    requestedAttributes = attributes?.ifEmpty { null }?.toList(),
-                ),
-            ).getOrElse {
-                Napier.w("/siopv2/request error", it)
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
-            }
-            ResponseEntity.ok(requestObjectJws.serialize())
+        val credentialScheme = credentialType?.let {
+            AttributeIndex.resolveAttributeType(it)
+                ?: AttributeIndex.resolveSdJwtAttributeType(it)
+                ?: AttributeIndex.resolveIsoDoctype(it)
+        } ?: EuPidScheme
+        val parsedRep = CredentialRepresentation.entries.firstOrNull { it.name == representation }
+            ?: CredentialRepresentation.SD_JWT
+        val requestObjectJws = verifierProtocol.createAuthnRequestAsSignedRequestObject(
+            requestOptions = OidcSiopVerifier.RequestOptions(
+                responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
+                representation = parsedRep,
+                state = state,
+                credentialScheme = credentialScheme,
+                requestedAttributes = attributes?.ifEmpty { null }?.toList(),
+            ),
+        ).getOrElse {
+            Napier.w("/siopv2/request error", it)
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
         }
+        ResponseEntity.ok(requestObjectJws.serialize())
     }
 
     /**
@@ -188,23 +168,17 @@ class ApiController(
      * called from Wallet App upon answering authn request from [siopv2RequestObject].
      */
     @PostMapping("/siopv2/postsuccess")
-    fun siopv2PostSuccessPage(@RequestBody requestBody: String): ResponseEntity<String> = lock.withLock {
+    fun siopv2PostSuccessPage(@RequestBody requestBody: String): ResponseEntity<String> = runBlocking {
         Napier.i("/siopv2/postsuccess called with $requestBody")
         val params: AuthenticationResponseParameters = requestBody.decodeFromPostBody()
-        return runBlocking {
-            val user = validateSiopResponse(params)
-            Napier.i("Storing user at ${user.apiItem.id}: $user")
-            authenticatedUsers[user.apiItem.id] = user
-            ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, customerSuccessUrl).build()
-        }
+        val user = validateSiopResponse(params)
+        Napier.i("Storing user at ${user.apiItem.id}: $user")
+        authenticatedUsers[user.apiItem.id] = user
+        ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, customerSuccessUrl).build()
     }
 
     private suspend fun validateSiopResponse(params: AuthenticationResponseParameters): Siop2User {
         Napier.i("validateSiopResponse with $params")
-        val state = params.state
-            ?: throw RuntimeException("Bad state")
-        val verifierProtocol = verifierProtocolMap.remove(state)
-            ?: throw RuntimeException("No Protocol")
         return when (val result = verifierProtocol.validateAuthnResponse(params)) {
             is OidcSiopVerifier.AuthnResponseResult.Success ->
                 with(Siop2User.fromVerifiablePresentation(result.vp)) {
@@ -233,13 +207,7 @@ class ApiController(
     }
 
     private fun createSafeState(): String {
-        var state: String
-        val randomBytes = ByteArray(32)
-        do {
-            secureRandomGenerator.nextBytes(randomBytes)
-            state = Base64.getEncoder().encodeToString(randomBytes)
-        } while (verifierProtocolMap.containsKey(state))
-        return state
+        return Base64.getEncoder().encodeToString(Random.nextBytes(32))
     }
 
     private fun AuthenticatedPrincipal.toApiItem() = when (this) {
