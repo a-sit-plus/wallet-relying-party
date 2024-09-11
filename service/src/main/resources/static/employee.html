@@ -161,6 +161,16 @@
             }
           }
 
+          function filterClaims(item) {
+            const deepCopy = JSON.parse(JSON.stringify(item));
+            delete deepCopy.timestamp;
+            delete deepCopy.allFields;
+            delete deepCopy.expiredTime;
+            delete deepCopy.imageDataBase64;
+            delete deepCopy.showDetails;
+            return deepCopy;
+          }
+
           // --- CHECKER -------------------------------------------------------
 
           function isSet(value) {
@@ -176,6 +186,7 @@
             process,
             parseAddress,
             isSet,
+            filterClaims,
           }
         }
       }).mount('#app')
@@ -234,9 +245,16 @@
 
                 <p class="card-text mb-1">{{ parseAddress(item.address) }}</p>
 
-                <p v-for="(value, key) in item" :key="key" class="text-truncate mb-1" style="max-width: 100%;">
+                <p v-for="(value, key) in filterClaims(item)" :key="key" class="text-truncate mb-1" style="max-width: 100%;">
                   <span class="fw-semibold">{{ key }}</span>: {{ value }}
                 </p>
+
+                <p>Full data:</p>
+                <ul>
+                  <li v-for="(value, key) in item.allFields" :key="key" class="text-truncate mb-1" style="max-width: 100%;">
+                    <span class="fw-semibold">{{ key }}</span>: {{ value }}
+                  </li>
+                </ul>
 
                 <div class="foldout-fade"></div>
               </div>
