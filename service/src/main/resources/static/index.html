@@ -8,39 +8,76 @@
           integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
 </head>
-<body id="app">
+<body id="app" style="background-color: #f3f3f3">
+
+<header class="p-3 text-bg-primary">
+    <div class="container">
+        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start d-flex mb-2 mb-lg-0 me-md-auto text-white fs-3 fw-bold">
+            <a class="link-light text-decoration-none" href="index.html">A-SIT Demo Wallet Service Provider</a>
+        </div>
+    </div>
+</header>
 
 <div class="container px-4 py-5">
-    <div class="row">
-        <h3>
-            <i width="1em" height="1em" class="bi-capsule-pill"></i>
-            ePresciption Use Case
-        </h3>
-        <p>
-            <a href="eprescription.html">ePrescription Page</a>
-        </p>
+
+    <h1>Use Cases</h1>
+    <div class="row g-5 mb-5">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h3 class="card-title">
+                <i width="1em" height="1em" class="bi-capsule-pill"></i>
+                ePresciption Use Case
+            </h3>
+            <p class="card-text">
+                Present an ePrescription associated with the wallet holder to the service provider.
+            </p>
+            <a href="eprescription.html" class="btn btn-primary float-end">
+              ePrescription Page
+              <i class="bi-chevron-right"></i>
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h3 class="card-title">
+                <i width="1em" height="1em" class="bi-people"></i>
+                Terminal Use Case
+            </h3>
+            <p class="card-text">
+              Customers authenticate via their wallet at a counter.
+              Employees are presented with all identity data of recent authentication results, which can be used to compare whether the right person is standing in front of the counter.
+            </p>
+            <a href="terminal.html" class="btn btn-primary float-end">
+              Terminal Use Case Page
+              <i class="bi-chevron-right"></i>
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="row">
-        <h3>
-            <i width="1em" height="1em" class="bi-people"></i>
-            Terminal Use Case
-        </h3>
-        <p>
-            <a href="terminal.html">Terminal Use Case Page</a>
-        </p>
+    <h1>Generic</h1>
+    <div class="row g-5">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h3 class="card-title">
+                <i width="1em" height="1em" class="bi-card-checklist"></i>
+                Custom Requests
+            </h3>
+            <p class="card-text">Request any custom combination of data.</p>
+            <a href="custom.html" class="btn btn-primary float-end">
+              Custom Request Page
+              <i class="bi-chevron-right"></i>
+            </a>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="row">
-        <h3>
-            <i width="1em" height="1em" class="bi-card-checklist"></i>
-            Custom Requests
-        </h3>
-        <p>
-            Request any custom combination of data:
-            <a href="custom.html">Custom Page</a>
-        </p>
-    </div>
 </div>
 
 </body>

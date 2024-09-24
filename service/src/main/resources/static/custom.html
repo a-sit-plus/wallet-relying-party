@@ -30,13 +30,23 @@
         })();
     </script>
 </head>
-<body id="app">
+<body id="app" style="background-color: #f3f3f3">
+
+<header class="p-3 text-bg-primary">
+    <div class="container">
+        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start d-flex mb-2 mb-lg-0 me-md-auto text-white fs-3 fw-bold">
+            <a class="link-light text-decoration-none" href="index.html">A-SIT Demo Wallet Service Provider</a>
+        </div>
+    </div>
+</header>
+
 <div class="container px-4 py-5">
-    <div class="row">
-        <h3 class="fs-2 text-body-emphasis">
-            Custom Request
-        </h3>
-        <ul class="nav nav-tabs mb-3">
+    <h3 class="fs-2 text-body-emphasis">
+        Custom Request
+    </h3>
+
+    <div class="row mb-3">
+        <ul class="nav nav-tabs">
             <li
                     v-for="item in config.profiles"
                     :key="item.label"
@@ -45,8 +55,8 @@
                    @click="updateProfile(item)">{{ item.label }}</a>
             </li>
         </ul>
-        <div>
-            <fieldset class="row mb-3">
+        <div class="bg-white border rounded">
+            <fieldset class="row mt-3 mb-3">
                 <legend class="col-form-label col-sm-4 pt-0">Credential Type</legend>
                 <div class="col-sm-8">
                     <div
@@ -112,28 +122,33 @@
                 </div>
             </fieldset>
 
-            <button @click="generateQrCode()" class="btn btn-primary mb-3">Generate Request</button>
+            <div class="d-flex justify-content-center mb-3">
+              <button @click="generateQrCode()" class="btn btn-primary">Generate Request</button>
+            </div>
         </div>
     </div>
 
-    <div v-if="error.message" class="row alert alert-danger" role="alert">
+    <div v-if="error.message" class="row alert alert-danger mb-3" role="alert">
         {{ error.message }}
     </div>
 
-    <div v-if="qrCode.src" class="row alert alert-success" role="alert">
+    <div v-if="qrCode.src" class="row alert alert-success mb-3" role="alert">
         <p>Request has been generated successfully!</p>
     </div>
 
     <div v-if="qrCode.src" class="row gy-2">
-        <div class="col-md-6 border rounded p-2">
+        <div class="col-md-6 border rounded p-3 bg-white">
             <h2>Option A: Wallet App</h2>
             <p>Scan the QR Code with your Wallet App:</p>
             <img id="qrcode" width="300px" :src="qrCode.src" />
         </div>
-        <div v-if="qrCodeUrl.message" class="col-md-6 border rounded p-2">
+        <div v-if="qrCodeUrl.message" class="col-md-6 border rounded p-3 bg-white">
             <h2>Option B: Online Wallet</h2>
             <p>Open the following Link with the Online Wallet:</p>
-            <a target="_blank" :href="qrCodeUrl.message" class="btn btn-primary mb-3">Open Online Wallet</a>
+            <a target="_blank" :href="qrCodeUrl.message" class="btn btn-primary float-end mb-3">
+              Open Online Wallet
+              <i class="bi-chevron-right"></i>
+            </a>
         </div>
     </div>
 </div>
