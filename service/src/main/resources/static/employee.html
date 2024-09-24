@@ -21,9 +21,10 @@
       import { createBasicSetup } from 'result'
       import { createApp } from 'vue'
 
-      createApp({
+      const app = createApp({
         setup: createBasicSetup
-      }).mount('#app')
+      }).mount('#app');
+      app.startPeriodicUpdate();
     </script>
   </head>
   <body id="app" style="background-color: #f3f3f3">

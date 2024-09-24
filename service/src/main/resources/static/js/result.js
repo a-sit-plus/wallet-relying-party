@@ -4,6 +4,7 @@ const createBasicSetup = function() {
   // --- CONFIG --------------------------------------------------------
 
   const config = {
+    selfURL: 'api/self',
     itemsUrl: 'api/items',
     removeUrl: 'api/remove',
     timeUpdateRate: 1000,
@@ -58,11 +59,11 @@ const createBasicSetup = function() {
 
   async function updateData() {
     try {
-      console.log('updateData')
+      console.log('updateData');
 
       let response = await fetch(config.itemsUrl);
       const data = await response.json();
-      console.log('items: ', data)
+      console.log('items: ', data);
 
       updateItems(data);
       updateTime();
@@ -70,14 +71,34 @@ const createBasicSetup = function() {
       console.log('error: ', error);
     }
   }
-  updateData(); // initially
-  const itemInterval = setInterval(updateData, config.itemsUpdateRate); // periodically
+
+  async function startPeriodicUpdate() {
+    updateData(); // initially
+    const itemInterval = setInterval(updateData, config.itemsUpdateRate); // periodically
+  }
+
+  async function updateByCookie() {
+    try {
+      console.log('updateByCookie');
+
+      let response = await fetch(config.selfURL, {
+          credentials: 'include'
+      });
+      const item = await response.json();
+      console.log('item: ', item);
+
+      updateItems([item]);
+      updateTime();
+    } catch (error) {
+      console.log('error: ', error);
+    }
+  }
 
   // --- ACTIONS -------------------------------------------------------
 
   async function seen(item) {
     try {
-      console.log('remove: ', item.id)
+      console.log('remove: ', item.id);
 
       // notify server that record can be removed
       const response = await fetch(config.removeUrl, {
@@ -85,7 +106,7 @@ const createBasicSetup = function() {
         body: item.id
       });
       const data = await response.json();
-      console.log('response: ', data)
+      console.log('response: ', data);
 
       // on OK, remove item from list
       if (response.ok)
@@ -167,6 +188,8 @@ const createBasicSetup = function() {
     parseAddress,
     isSet,
     filterClaims,
+    startPeriodicUpdate,
+    updateByCookie,
   }
 }
 
