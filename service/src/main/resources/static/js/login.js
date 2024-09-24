@@ -12,7 +12,7 @@ const loadConfig = async function() {
     // load from json
     const response = await fetch(URLs.loginConfigUrl);
     const config = await response.json();
-    console.log(config);
+    //console.log(config);
 
     return config;
 }
