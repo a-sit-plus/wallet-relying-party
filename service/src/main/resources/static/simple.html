@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Terminal Service</title>
+    <title>Wallet Service Provider</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
           integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
@@ -11,185 +11,109 @@
     <script type="importmap">
         {
           "imports": {
+            "login": "./js/login.js",
             "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
           }
         }
     </script>
 
     <script type="module">
-        import {createApp, ref} from 'vue';
+        import {loadConfig, createBasicSetup} from 'login'
+        import {createApp, ref} from 'vue'
 
-        const appInstance = createApp({
-            name: 'app',
-            setup() {
-                // --- CONFIG --------------------------------------------------------
-
-                const config = {
-                    qrCodeUrl: 'siopv2/generateQrCode',
-                    qrCodeUrlUrl: 'siopv2/generateQrCodeUrl',
-                    schemeTypes: [
-                        {
-                            label: 'IDA Credential',
-                            value: 'at.gv.id-austria.2023.1',
-                            attributes: [
-                                {label: 'bpk', value: 'bpk'},
-                                {label: 'firstname', value: 'firstname'},
-                                {label: 'lastname', value: 'lastname'},
-                                {label: 'date-of-birth', value: 'date-of-birth'},
-                                {label: 'portrait', value: 'portrait'},
-                                {label: 'main-address', value: 'main-address'},
-                                {label: 'age-over-14', value: 'age-over-14'},
-                                {label: 'age-over-16', value: 'age-over-16'},
-                                {label: 'age-over-18', value: 'age-over-18'},
-                                {label: 'age-over-21', value: 'age-over-21'},
-                            ]
-                        },
-                    ],
-                    representation: [
-                        {label: 'SD-JWT', value: 'SD_JWT'},
-                        {label: 'ISO mDoc', value: 'ISO_MDOC'}
-                    ],
-                    urlprefix: [
-                        {label: 'A-SIT Wallet', value: 'https://wallet.a-sit.at/mobile/simple'},
-                    ],
-                    profiles: [
-                        {
-                            label: 'ID Verification',
-                            schemeType: 'at.gv.id-austria.2023.iso',
-                            representation: 'ISO_MDOC',
-                            urlprefix: 'https://wallet.a-sit.at/mobile/simple',
-                            attributes: [
-                                {label: 'bpk', value: 'bpk', isSelected: true},
-                                {label: 'firstname', value: 'firstname', isSelected: true},
-                                {label: 'lastname', value: 'lastname', isSelected: true},
-                                {label: 'portrait', value: 'portrait', isSelected: true},
-                                {label: 'main-address', value: 'main-address', isSelected: true},
-                                {label: 'age-over-18', value: 'age-over-18', isSelected: true},
-                            ]
-                        },
-                    ]
-                };
-
-                // --- STATE ---------------------------------------------------
-
-                const reqSelection = ref({})
-                updateProfile(config.profiles[0])
-
-                const error = ref({message: null})
-                const qrCode = ref({src: null})
-                const qrCodeUrl = ref({message: null})
-
-                // --- FUNCTIONS -----------------------------------------------
-
-                async function updateProfile(profile) {
-                    console.log('updateProfile', profile)
-                    reqSelection.value = {...profile}
-
-                    const schemeType = config.schemeTypes.find((type) => type.value == profile.schemeType)
-                    const representation = config.representation.find((type) => type.value == profile.representation)
-
-                    if (schemeType) {
-                        const selected = profile.attributes.reduce(function (acc, attr) {
-                            if (attr.isSelected) acc.push(attr.value)
-                            return acc
-                        }, [])
-
-                        var attrs = schemeType.attributes.map(function (attr) {
-                            attr.isSelected = selected.includes(attr.value)
-                            return attr
-                        })
-
-                        reqSelection.value.attributes = attrs
-                    }
-                }
-
-                async function generateQrCode() {
-                    console.log('generateQrCode', reqSelection.value)
-                    try {
-                        const attrs = reqSelection.value.attributes.filter(function (attr) {
-                            return attr.isSelected
-                        }).map(function (attr) {
-                            return attr.value
-                        })
-
-                        const request = {
-                            credentialType: reqSelection.value.schemeType,
-                            representation: reqSelection.value.representation,
-                            urlprefix: reqSelection.value.urlprefix,
-                            attributes: attrs,
-                        }
-                        console.log(`generateQrCode: fetching ${JSON.stringify(request)}`)
-
-                        const response = await fetch(config.qrCodeUrl, {
-                            method: 'POST',
-                            headers: {"Content-Type": "application/json"},
-                            body: JSON.stringify(request),
-                        })
-                        if (response.ok) {
-                            const data = (await response.blob());
-                            console.log(`generateQrCode: got ${data.size} bytes`)
-                            qrCode.value.src = URL.createObjectURL(data)
-                            error.value.message = null
-                        } else {
-                            const data = (await response.text())
-                            console.log(`generateQrCode: error ${data}`)
-                            throw data
-                        }
-                        const urlResponse = await fetch(config.qrCodeUrlUrl, {
-                            method: 'POST',
-                            headers: {"Content-Type": "application/json"},
-                            body: JSON.stringify(request),
-                        })
-                        if (urlResponse.ok) {
-                            qrCodeUrl.value.message = await urlResponse.text()
-                        } else {
-                            qrCodeUrl.value.message = null
-                        }
-                    } catch (err) {
-                        console.log(`error: ${err}`)
-                        qrCode.value.src = null
-                        error.value.message = "Error: " + err
-                    }
-                }
-
-                // --- RETURNS -------------------------------------------------
-
-                return {
-                    config,
-                    reqSelection,
-                    error,
-                    qrCode,
-                    qrCodeUrl,
-                    updateProfile,
-                    generateQrCode,
-                }
-            }
-        }).mount('#app')
-
-        document.addEventListener("DOMContentLoaded", function(event){
-            appInstance.generateQrCode()
-        });
+        (async function () {
+          const config = {
+              qrCodeUrl: 'siopv2/generateQrCode',
+              qrCodeUrlUrl: 'siopv2/generateQrCodeUrl',
+              schemeTypes: [
+                  {
+                      label: 'IDA Credential',
+                      value: 'at.gv.id-austria.2023.1',
+                      attributes: [
+                          {label: 'bpk', value: 'bpk'},
+                          {label: 'firstname', value: 'firstname'},
+                          {label: 'lastname', value: 'lastname'},
+                          {label: 'date-of-birth', value: 'date-of-birth'},
+                          {label: 'portrait', value: 'portrait'},
+                          {label: 'main-address', value: 'main-address'},
+                          {label: 'age-over-14', value: 'age-over-14'},
+                          {label: 'age-over-16', value: 'age-over-16'},
+                          {label: 'age-over-18', value: 'age-over-18'},
+                          {label: 'age-over-21', value: 'age-over-21'},
+                      ]
+                  },
+              ],
+              representation: [
+                  {label: 'SD-JWT', value: 'SD_JWT'},
+                  {label: 'ISO mDoc', value: 'ISO_MDOC'}
+              ],
+              urlprefix: [
+                  {label: 'A-SIT Wallet', value: 'https://wallet.a-sit.at/mobile/simple'},
+              ],
+              profiles: [
+                  {
+                      label: 'ID Verification',
+                      schemeType: 'at.gv.id-austria.2023.iso',
+                      representation: 'ISO_MDOC',
+                      urlprefix: 'https://wallet.a-sit.at/mobile/simple',
+                      attributes: [
+                          {label: 'bpk', value: 'bpk', isSelected: true},
+                          {label: 'firstname', value: 'firstname', isSelected: true},
+                          {label: 'lastname', value: 'lastname', isSelected: true},
+                          {label: 'portrait', value: 'portrait', isSelected: true},
+                          {label: 'main-address', value: 'main-address', isSelected: true},
+                          {label: 'age-over-18', value: 'age-over-18', isSelected: true},
+                      ]
+                  },
+              ]
+          };
+          let app = createApp({
+              setup: function () { return createBasicSetup(config); }
+          }).mount('#app');
+          app.updateProfile(config.profiles[0]);
+          app.generateQrCode();
+        })();
     </script>
 </head>
-<body id="app">
-<div class="container px-4 py-5" id="featured-2">
-    <div class="row g-4 py-5 row-cols-1 row-cols-lg-2">
-        <div class="feature col">
-            <h3 class="fs-2 text-body-emphasis">
-                <i width="1em" height="1em" class="bi-person"></i>
-                Customer-Page
-            </h3>
-            <p>
-                The customer starts the authentication process by scanning the QR code placed on the counter.
-            </p>
-            <div v-if="qrCode.src" class="alert alert-success" role="alert">
-                <p>QR Code has been generated successfully:</p>
-                <img id="qrcode" width="300px" :src="qrCode.src"/>
+<body id="app" style="background-color: #f3f3f3">
 
-                <div v-if="qrCodeUrl.message">
-                    <a target="_blank" :href="qrCodeUrl.message" class="btn btn-primary mb-3">Open Wallet</a>
-                </div>
+<header class="p-3 text-bg-primary">
+    <div class="container">
+        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start d-flex mb-2 mb-lg-0 me-md-auto text-white fs-3 fw-bold">
+            <a class="link-light text-decoration-none" href="index.html">A-SIT Demo Wallet Service Provider</a>
+            <div class="ms-auto btn btn-light fs-4">
+                <a href="https://www.a-sit.at/"><img style="height: 1em" src="images/ASIT Logo.png"/></a>
             </div>
+        </div>
+    </div>
+</header>
+
+<div class="container px-4 py-5">
+
+    <div class="row">
+        <h3 class="fs-2 text-body-emphasis">
+            <i width="1em" height="1em" class="bi-lightbulb"></i>
+            Simple Request
+        </h3>
+        <p>
+            Simple request that skips the consent screen at the online wallet.
+        </p>
+    </div>
+
+    <div v-if="error.message" class="row alert alert-danger" role="alert">
+        {{ error.message }}
+    </div>
+
+    <div v-if="qrCode.src" class="row gy-2">
+        <div class="col-md-6 border rounded p-2">
+            <h2>Option A: Wallet App</h2>
+            <p>Scan the QR Code with your Wallet App:</p>
+            <img id="qrcode" width="300px" :src="qrCode.src" />
+        </div>
+        <div v-if="qrCodeUrl.message" class="col-md-6 border rounded p-2">
+            <h2>Option B: Online Wallet</h2>
+            <p>Open the following Link with the Online Wallet:</p>
+            <a target="_blank" :href="qrCodeUrl.message" class="btn btn-primary mb-3">Open Online Wallet</a>
         </div>
     </div>
 </div>
