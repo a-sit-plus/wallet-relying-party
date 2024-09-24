@@ -104,6 +104,7 @@ const createBasicSetup = function(config) {
                 console.log(`generateQrCode: error ${data}`)
                 throw data
             }
+
             const urlResponse = await fetch(URLs.qrCodeUrlUrl, {
                 method: 'POST',
                 headers: {"Content-Type": "application/json"},
