@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="de" xmlns:v-bind="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Wallet Service Provider</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+
+    <script type="importmap">
+        {
+          "imports": {
+            "login": "./js/login.js",
+            "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+          }
+        }
+    </script>
+
+    <script type="module">
+        import {loadConfig, createBasicSetup} from 'login'
+        import {createApp, ref} from 'vue'
+
+        (async function () {
+          const config = await loadConfig();
+          let app = createApp({
+              setup: function () { return createBasicSetup(config); }
+          }).mount('#app');
+          app.updateProfile(config.profiles[0]);
+        })();
+    </script>
+</head>
+<body id="app">
+<div class="container px-4 py-5">
+    <div class="row">
+        <h3 class="fs-2 text-body-emphasis">
+            Custom Request
+        </h3>
+        <ul class="nav nav-tabs mb-3">
+            <li
+                    v-for="item in config.profiles"
+                    :key="item.label"
+                    class="nav-item">
+                <a :class="'nav-link'+ (item.label == reqSelection.label ? ' active' : '')" href="#"
+                   @click="updateProfile(item)">{{ item.label }}</a>
+            </li>
+        </ul>
+        <div>
+            <fieldset class="row mb-3">
+                <legend class="col-form-label col-sm-4 pt-0">Credential Type</legend>
+                <div class="col-sm-8">
+                    <div
+                            v-for="item in config.schemeTypes"
+                            :key="item.value"
+                            class="form-check">
+                        <input class="form-check-input" type="radio" name="credentialScheme" :value="item.value"
+                               :checked="reqSelection.schemeType == item.value" @click="updateSchemeType(item)">
+                        <label class="form-check-label">
+                            {{ item.label }}
+                        </label>
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="row mb-3">
+                <legend class="col-form-label col-sm-4 pt-0">Presentation Type</legend>
+                <div class="col-sm-8">
+                    <div
+                            v-for="item in config.representation"
+                            :key="item.value"
+                            class="form-check">
+                        <input class="form-check-input" type="radio" name="representation" :value="item.value"
+                               :checked="reqSelection.representation == item.value"
+                               @click="updateRepresentation(item)">
+                        <label class="form-check-label">
+                            {{ item.label }}
+                        </label>
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="row mb-3">
+                <legend class="col-form-label col-sm-4 pt-0">URL Prefix</legend>
+                <div class="col-sm-8">
+                    <div
+                            v-for="item in config.urlprefix"
+                            :key="item.value"
+                            class="form-check">
+                        <input class="form-check-input" type="radio" name="urlprefix" :value="item.value"
+                               :checked="reqSelection.urlprefix == item.value" @click="updateUrlprefix(item)">
+                        <label class="form-check-label">
+                            {{ item.label }}
+                        </label>
+                    </div>
+                </div>
+            </fieldset>
+
+            <fieldset class="row mb-3">
+                <legend class="col-form-label col-sm-4 pt-0">Attributes</legend>
+                <div class="col-sm-8">
+                    <p v-if="reqSelection.attributes.length == 0">Please select a Credential Type.</p>
+                    <div
+                            v-for="item in reqSelection.attributes"
+                            :key="item.value"
+                            class="form-check">
+                        <input class="attributes form-check-input" type="checkbox" name="attributes"
+                               :value="item.value" :checked="item.isSelected" @click="updateAttribute(item)">
+                        <label class="form-check-label" for="attributes1">
+                            {{ item.label }}
+                        </label>
+                    </div>
+                </div>
+            </fieldset>
+
+            <button @click="generateQrCode()" class="btn btn-primary mb-3">Generate Request</button>
+        </div>
+    </div>
+
+    <div v-if="error.message" class="row alert alert-danger" role="alert">
+        {{ error.message }}
+    </div>
+
+    <div v-if="qrCode.src" class="row alert alert-success" role="alert">
+        <p>Request has been generated successfully!</p>
+    </div>
+
+    <div v-if="qrCode.src" class="row gy-2">
+        <div class="col-md-6 border rounded p-2">
+            <h2>Option A: Wallet App</h2>
+            <p>Scan the QR Code with your Wallet App:</p>
+            <img id="qrcode" width="300px" :src="qrCode.src" />
+        </div>
+        <div v-if="qrCodeUrl.message" class="col-md-6 border rounded p-2">
+            <h2>Option B: Online Wallet</h2>
+            <p>Open the following Link with the Online Wallet:</p>
+            <a target="_blank" :href="qrCodeUrl.message" class="btn btn-primary mb-3">Open Online Wallet</a>
+        </div>
+    </div>
+</div>
+
+</body>
+</html>
