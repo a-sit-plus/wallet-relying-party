@@ -141,15 +141,6 @@
                 {{ error.message }}
             </div>
 
-            <div v-if="qrCode.src" class="alert alert-success" role="alert">
-                <p>QR Code has been generated successfully:</p>
-                <img id="qrcode" width="300px" :src="qrCode.src" />
-
-                <div v-if="qrCodeUrl.message">
-                    <a target="_blank" :href="qrCodeUrl.message" class="btn btn-primary mb-3">Open Wallet</a>
-                </div>
-            </div>
-
             <div v-if="qrCode.src" class="border rounded p-2 bg-white mb-3">
                 <h4>Option A: Wallet App</h2>
                 <p>Scan the QR Code with your Wallet App:</p>

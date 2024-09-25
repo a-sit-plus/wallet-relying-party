@@ -77,12 +77,12 @@
     </div>
 
     <div v-if="qrCode.src" class="row gy-2 mb-3">
-        <div class="col-md-6 border rounded p-2">
+        <div class="col-md-6 border rounded p-2 bg-white">
             <h2>Option A: Wallet App</h2>
             <p>Scan the QR Code with your Wallet App:</p>
             <img id="qrcode" width="300px" :src="qrCode.src" />
         </div>
-        <div v-if="qrCodeUrl.message" class="col-md-6 border rounded p-2">
+        <div v-if="qrCodeUrl.message" class="col-md-6 border rounded p-2 bg-white">
             <h2>Option B: Online Wallet</h2>
             <p>Open the following Link with the Online Wallet:</p>
             <a target="_blank" :href="qrCodeUrl.message" class="btn btn-primary mb-3">Open Online Wallet</a>
