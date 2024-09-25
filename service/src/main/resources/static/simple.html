@@ -119,9 +119,12 @@
                 <div class="col-sm-8">
                     <p v-if="reqSelection.attributes.length == 0">Please select a Credential Type.</p>
                     <ul>
-                      <li v-for="item in reqSelection.attributes" :key="item.value">
-                          {{ item.label }}
-                      </li>
+                        <template v-for="item in reqSelection.attributes"
+                                  :key="item.value">
+                            <li v-if="item.isSelected">
+                                {{ item.label }}
+                            </li>
+                        </template>
                     </ul>
                 </div>
             </fieldset>
