@@ -77,7 +77,6 @@
         </div>
     </div>
 
-
     <div class="mb-3 accordion" id="accordionRequest">
       <div class="accordion-item">
         <h2 class="accordion-header" id="headingOne">
@@ -87,32 +86,78 @@
         </h2>
         <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#accordionRequest">
           <div class="accordion-body">
-            <fieldset class="row mt-3 mb-3">
-                <legend class="col-form-label col-sm-4 pt-0">Credential Type</legend>
-                <div class="col-sm-8"> {{ reqSelection.schemeType }}</div>
-            </fieldset>
-            <fieldset class="row mb-3">
-                <legend class="col-form-label col-sm-4 pt-0">Presentation Type</legend>
-                <div class="col-sm-8">{{ reqSelection.representation }}</div>
-            </fieldset>
-            <fieldset class="row mb-3">
-                <legend class="col-form-label col-sm-4 pt-0">URL Prefix</legend>
-                <div class="col-sm-8">{{ reqSelection.urlprefix }}</div>
-            </fieldset>
-            <fieldset class="row">
-                <legend class="col-form-label col-sm-4 pt-0">Attributes</legend>
-                <div class="col-sm-8">
-                    <p v-if="reqSelection.attributes.length == 0">Please select a Credential Type.</p>
-                    <ul>
-                        <template v-for="item in reqSelection.attributes"
-                                  :key="item.value">
-                            <li v-if="item.isSelected">
+            <div class="row">
+              <div class="col-lg-7 overflow-hidden">
+                <fieldset class="row mb-3">
+                    <legend class="col-form-label col-sm-4 pt-0 fw-bold">Credential Type</legend>
+                    <div class="col-sm-8">
+                        <div v-for="item in config.schemeTypes"
+                             :key="item.value"
+                             class="form-check">
+                            <input class="form-check-input" type="radio" name="credentialScheme" :value="item.value"
+                                   :checked="reqSelection.schemeType == item.value" @click="updateSchemeType(item)">
+                            <label class="form-check-label">
+                                {{ item.label }} - <span class="text-primary">{{ item.value }}</span>
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="row mb-3">
+                    <legend class="col-form-label col-sm-4 pt-0 fw-bold">Presentation Type</legend>
+                    <div class="col-sm-8">
+                        <div v-for="item in config.representation"
+                             :key="item.value"
+                             class="form-check">
+                            <input class="form-check-input" type="radio" name="representation" :value="item.value"
+                                   :checked="reqSelection.representation == item.value"
+                                   @click="updateRepresentation(item)">
+                            <label class="form-check-label">
+                                {{ item.label }} - <span class="text-primary">{{ item.value }}</span>
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+
+                <fieldset class="row mb-3">
+                    <legend class="col-form-label col-sm-4 pt-0 fw-bold">URL Prefix</legend>
+                    <div class="col-sm-8">
+                        <div v-for="item in config.urlprefix"
+                             :key="item.value"
+                             class="form-check">
+                            <input class="form-check-input" type="radio" name="urlprefix" :value="item.value"
+                                   :checked="reqSelection.urlprefix == item.value" @click="updateUrlprefix(item)">
+                            <label class="form-check-label">
+                                {{ item.label }} - <span class="text-primary">{{ item.value }}</span>
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+              </div>
+
+              <div class="col-lg-5">
+                <fieldset class="row mb-3">
+                    <legend class="col-form-label col-sm-4 pt-0 fw-bold">Attributes</legend>
+                    <div class="col-sm-8">
+                        <p v-if="reqSelection.attributes.length == 0">Please select a Credential Type.</p>
+                        <div v-for="item in reqSelection.attributes"
+                             :key="item.value"
+                             class="form-check">
+                            <input class="attributes form-check-input" type="checkbox" name="attributes"
+                                   :value="item.value" :checked="item.isSelected" @click="updateAttribute(item)">
+                            <label class="form-check-label" for="attributes1">
                                 {{ item.label }}
-                            </li>
-                        </template>
-                    </ul>
-                </div>
-            </fieldset>
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+              </div>
+            </div>
+            <div class="row">
+              <div class="d-flex justify-content-center">
+                <button @click="generateQrCode()" class="btn btn-primary">Refresh Request</button>
+              </div>
+            </div>
           </div>
         </div>
       </div>
