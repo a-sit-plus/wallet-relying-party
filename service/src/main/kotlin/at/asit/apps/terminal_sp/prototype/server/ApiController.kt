@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
 import at.asitplus.wallet.lib.oidc.OpenIdConstants
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import io.github.aakira.napier.Napier
+import jakarta.servlet.http.HttpServletRequest
 import kotlinx.coroutines.runBlocking
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpHeaders
@@ -77,6 +78,18 @@ class ApiController(
     @GetMapping("/api/items")
     @ResponseBody
     fun apiItems(): List<ApiItem> = authenticatedUsers.mapNotNull { it.value.toApiItem() }
+
+    @GetMapping("/api/self")
+    @ResponseBody
+    fun apiSelf(httpServletRequest: HttpServletRequest): ResponseEntity<ApiItem> {
+        val attr = httpServletRequest.session.getAttribute(SIOP_2_USER)
+        Napier.i("/api/self: $attr")
+        return (attr as? Siop2User)?.apiItem?.let {
+            ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(it)
+        } ?: ResponseEntity.notFound().build()
+    }
 
     @PostMapping("/api/remove")
     @ResponseBody
@@ -168,12 +181,16 @@ class ApiController(
      * called from Wallet App upon answering authn request from [siopv2RequestObject].
      */
     @PostMapping("/siopv2/postsuccess")
-    fun siopv2PostSuccessPage(@RequestBody requestBody: String): ResponseEntity<String> = runBlocking {
+    fun siopv2PostSuccessPage(
+        @RequestBody requestBody: String,
+        httpServletRequest: HttpServletRequest
+    ): ResponseEntity<String> = runBlocking {
         Napier.i("/siopv2/postsuccess called with $requestBody")
         val params: AuthenticationResponseParameters = requestBody.decodeFromPostBody()
         val user = validateSiopResponse(params)
         Napier.i("Storing user at ${user.apiItem.id}: $user")
         authenticatedUsers[user.apiItem.id] = user
+        httpServletRequest.getSession(true).setAttribute(SIOP_2_USER, user)
         ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, customerSuccessUrl).build()
     }
 
@@ -218,3 +235,6 @@ class ApiController(
 }
 
 private fun String.getDnsName() = UriComponentsBuilder.fromUriString(this).build().host ?: "wallet.a-sit.at"
+
+
+private const val SIOP_2_USER = "siop2user"

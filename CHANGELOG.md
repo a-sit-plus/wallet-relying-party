@@ -1,5 +1,8 @@
 # Changelog
 
+Version 4.2.0:
+ - Major UI redesign
+
 Version 4.1.0:
  - Remove unused code: locks, state-map
 

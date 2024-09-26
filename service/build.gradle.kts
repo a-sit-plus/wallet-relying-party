@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "at.asitplus"
-version = "4.1.0-SNAPSHOT"
+version = "4.2.0-SNAPSHOT"
 
 kotlin {
     jvmToolchain(17)
@@ -26,6 +26,7 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter")
+    implementation("org.springframework.session:spring-session-core")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("io.github.g0dkar:qrcode-kotlin:4.0.6")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")

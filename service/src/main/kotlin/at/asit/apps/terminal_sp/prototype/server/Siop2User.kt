@@ -15,18 +15,17 @@ import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Decoder.Companion.decodeToByteArray
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.springframework.security.core.AuthenticatedPrincipal
 import java.security.MessageDigest
 import java.time.Instant
 
+@Serializable
 class Siop2User(
     val apiItem: ApiItem,
 ) : AuthenticatedPrincipal {
-    override fun toString(): String {
-        return apiItem.toString()
-    }
 
     companion object {
         fun fromVerifiablePresentation(presentation: VerifiablePresentationParsed): Siop2User? {
@@ -144,6 +143,10 @@ class Siop2User(
 
     override fun getName(): String {
         return "${apiItem.firstname} ${apiItem.lastname} (${apiItem.id})"
+    }
+
+    override fun toString(): String {
+        return "Siop2User(apiItem=$apiItem)"
     }
 
 }
