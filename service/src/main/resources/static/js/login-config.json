@@ -93,6 +93,20 @@
         { "label": "age-over-21", "value": "age-over-21" }
       ]
     },
+    { "label": "IDA Credential (ISO)", "value": "at.gv.id-austria.2023.iso",
+      "attributes": [
+        { "label": "bpk", "value": "bpk" },
+        { "label": "firstname", "value": "firstname" },
+        { "label": "lastname", "value": "lastname" },
+        { "label": "date-of-birth", "value": "date-of-birth" },
+        { "label": "portrait", "value": "portrait" },
+        { "label": "main-address", "value": "main-address" },
+        { "label": "age-over-14", "value": "age-over-14" },
+        { "label": "age-over-16", "value": "age-over-16" },
+        { "label": "age-over-18", "value": "age-over-18" },
+        { "label": "age-over-21", "value": "age-over-21" }
+      ]
+    },
     { "label": "Power of Representation (PoR)", "value": "eu.europa.ec.eudi.por.1",
       "attributes": [
         { "label": "legal_person_identifier", "value": "legal_person_identifier" },
