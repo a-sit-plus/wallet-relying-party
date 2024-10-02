@@ -1,5 +1,8 @@
 # Changelog
 
+Version 5.0.0:
+ - Update to vck 5.0.0
+
 Version 4.2.0:
  - Major UI redesign
 

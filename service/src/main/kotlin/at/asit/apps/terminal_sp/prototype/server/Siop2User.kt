@@ -18,6 +18,7 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.contentOrNull
 import org.springframework.security.core.AuthenticatedPrincipal
 import java.security.MessageDigest
 import java.time.Instant
@@ -172,12 +173,7 @@ private fun List<SelectiveDisclosureItem>.getClaimValueBytesEncodedBase64(claimN
 private fun List<SelectiveDisclosureItem>.getClaimValueBytes(claimName: String): ByteArray? {
     val claimValue = firstOrNull { it.claimName == claimName }?.claimValue
     Napier.i("getClaimValueBytes for $claimName has $claimValue")
-    if (claimValue is ByteArray)
-        return claimValue
-    val toString = claimValue.toString()
-    if (toString.isEmpty())
-        return null
-    return runCatching { toString.decodeToByteArray(Base64()) }.getOrNull()
+    return runCatching { claimValue?.contentOrNull?.decodeToByteArray(Base64()) }.getOrNull()
 }
 
 private fun IsoDocumentParsed.elementValue(elementIdentifier: String) =

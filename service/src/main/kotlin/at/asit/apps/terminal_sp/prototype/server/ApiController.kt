@@ -1,16 +1,18 @@
 package at.asit.apps.terminal_sp.prototype.server
 
+import at.asitplus.openid.AuthenticationResponseParameters
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.asn1.*
+import at.asitplus.signum.indispensable.asn1.encoding.Asn1
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.lib.agent.RandomKeyPairAdapter
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
-import at.asitplus.wallet.lib.oidc.AuthenticationResponseParameters
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
-import at.asitplus.wallet.lib.oidc.OpenIdConstants
+import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.ClientIdScheme.CertificateSanDns
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import io.github.aakira.napier.Napier
 import jakarta.servlet.http.HttpServletRequest
@@ -49,8 +51,8 @@ class ApiController(
                 )
             }
         ))))
-    private val verifierKeyAdapter = RandomKeyPairAdapter(extensions)
-    private val verifier: VerifierAgent = VerifierAgent(verifierKeyAdapter)
+    private val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
+    private val verifier: VerifierAgent = VerifierAgent(verifierKeyMaterial)
     private val customerSuccessUrl by lazy {
         ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
             .pathSegment("customer-success.html")
@@ -66,13 +68,13 @@ class ApiController(
             .pathSegment("siopv2", "metadata")
             .toUriString()
     }
-    private val verifierProtocol: OidcSiopVerifier by lazy { newVerifier() }
+    private val verifierProtocol: OidcSiopVerifier by lazy { runBlocking { newVerifier() } }
 
-    private fun newVerifier(): OidcSiopVerifier = OidcSiopVerifier.newInstance(
+    private suspend fun newVerifier(): OidcSiopVerifier = OidcSiopVerifier(
         verifier = verifier,
         relyingPartyUrl = publicUrl.getDnsName(),
-        responseUrl = postSuccessUrl,
-        x5c = listOf(verifierKeyAdapter.certificate!!),
+        keyMaterial = verifierKeyMaterial,
+        clientIdScheme = CertificateSanDns(listOf(verifierKeyMaterial.getCertificate()!!))
     )
 
     @GetMapping("/api/items")
@@ -151,11 +153,14 @@ class ApiController(
             ?: CredentialRepresentation.SD_JWT
         val requestObjectJws = verifierProtocol.createAuthnRequestAsSignedRequestObject(
             requestOptions = OidcSiopVerifier.RequestOptions(
-                responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
-                representation = parsedRep,
                 state = state,
-                credentialScheme = credentialScheme,
-                requestedAttributes = attributes?.ifEmpty { null }?.toList(),
+                responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
+                responseUrl = postSuccessUrl,
+                credentials = setOf(OidcSiopVerifier.RequestOptionsCredential(
+                    credentialScheme = credentialScheme,
+                    representation = parsedRep,
+                    requestedAttributes = attributes?.ifEmpty { null }?.toList(),
+                )),
             ),
         ).getOrElse {
             Napier.w("/siopv2/request error", it)
@@ -220,6 +225,9 @@ class ApiController(
 
             is OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults ->
                 throw RuntimeException("Not expected VerifiablePresentationValidationResults: $result")
+
+            is OidcSiopVerifier.AuthnResponseResult.IdToken ->
+                throw RuntimeException("Only got id_token")
         }
     }
 
