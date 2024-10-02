@@ -121,10 +121,6 @@ const createBasicSetup = function() {
     item.showDetails = !(item.showDetails == true)
   }
 
-  function process(item) {
-    alert("Full data: \n" + JSON.stringify(item["allFields"], null, 2));
-  }
-
   // --- FORMATTERS ----------------------------------------------------
 
   function filterClaims(item) {
@@ -149,7 +145,6 @@ const createBasicSetup = function() {
     loginList,
     seen,
     toggleDetails,
-    process,
     isSet,
     filterClaims,
     startPeriodicUpdate,
