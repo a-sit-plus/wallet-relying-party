@@ -127,41 +127,6 @@ const createBasicSetup = function() {
 
   // --- FORMATTERS ----------------------------------------------------
 
-  function parseAddressBase64(input) {
-    try {
-      return JSON.parse(atob(input));
-    } catch {
-      try {
-        return JSON.parse(input);
-      } catch {
-        return {}
-      }
-    }
-  }
-
-  function parseAddress(input) {
-    try {
-      var address = parseAddressBase64(input);
-      if (address["Strasse"] && address["Strasse"] !== "") {
-        var result = address["Strasse"] + " " + address["Hausnummer"];
-        if (address["Stiege"] && address["Stiege"].trim())
-          result += "/" + address["Stiege"];
-        if (address["Tuer"] && address["Tuer"].trim())
-          result += "/" + address["Tuer"];
-        result += ", " + address["Postleitzahl"] + " " + address["Ortschaft"];
-        return result;
-      } else if (address["thoroughfare"] && address["thoroughfare"] !== "") {
-        var result = address["thoroughfare"] + " " + address["locator_designator"];
-        result += ", " + address["post_code"] + " " + address["post_name"];
-        return result;
-      } else {
-        return input;
-      }
-    } catch {
-      return input;
-    }
-  }
-
   function filterClaims(item) {
     const deepCopy = JSON.parse(JSON.stringify(item));
     delete deepCopy.timestamp;
@@ -185,7 +150,6 @@ const createBasicSetup = function() {
     seen,
     toggleDetails,
     process,
-    parseAddress,
     isSet,
     filterClaims,
     startPeriodicUpdate,

@@ -82,13 +82,13 @@
                       {{ item.firstname }} {{ item.lastname }}
                     </h3>
 
-                    <p class="card-text mb-1">{{ parseAddress(item.address) }}</p>
-
                     <p v-for="(value, key) in filterClaims(item)" :key="key" class="text-truncate mb-1" style="max-width: 100%;">
                       <span class="fw-semibold">{{ key }}</span>: {{ value }}
                     </p>
 
-                    <p>Full data:</p>
+                    <p><span class="fw-semibold">Credential type</span>: {{ item.credentialType }} </p>
+
+                    <p><span class="fw-semibold">Full data</span>:</p>
                     <ul>
                       <li v-for="(value, key) in item.allFields" :key="key" class="text-truncate mb-1" style="max-width: 100%;">
                         <span class="fw-semibold">{{ key }}</span>: {{ value }}

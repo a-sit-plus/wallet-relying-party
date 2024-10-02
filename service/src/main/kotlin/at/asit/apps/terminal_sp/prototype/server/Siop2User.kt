@@ -5,9 +5,7 @@ import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.idaustria.IdAustriaCredential
 import at.asitplus.wallet.idaustria.IdAustriaScheme
-import at.asitplus.wallet.lib.data.IsoDocumentParsed
-import at.asitplus.wallet.lib.data.SelectiveDisclosureItem
-import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
+import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import at.asitplus.wallet.por.PowerOfRepresentationDataElements
@@ -19,6 +17,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.encodeToJsonElement
 import org.springframework.security.core.AuthenticatedPrincipal
 import java.security.MessageDigest
 import java.time.Instant
@@ -29,45 +28,25 @@ class Siop2User(
 ) : AuthenticatedPrincipal {
 
     companion object {
-        fun fromVerifiablePresentation(presentation: VerifiablePresentationParsed): Siop2User? {
-            val credentialSubjects = presentation.verifiableCredentials
+        fun fromVerifiablePresentation(presentation: VerifiablePresentationParsed) =
+            presentation.verifiableCredentials
                 .map { it.vc.credentialSubject }
-            val idAustriaCredential = credentialSubjects
                 .filterIsInstance<IdAustriaCredential>()
-                .firstOrNull()
-            if (idAustriaCredential != null) {
-                return idAustriaCredential.toSiop2User()
-            }
-            val euPidCredential = credentialSubjects
-                .filterIsInstance<EuPidCredential>()
-                .firstOrNull()
-            if (euPidCredential != null) {
-                return euPidCredential.toSiop2User()
-            }
-            return null
-        }
+                .firstOrNull()?.toSiop2User()
+                ?: presentation.verifiableCredentials
+                    .map { it.vc.credentialSubject }
+                    .filterIsInstance<EuPidCredential>()
+                    .firstOrNull()?.toSiop2User()
 
         private fun IdAustriaCredential.toSiop2User() = Siop2User(
             ApiItem(
                 id = bpk,
                 firstname = firstname,
                 lastname = lastname,
-                address = mainAddress ?: "N/A",
                 imageDataBase64 = portrait?.let { "data:image;base64," + it.encodeToString(Base64()) },
                 timestamp = Instant.now().toEpochMilli(),
-                allFields = mapOf(
-                    "bpk" to this.bpk,
-                    "firstname" to this.firstname,
-                    "lastname" to this.lastname,
-                    "dateOfBirth" to this.dateOfBirth.toString(),
-                    "mainAddress" to this.mainAddress.toString(),
-                    "ageOver14" to this.ageOver14.toString(),
-                    "ageOver16" to this.ageOver16.toString(),
-                    "ageOver18" to this.ageOver18.toString(),
-                    "ageOver21" to this.ageOver21.toString(),
-                    "vehicleRegistration" to this.vehicleRegistration.toString(),
-                    "gender" to this.gender.toString(),
-                )
+                jwtCredential = kotlin.runCatching { vckJsonSerializer.encodeToJsonElement(this) }.getOrNull(),
+                credentialType = IdAustriaScheme.vcType,
             )
         )
 
@@ -76,22 +55,14 @@ class Siop2User(
                 id = id,
                 firstname = givenName,
                 lastname = familyName,
-                address = residentAddress ?: "N/A",
                 imageDataBase64 = null,
                 timestamp = Instant.now().toEpochMilli(),
-                allFields = mapOf(
-                    "givenName" to this.givenName,
-                    "familyName" to this.familyName,
-                    "birthDate" to this.birthDate.toString(),
-                    "issuanceDate" to this.issuanceDate.toString(),
-                    "expiryDate" to this.expiryDate.toString(),
-                    "issuingAuthority" to this.issuingAuthority,
-                    "issuingCountry" to this.issuingCountry,
-                )
+                jwtCredential = kotlin.runCatching { vckJsonSerializer.encodeToJsonElement(this) }.getOrNull(),
+                credentialType = EuPidScheme.vcType,
             )
         )
 
-        fun fromDisclosures(disclosures: List<SelectiveDisclosureItem>) = Siop2User(
+        fun fromDisclosures(disclosures: List<SelectiveDisclosureItem>, sdJwt: VerifiableCredentialSdJwt) = Siop2User(
             ApiItem(
                 id = disclosures.getClaimValue(IdAustriaScheme.Attributes.BPK)
                     ?: Json.encodeToString<List<SelectiveDisclosureItem>>(disclosures).sha256(),
@@ -104,15 +75,12 @@ class Siop2User(
                     ?: disclosures.getClaimValue(EuPidScheme.Attributes.FAMILY_NAME)
                     ?: disclosures.getClaimValue(CertificateOfResidenceDataElements.FAMILY_NAME)
                     ?: "N/A",
-                address = disclosures.getClaimValue(IdAustriaScheme.Attributes.MAIN_ADDRESS)
-                    ?: disclosures.getClaimValue(EuPidScheme.Attributes.RESIDENT_ADDRESS)
-                    ?: disclosures.getClaimValue(CertificateOfResidenceDataElements.RESIDENCE_ADDRESS)
-                    ?: "N/A",
                 imageDataBase64 = disclosures.getClaimValueBytesEncodedBase64(IdAustriaScheme.Attributes.PORTRAIT),
                 timestamp = Instant.now().toEpochMilli(),
                 allFields = disclosures
                     .filterNot { it.claimName == IdAustriaScheme.Attributes.PORTRAIT }
-                    .associate { it.claimName to it.claimValue.toString() }
+                    .associate { it.claimName to it.claimValue.content },
+                credentialType = sdJwt.verifiableCredentialType,
             )
         )
 
@@ -128,15 +96,13 @@ class Siop2User(
                     ?: document.elementValue(EuPidScheme.Attributes.FAMILY_NAME)?.toString()
                     ?: document.elementValue(MobileDrivingLicenceDataElements.FAMILY_NAME)?.toString()
                     ?: "N/A",
-                address = document.elementValue(IdAustriaScheme.Attributes.MAIN_ADDRESS)?.toString()
-                    ?: document.elementValue(EuPidScheme.Attributes.RESIDENT_ADDRESS)?.toString()
-                    ?: "N/A",
                 imageDataBase64 = document.getByteArray(MobileDrivingLicenceDataElements.PORTRAIT)
                     ?.let { "data:image;base64," + it.encodeToString(Base64()) },
                 timestamp = Instant.now().toEpochMilli(),
                 allFields = document.validItems
                     .filterNot { it.elementIdentifier == MobileDrivingLicenceDataElements.PORTRAIT }
-                    .associate { it.elementIdentifier to it.elementValueToString() }
+                    .associate { it.elementIdentifier to it.elementValueToString() },
+                credentialType = document.mso.docType,
             )
         )
 

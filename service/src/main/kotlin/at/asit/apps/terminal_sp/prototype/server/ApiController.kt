@@ -212,7 +212,7 @@ class ApiController(
                 }
 
             is OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt ->
-                Siop2User.fromDisclosures(result.disclosures)
+                Siop2User.fromDisclosures(result.disclosures, result.sdJwt)
 
             is OidcSiopVerifier.AuthnResponseResult.SuccessIso ->
                 Siop2User.fromMdoc(result.document)
