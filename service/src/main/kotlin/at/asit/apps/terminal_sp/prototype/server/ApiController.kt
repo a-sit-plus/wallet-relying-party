@@ -17,6 +17,8 @@ import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import io.github.aakira.napier.Napier
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
@@ -121,16 +123,18 @@ class ApiController(
         .queryParam(
             "request_uri", ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
                 .pathSegment("siopv2", "request")
-                .queryParam(PARAM_CREDENTIALTYPE, request.credentialType)
-                .queryParam(PARAM_REPRESENTATION, request.representation)
                 .queryParam(PARAM_URLPREFIX, request.urlprefix)
-                .queryParam(PARAM_ATTRIBUTES, request.attributes)
+                .apply {
+                    request.credentialType?.let { queryParam(PARAM_CREDENTIALTYPE, it) }
+                    request.representation?.let { queryParam(PARAM_REPRESENTATION, it) }
+                    request.attributes?.let { queryParam(PARAM_ATTRIBUTES, it) }
+                    request.credentials?.let { queryParam(PARAM_CREDENTIALS, Json.encodeToString(it)) }
+                }
                 .toUriString()
         )
         .queryParam("client_id", publicUrl.getDnsName())
         .queryParam("client_metadata_uri", metadataUrl)
         .toUriString()
-
 
 
     /**
@@ -141,32 +145,21 @@ class ApiController(
     fun siopv2RequestObject(
         @RequestParam(name = PARAM_ATTRIBUTES) attributes: Collection<String>?,
         @RequestParam(name = PARAM_REPRESENTATION) representation: String?,
-        @RequestParam(name = PARAM_URLPREFIX) urlprefix: String?,
+        @RequestParam(name = PARAM_URLPREFIX) urlprefix: String,
         @RequestParam(name = PARAM_CREDENTIALTYPE) credentialType: String?,
+        @RequestParam(name = PARAM_CREDENTIALS) credentialsSerialized: String?,
     ): ResponseEntity<String> = runBlocking {
-        Napier.i("/siopv2/request called with $urlprefix, $representation, $credentialType, $attributes")
+        val credentials = credentialsSerialized?.let { Json.decodeFromString<List<QrCodeRequestCredential>>(it) }
+        val qrCodeRequest = QrCodeRequest(credentialType, representation, urlprefix, attributes, credentials)
+        Napier.i("/siopv2/request called with $qrCodeRequest")
         val state = createSafeState()
-        val credentialScheme = credentialType?.let {
-            AttributeIndex.resolveAttributeType(it)
-                ?: AttributeIndex.resolveSdJwtAttributeType(it)
-                ?: AttributeIndex.resolveIsoDoctype(it)
-        } ?: EuPidScheme
-        val parsedRep = CredentialRepresentation.entries.firstOrNull { it.name == representation }
-            ?: CredentialRepresentation.SD_JWT
-        val requestObjectJws = verifierProtocol.createAuthnRequestAsSignedRequestObject(
-            requestOptions = OidcSiopVerifier.RequestOptions(
-                state = state,
-                responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
-                responseUrl = postSuccessUrl,
-                credentials = setOf(
-                    OidcSiopVerifier.RequestOptionsCredential(
-                        credentialScheme = credentialScheme,
-                        representation = parsedRep,
-                        requestedAttributes = attributes?.ifEmpty { null }?.toList(),
-                    )
-                ),
-            ),
-        ).getOrElse {
+        val requestOptions = OidcSiopVerifier.RequestOptions(
+            state = state,
+            responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
+            responseUrl = postSuccessUrl,
+            credentials = qrCodeRequest.toRequestOptionsCredentials(),
+        )
+        val requestObjectJws = verifierProtocol.createAuthnRequestAsSignedRequestObject(requestOptions).getOrElse {
             Napier.w("/siopv2/request error", it)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
         }
@@ -249,3 +242,4 @@ private const val PARAM_ATTRIBUTES = "attributes"
 private const val PARAM_URLPREFIX = "urlprefix"
 private const val PARAM_REPRESENTATION = "representation"
 private const val PARAM_CREDENTIALTYPE = "credentialType"
+private const val PARAM_CREDENTIALS = "credentials"
