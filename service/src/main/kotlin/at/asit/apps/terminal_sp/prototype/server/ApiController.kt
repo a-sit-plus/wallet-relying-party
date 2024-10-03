@@ -121,15 +121,17 @@ class ApiController(
         .queryParam(
             "request_uri", ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
                 .pathSegment("siopv2", "request")
-                .queryParam("credentialType", request.credentialType)
-                .queryParam("representation", request.representation)
-                .queryParam("urlprefix", request.urlprefix)
-                .queryParam("attributes", request.attributes)
+                .queryParam(PARAM_CREDENTIALTYPE, request.credentialType)
+                .queryParam(PARAM_REPRESENTATION, request.representation)
+                .queryParam(PARAM_URLPREFIX, request.urlprefix)
+                .queryParam(PARAM_ATTRIBUTES, request.attributes)
                 .toUriString()
         )
         .queryParam("client_id", publicUrl.getDnsName())
         .queryParam("client_metadata_uri", metadataUrl)
         .toUriString()
+
+
 
     /**
      * Creates SIOPv2 request object, with response_mode=post
@@ -137,10 +139,10 @@ class ApiController(
     @ResponseBody
     @GetMapping("/siopv2/request")
     fun siopv2RequestObject(
-        @RequestParam attributes: Collection<String>?,
-        @RequestParam representation: String?,
-        @RequestParam urlprefix: String?,
-        @RequestParam credentialType: String?,
+        @RequestParam(name = PARAM_ATTRIBUTES) attributes: Collection<String>?,
+        @RequestParam(name = PARAM_REPRESENTATION) representation: String?,
+        @RequestParam(name = PARAM_URLPREFIX) urlprefix: String?,
+        @RequestParam(name = PARAM_CREDENTIALTYPE) credentialType: String?,
     ): ResponseEntity<String> = runBlocking {
         Napier.i("/siopv2/request called with $urlprefix, $representation, $credentialType, $attributes")
         val state = createSafeState()
@@ -243,3 +245,7 @@ private fun String.getDnsName() = UriComponentsBuilder.fromUriString(this).build
 
 
 private const val SIOP_2_USER = "siop2user"
+private const val PARAM_ATTRIBUTES = "attributes"
+private const val PARAM_URLPREFIX = "urlprefix"
+private const val PARAM_REPRESENTATION = "representation"
+private const val PARAM_CREDENTIALTYPE = "credentialType"
