@@ -126,7 +126,7 @@ const createBasicSetup = function() {
   function filterClaims(item) {
     const deepCopy = JSON.parse(JSON.stringify(item));
     delete deepCopy.timestamp;
-    delete deepCopy.allFields;
+    delete deepCopy.credentials;
     delete deepCopy.expiredTime;
     delete deepCopy.imageDataBase64;
     delete deepCopy.showDetails;

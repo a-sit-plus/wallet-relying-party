@@ -10,6 +10,11 @@ data class ApiItem(
     val lastname: String,
     val imageDataBase64: String?,
     val timestamp: Long,
+    val credentials: List<ApiItemCredential>
+)
+
+@Serializable
+data class ApiItemCredential(
     val jwtCredential: JsonElement? = null,
     val allFields: Map<String, String> = mapOf(),
     val credentialType: String? = null,

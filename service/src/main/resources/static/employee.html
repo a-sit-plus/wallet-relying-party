@@ -1,110 +1,121 @@
 <!doctype html>
 <html lang="de">
-  <head>
+<head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Terminal Service: Employee-Page</title>
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="styles.css">
 
     <script type="importmap">
-      {
-        "imports": {
-          "result": "./js/result.js",
-          "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+        {
+          "imports": {
+            "result": "./js/result.js",
+            "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+          }
         }
-      }
     </script>
 
     <script type="module">
-      import { createBasicSetup } from 'result'
-      import { createApp } from 'vue'
+        import {createBasicSetup} from 'result'
+        import {createApp} from 'vue'
 
-      const app = createApp({
-        setup: createBasicSetup
-      }).mount('#app');
-      app.startPeriodicUpdate();
+        const app = createApp({
+            setup: createBasicSetup
+        }).mount('#app');
+        app.startPeriodicUpdate();
     </script>
-  </head>
-  <body id="app" style="background-color: #f3f3f3">
+</head>
+<body id="app" style="background-color: #f3f3f3">
 
-    <header class="p-3 text-bg-dark">
-        <div class="container">
-            <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start d-flex mb-2 mb-lg-0 me-md-auto text-white fs-3 fw-bold">
-                <a class="link-light text-decoration-none" href="index.html">A-SIT Demo Wallet Service Provider - Employee-Page</a>
-                <div class="ms-auto btn btn-light fs-4">
-                    <a href="https://www.a-sit.at/"><img style="height: 1em" src="images/ASIT Logo.png"/></a>
-                </div>
+<header class="p-3 text-bg-dark">
+    <div class="container">
+        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start d-flex mb-2 mb-lg-0 me-md-auto text-white fs-3 fw-bold">
+            <a class="link-light text-decoration-none" href="index.html">A-SIT Demo Wallet Service Provider -
+                Employee-Page</a>
+            <div class="ms-auto btn btn-light fs-4">
+                <a href="https://www.a-sit.at/"><img style="height: 1em" src="images/ASIT Logo.png"/></a>
             </div>
         </div>
-    </header>
-
-    <div class="container my-5">
-      <h1>Recent Authentication Results</h1>
     </div>
+</header>
 
-    <div class="container my-5">
-      <p v-if="loginList.length == 0">There are no recent authentication results.</p>
+<div class="container my-5">
+    <h1>Recent Authentication Results</h1>
+</div>
 
-      <transition-group tag="div" name="fade" class="row mb-2">
+<div class="container my-5">
+    <p v-if="loginList.length == 0">There are no recent authentication results.</p>
+
+    <transition-group tag="div" name="fade" class="row mb-2">
 
         <div
-          v-for="item in loginList"
-          :key="item.id"
-          class="col-md-6">
-          <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm bg-light">
-            <div v-if="isSet(item.imageDataBase64)" class="col-lg-4 text-bg-dark" style="text-align: center">
-              <img style="max-height: 400px;max-width: 100%" :src="item.imageDataBase64" />
-            </div>
-            <div :class="isSet(item.imageDataBase64) ? 'col-lg-8' : 'col-lg-12'" class="p-4 d-flex flex-column position-static">
-              <div class="foldout mb-1" :class="item.showDetails ? '' : 'foldout-preview'">
-                <div v-if="!item.showDetails" class="foldout-button">
-                  <button type="button" class="btn btn-outline-secondary btn-sm" @click="toggleDetails(item)">
-                    More Details
-                    <i class="bi-caret-down-fill"></i>
-                  </button>
+                v-for="item in loginList"
+                :key="item.id"
+                class="col-md-6">
+            <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm bg-light">
+                <div v-if="isSet(item.imageDataBase64)" class="col-lg-4 text-bg-dark" style="text-align: center">
+                    <img style="max-height: 400px;max-width: 100%" :src="item.imageDataBase64"/>
                 </div>
-                <div v-if="item.showDetails"class="foldout-button">
-                  <button type="button" class="btn btn-outline-secondary btn-sm" @click="toggleDetails(item)">
-                    Less Details
-                    <i class="bi-caret-up-fill"></i>
-                  </button>
+                <div :class="isSet(item.imageDataBase64) ? 'col-lg-8' : 'col-lg-12'"
+                     class="p-4 d-flex flex-column position-static">
+                    <div class="foldout mb-1" :class="item.showDetails ? '' : 'foldout-preview'">
+                        <div v-if="!item.showDetails" class="foldout-button">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" @click="toggleDetails(item)">
+                                More Details
+                                <i class="bi-caret-down-fill"></i>
+                            </button>
+                        </div>
+                        <div v-if="item.showDetails" class="foldout-button">
+                            <button type="button" class="btn btn-outline-secondary btn-sm" @click="toggleDetails(item)">
+                                Less Details
+                                <i class="bi-caret-up-fill"></i>
+                            </button>
+                        </div>
+
+                        <h3 v-if="isSet(item.firstname) || isSet(item.lastname)" class="mb-1">
+                            {{ item.firstname }} {{ item.lastname }}
+                        </h3>
+
+                        <p v-for="(value, key) in filterClaims(item)" :key="key" class="text-truncate mb-1"
+                           style="max-width: 100%;">
+                            <span class="fw-semibold">{{ key }}</span>: {{ value }}
+                        </p>
+
+
+                        <p><span class="fw-semibold">All credentials</span>:</p>
+                        <ul>
+                            <li v-for="(credential, key) in item.credentials" :key="key">
+                                <p><span class="fw-semibold">Credential type</span>: {{ credential.credentialType }}
+                                </p>
+                                <p><span class="fw-semibold">Full data</span>:</p>
+                                <ul>
+                                    <li v-for="(value, key) in credential.allFields" :key="key"
+                                        class="text-truncate mb-1"
+                                        style="max-width: 100%;">
+                                        <span class="fw-semibold">{{ key }}</span>: {{ value }}
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
+                        <div class="foldout-fade"></div>
+                    </div>
+
+                    <div class="text-body-tertiary mb-1">Authenticated {{ item.expiredTime }} ago</div>
+                    <div class="mt-auto ms-auto d-md-flex gap-2">
+                        <button @click="seen(item)" type="button" class="btn btn-outline-danger">
+                            <i class="bi-x-lg"></i>
+                            Remove
+                        </button>
+                    </div>
                 </div>
-
-                <h3 v-if="isSet(item.firstname) || isSet(item.lastname)" class="mb-1">
-                  {{ item.firstname }} {{ item.lastname }}
-                </h3>
-
-                <p v-for="(value, key) in filterClaims(item)" :key="key" class="text-truncate mb-1" style="max-width: 100%;">
-                  <span class="fw-semibold">{{ key }}</span>: {{ value }}
-                </p>
-
-                <p><span class="fw-semibold">Credential type</span>: {{ item.credentialType }} </p>
-
-                <p><span class="fw-semibold">Full data</span>:</p>
-                <ul>
-                  <li v-for="(value, key) in item.allFields" :key="key" class="text-truncate mb-1" style="max-width: 100%;">
-                    <span class="fw-semibold">{{ key }}</span>: {{ value }}
-                  </li>
-                </ul>
-
-                <div class="foldout-fade"></div>
-              </div>
-
-              <div class="text-body-tertiary mb-1">Authenticated {{ item.expiredTime }} ago</div>
-              <div class="mt-auto ms-auto d-md-flex gap-2">
-                <button @click="seen(item)" type="button" class="btn btn-outline-danger">
-                  <i class="bi-x-lg"></i>
-                  Remove
-                </button>
-              </div>
             </div>
-          </div>
         </div>
 
-      </transition-group>
-    </div>
+    </transition-group>
+</div>
 
-  </body>
+</body>
 </html>

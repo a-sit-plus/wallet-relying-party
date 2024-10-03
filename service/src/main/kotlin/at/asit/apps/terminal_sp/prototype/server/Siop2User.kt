@@ -45,8 +45,12 @@ class Siop2User(
                 lastname = lastname,
                 imageDataBase64 = portrait?.let { "data:image;base64," + it.encodeToString(Base64()) },
                 timestamp = Instant.now().toEpochMilli(),
-                jwtCredential = kotlin.runCatching { vckJsonSerializer.encodeToJsonElement(this) }.getOrNull(),
-                credentialType = IdAustriaScheme.vcType,
+                credentials = listOf(
+                    ApiItemCredential(
+                        jwtCredential = kotlin.runCatching { vckJsonSerializer.encodeToJsonElement(this) }.getOrNull(),
+                        credentialType = IdAustriaScheme.vcType,
+                    )
+                )
             )
         )
 
@@ -57,8 +61,12 @@ class Siop2User(
                 lastname = familyName,
                 imageDataBase64 = null,
                 timestamp = Instant.now().toEpochMilli(),
-                jwtCredential = kotlin.runCatching { vckJsonSerializer.encodeToJsonElement(this) }.getOrNull(),
-                credentialType = EuPidScheme.vcType,
+                credentials = listOf(
+                    ApiItemCredential(
+                        jwtCredential = kotlin.runCatching { vckJsonSerializer.encodeToJsonElement(this) }.getOrNull(),
+                        credentialType = EuPidScheme.vcType,
+                    )
+                )
             )
         )
 
@@ -77,10 +85,14 @@ class Siop2User(
                     ?: "N/A",
                 imageDataBase64 = disclosures.getClaimValueBytesEncodedBase64(IdAustriaScheme.Attributes.PORTRAIT),
                 timestamp = Instant.now().toEpochMilli(),
-                allFields = disclosures
-                    .filterNot { it.claimName == IdAustriaScheme.Attributes.PORTRAIT }
-                    .associate { it.claimName to it.claimValue.content },
-                credentialType = sdJwt.verifiableCredentialType,
+                credentials = listOf(
+                    ApiItemCredential(
+                        allFields = disclosures
+                            .filterNot { it.claimName == IdAustriaScheme.Attributes.PORTRAIT }
+                            .associate { it.claimName to it.claimValue.content },
+                        credentialType = sdJwt.verifiableCredentialType,
+                    )
+                )
             )
         )
 
@@ -99,10 +111,14 @@ class Siop2User(
                 imageDataBase64 = document.getByteArray(MobileDrivingLicenceDataElements.PORTRAIT)
                     ?.let { "data:image;base64," + it.encodeToString(Base64()) },
                 timestamp = Instant.now().toEpochMilli(),
-                allFields = document.validItems
-                    .filterNot { it.elementIdentifier == MobileDrivingLicenceDataElements.PORTRAIT }
-                    .associate { it.elementIdentifier to it.elementValueToString() },
-                credentialType = document.mso.docType,
+                credentials = listOf(
+                    ApiItemCredential(
+                        allFields = document.validItems
+                            .filterNot { it.elementIdentifier == MobileDrivingLicenceDataElements.PORTRAIT }
+                            .associate { it.elementIdentifier to it.elementValueToString() },
+                        credentialType = document.mso.docType,
+                    )
+                )
             )
         )
 
