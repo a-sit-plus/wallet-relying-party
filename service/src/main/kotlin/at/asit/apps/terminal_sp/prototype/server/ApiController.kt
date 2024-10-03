@@ -214,10 +214,10 @@ class ApiController(
                 }
 
             is OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt ->
-                result.toSiop2User()
+                result.toApiItemCredential().toSiop2User()
 
             is OidcSiopVerifier.AuthnResponseResult.SuccessIso ->
-                result.document.toSiop2User()
+                result.document.toApiItemCredential().toSiop2User()
 
             is OidcSiopVerifier.AuthnResponseResult.Error ->
                 throw RuntimeException(result.reason)
@@ -226,7 +226,7 @@ class ApiController(
                 throw RuntimeException("Validation failed for field: ${result.field}")
 
             is OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults ->
-                result.toSiop2User()
+                result.toApiItemCredentials().toSiop2User()
 
             is OidcSiopVerifier.AuthnResponseResult.IdToken ->
                 throw RuntimeException("Only got id_token")
