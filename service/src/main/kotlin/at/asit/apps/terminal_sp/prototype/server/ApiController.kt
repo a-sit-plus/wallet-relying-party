@@ -1,6 +1,5 @@
 package at.asit.apps.terminal_sp.prototype.server
 
-import at.asit.apps.terminal_sp.prototype.server.Siop2User.Companion.toSiop2User
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.asn1.*
@@ -215,7 +214,7 @@ class ApiController(
                 }
 
             is OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt ->
-                result.disclosures.toSiop2User(result.sdJwt)
+                result.toSiop2User()
 
             is OidcSiopVerifier.AuthnResponseResult.SuccessIso ->
                 result.document.toSiop2User()
@@ -227,21 +226,16 @@ class ApiController(
                 throw RuntimeException("Validation failed for field: ${result.field}")
 
             is OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults ->
-                throw RuntimeException("Not expected VerifiablePresentationValidationResults: $result")
+                result.toSiop2User()
 
             is OidcSiopVerifier.AuthnResponseResult.IdToken ->
                 throw RuntimeException("Only got id_token")
         }
     }
 
-    private fun createSafeState(): String {
-        return Base64.getEncoder().encodeToString(Random.nextBytes(32))
-    }
+    private fun createSafeState() = Base64.getEncoder().encodeToString(Random.nextBytes(32))
 
-    private fun AuthenticatedPrincipal.toApiItem() = when (this) {
-        is Siop2User -> this.apiItem
-        else -> null
-    }
+    private fun AuthenticatedPrincipal.toApiItem() = if (this is Siop2User) this.apiItem else null
 
 }
 
