@@ -38,6 +38,12 @@ class Siop2User(
                     .filterIsInstance<EuPidCredential>()
                     .firstOrNull()?.toSiop2User()
 
+        private fun IdAustriaCredential.toApiItemCredential() =
+            ApiItemCredential(
+                jwtCredential = kotlin.runCatching { vckJsonSerializer.encodeToJsonElement(this) }.getOrNull(),
+                credentialType = IdAustriaScheme.vcType,
+            )
+
         private fun IdAustriaCredential.toSiop2User() = Siop2User(
             ApiItem(
                 id = bpk,
@@ -45,14 +51,15 @@ class Siop2User(
                 lastname = lastname,
                 imageDataBase64 = portrait?.let { "data:image;base64," + it.encodeToString(Base64()) },
                 timestamp = Instant.now().toEpochMilli(),
-                credentials = listOf(
-                    ApiItemCredential(
-                        jwtCredential = kotlin.runCatching { vckJsonSerializer.encodeToJsonElement(this) }.getOrNull(),
-                        credentialType = IdAustriaScheme.vcType,
-                    )
-                )
+                credentials = listOf(toApiItemCredential())
             )
         )
+
+        private fun EuPidCredential.toApiItemCredential() =
+            ApiItemCredential(
+                jwtCredential = kotlin.runCatching { vckJsonSerializer.encodeToJsonElement(this) }.getOrNull(),
+                credentialType = EuPidScheme.vcType,
+            )
 
         private fun EuPidCredential.toSiop2User() = Siop2User(
             ApiItem(
@@ -61,14 +68,16 @@ class Siop2User(
                 lastname = familyName,
                 imageDataBase64 = null,
                 timestamp = Instant.now().toEpochMilli(),
-                credentials = listOf(
-                    ApiItemCredential(
-                        jwtCredential = kotlin.runCatching { vckJsonSerializer.encodeToJsonElement(this) }.getOrNull(),
-                        credentialType = EuPidScheme.vcType,
-                    )
-                )
+                credentials = listOf(toApiItemCredential())
             )
         )
+
+        fun List<SelectiveDisclosureItem>.toApiItemCredential(sdJwt: VerifiableCredentialSdJwt) =
+            ApiItemCredential(
+                allFields = filterNot { it.claimName == IdAustriaScheme.Attributes.PORTRAIT }
+                    .associate { it.claimName to it.claimValue.content },
+                credentialType = sdJwt.verifiableCredentialType,
+            )
 
         fun List<SelectiveDisclosureItem>.toSiop2User(sdJwt: VerifiableCredentialSdJwt) = Siop2User(
             ApiItem(
@@ -85,15 +94,17 @@ class Siop2User(
                     ?: "N/A",
                 imageDataBase64 = getClaimValueBytesEncodedBase64(IdAustriaScheme.Attributes.PORTRAIT),
                 timestamp = Instant.now().toEpochMilli(),
-                credentials = listOf(
-                    ApiItemCredential(
-                        allFields = filterNot { it.claimName == IdAustriaScheme.Attributes.PORTRAIT }
-                            .associate { it.claimName to it.claimValue.content },
-                        credentialType = sdJwt.verifiableCredentialType,
-                    )
-                )
+                credentials = listOf(toApiItemCredential(sdJwt))
             )
         )
+
+        fun IsoDocumentParsed.toApiItemCredential() =
+            ApiItemCredential(
+                allFields = validItems
+                    .filterNot { it.elementIdentifier == MobileDrivingLicenceDataElements.PORTRAIT }
+                    .associate { it.elementIdentifier to it.elementValueToString() },
+                credentialType = mso.docType,
+            )
 
         fun IsoDocumentParsed.toSiop2User() = Siop2User(
             ApiItem(
@@ -110,14 +121,7 @@ class Siop2User(
                 imageDataBase64 = getByteArray(MobileDrivingLicenceDataElements.PORTRAIT)
                     ?.let { "data:image;base64," + it.encodeToString(Base64()) },
                 timestamp = Instant.now().toEpochMilli(),
-                credentials = listOf(
-                    ApiItemCredential(
-                        allFields = validItems
-                            .filterNot { it.elementIdentifier == MobileDrivingLicenceDataElements.PORTRAIT }
-                            .associate { it.elementIdentifier to it.elementValueToString() },
-                        credentialType = mso.docType,
-                    )
-                )
+                credentials = listOf(toApiItemCredential())
             )
         )
 
