@@ -28,12 +28,12 @@ class Siop2User(
 ) : AuthenticatedPrincipal {
 
     companion object {
-        fun fromVerifiablePresentation(presentation: VerifiablePresentationParsed) =
-            presentation.verifiableCredentials
+        fun VerifiablePresentationParsed.toSiop2User() =
+            verifiableCredentials
                 .map { it.vc.credentialSubject }
                 .filterIsInstance<IdAustriaCredential>()
                 .firstOrNull()?.toSiop2User()
-                ?: presentation.verifiableCredentials
+                ?: verifiableCredentials
                     .map { it.vc.credentialSubject }
                     .filterIsInstance<EuPidCredential>()
                     .firstOrNull()?.toSiop2User()
@@ -70,25 +70,24 @@ class Siop2User(
             )
         )
 
-        fun fromDisclosures(disclosures: List<SelectiveDisclosureItem>, sdJwt: VerifiableCredentialSdJwt) = Siop2User(
+        fun List<SelectiveDisclosureItem>.toSiop2User(sdJwt: VerifiableCredentialSdJwt) = Siop2User(
             ApiItem(
-                id = disclosures.getClaimValue(IdAustriaScheme.Attributes.BPK)
-                    ?: Json.encodeToString<List<SelectiveDisclosureItem>>(disclosures).sha256(),
-                firstname = disclosures.getClaimValue(IdAustriaScheme.Attributes.FIRSTNAME)
-                    ?: disclosures.getClaimValue(EuPidScheme.Attributes.GIVEN_NAME)
-                    ?: disclosures.getClaimValue(CertificateOfResidenceDataElements.GIVEN_NAME)
-                    ?: disclosures.getClaimValue(PowerOfRepresentationDataElements.LEGAL_NAME)
+                id = getClaimValue(IdAustriaScheme.Attributes.BPK)
+                    ?: Json.encodeToString<List<SelectiveDisclosureItem>>(this).sha256(),
+                firstname = getClaimValue(IdAustriaScheme.Attributes.FIRSTNAME)
+                    ?: getClaimValue(EuPidScheme.Attributes.GIVEN_NAME)
+                    ?: getClaimValue(CertificateOfResidenceDataElements.GIVEN_NAME)
+                    ?: getClaimValue(PowerOfRepresentationDataElements.LEGAL_NAME)
                     ?: "N/A",
-                lastname = disclosures.getClaimValue(IdAustriaScheme.Attributes.LASTNAME)
-                    ?: disclosures.getClaimValue(EuPidScheme.Attributes.FAMILY_NAME)
-                    ?: disclosures.getClaimValue(CertificateOfResidenceDataElements.FAMILY_NAME)
+                lastname = getClaimValue(IdAustriaScheme.Attributes.LASTNAME)
+                    ?: getClaimValue(EuPidScheme.Attributes.FAMILY_NAME)
+                    ?: getClaimValue(CertificateOfResidenceDataElements.FAMILY_NAME)
                     ?: "N/A",
-                imageDataBase64 = disclosures.getClaimValueBytesEncodedBase64(IdAustriaScheme.Attributes.PORTRAIT),
+                imageDataBase64 = getClaimValueBytesEncodedBase64(IdAustriaScheme.Attributes.PORTRAIT),
                 timestamp = Instant.now().toEpochMilli(),
                 credentials = listOf(
                     ApiItemCredential(
-                        allFields = disclosures
-                            .filterNot { it.claimName == IdAustriaScheme.Attributes.PORTRAIT }
+                        allFields = filterNot { it.claimName == IdAustriaScheme.Attributes.PORTRAIT }
                             .associate { it.claimName to it.claimValue.content },
                         credentialType = sdJwt.verifiableCredentialType,
                     )
@@ -96,27 +95,27 @@ class Siop2User(
             )
         )
 
-        fun fromMdoc(document: IsoDocumentParsed) = Siop2User(
+        fun IsoDocumentParsed.toSiop2User() = Siop2User(
             ApiItem(
-                id = document.elementValue(IdAustriaScheme.Attributes.BPK)?.toString()
-                    ?: Json.encodeToString<List<IssuerSignedItem>>(document.validItems).sha256(),
-                firstname = document.elementValue(IdAustriaScheme.Attributes.FIRSTNAME)?.toString()
-                    ?: document.elementValue(EuPidScheme.Attributes.GIVEN_NAME)?.toString()
-                    ?: document.elementValue(MobileDrivingLicenceDataElements.GIVEN_NAME)?.toString()
+                id = elementValue(IdAustriaScheme.Attributes.BPK)?.toString()
+                    ?: Json.encodeToString<List<IssuerSignedItem>>(validItems).sha256(),
+                firstname = elementValue(IdAustriaScheme.Attributes.FIRSTNAME)?.toString()
+                    ?: elementValue(EuPidScheme.Attributes.GIVEN_NAME)?.toString()
+                    ?: elementValue(MobileDrivingLicenceDataElements.GIVEN_NAME)?.toString()
                     ?: "N/A",
-                lastname = document.elementValue(IdAustriaScheme.Attributes.LASTNAME)?.toString()
-                    ?: document.elementValue(EuPidScheme.Attributes.FAMILY_NAME)?.toString()
-                    ?: document.elementValue(MobileDrivingLicenceDataElements.FAMILY_NAME)?.toString()
+                lastname = elementValue(IdAustriaScheme.Attributes.LASTNAME)?.toString()
+                    ?: elementValue(EuPidScheme.Attributes.FAMILY_NAME)?.toString()
+                    ?: elementValue(MobileDrivingLicenceDataElements.FAMILY_NAME)?.toString()
                     ?: "N/A",
-                imageDataBase64 = document.getByteArray(MobileDrivingLicenceDataElements.PORTRAIT)
+                imageDataBase64 = getByteArray(MobileDrivingLicenceDataElements.PORTRAIT)
                     ?.let { "data:image;base64," + it.encodeToString(Base64()) },
                 timestamp = Instant.now().toEpochMilli(),
                 credentials = listOf(
                     ApiItemCredential(
-                        allFields = document.validItems
+                        allFields = validItems
                             .filterNot { it.elementIdentifier == MobileDrivingLicenceDataElements.PORTRAIT }
                             .associate { it.elementIdentifier to it.elementValueToString() },
-                        credentialType = document.mso.docType,
+                        credentialType = mso.docType,
                     )
                 )
             )

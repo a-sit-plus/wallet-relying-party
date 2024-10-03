@@ -1,5 +1,6 @@
 package at.asit.apps.terminal_sp.prototype.server
 
+import at.asit.apps.terminal_sp.prototype.server.Siop2User.Companion.toSiop2User
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.asn1.*
@@ -156,11 +157,13 @@ class ApiController(
                 state = state,
                 responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
                 responseUrl = postSuccessUrl,
-                credentials = setOf(OidcSiopVerifier.RequestOptionsCredential(
-                    credentialScheme = credentialScheme,
-                    representation = parsedRep,
-                    requestedAttributes = attributes?.ifEmpty { null }?.toList(),
-                )),
+                credentials = setOf(
+                    OidcSiopVerifier.RequestOptionsCredential(
+                        credentialScheme = credentialScheme,
+                        representation = parsedRep,
+                        requestedAttributes = attributes?.ifEmpty { null }?.toList(),
+                    )
+                ),
             ),
         ).getOrElse {
             Napier.w("/siopv2/request error", it)
@@ -203,7 +206,7 @@ class ApiController(
         Napier.i("validateSiopResponse with $params")
         return when (val result = verifierProtocol.validateAuthnResponse(params)) {
             is OidcSiopVerifier.AuthnResponseResult.Success ->
-                with(Siop2User.fromVerifiablePresentation(result.vp)) {
+                with(result.vp.toSiop2User()) {
                     if (this == null) {
                         Napier.w("Cannot parse from VP: ${result.vp}")
                         throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot parse from VP")
@@ -212,10 +215,10 @@ class ApiController(
                 }
 
             is OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt ->
-                Siop2User.fromDisclosures(result.disclosures, result.sdJwt)
+                result.disclosures.toSiop2User(result.sdJwt)
 
             is OidcSiopVerifier.AuthnResponseResult.SuccessIso ->
-                Siop2User.fromMdoc(result.document)
+                result.document.toSiop2User()
 
             is OidcSiopVerifier.AuthnResponseResult.Error ->
                 throw RuntimeException(result.reason)
