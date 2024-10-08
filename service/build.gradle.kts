@@ -16,12 +16,6 @@ kotlin {
     jvmToolchain(17)
 }
 
-repositories {
-    maven("https://s01.oss.sonatype.org/content/repositories/snapshots/")
-    maven("https://oss.sonatype.org/content/repositories/snapshots/")
-    mavenCentral()
-}
-
 dependencies {
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-web")
@@ -34,18 +28,12 @@ dependencies {
 
     implementation(napier())
     implementation("at.asitplus.wallet:vck-openid:5.0.0")
-    implementation("at.asitplus.wallet:idacredential:3.9.0")
-    implementation("at.asitplus.wallet:eupidcredential:2.2.0")
-    implementation("at.asitplus.wallet:mobiledrivinglicence:1.1.0")
+    implementation("at.asitplus.wallet:idacredential:3.9.1")
+    implementation("at.asitplus.wallet:eupidcredential:2.2.1")
+    implementation("at.asitplus.wallet:mobiledrivinglicence:1.1.1")
     implementation("at.asitplus.wallet:powerofrepresentation:1.1.0")
     implementation("at.asitplus.wallet:certificateofresidence:2.1.0")
     implementation("at.asitplus.wallet:eprescription:1.1.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core:1.7.2!!")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-core-jvm:1.7.2!!")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor:1.7.2!!")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-cbor-jvm:1.7.2!!")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.7.2!!")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json-jvm:1.7.2!!")
 }
 
 
