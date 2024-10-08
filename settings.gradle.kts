@@ -20,7 +20,7 @@ dependencyResolutionManagement {
     }
     versionCatalogs {
         create("vclib") {
-            from("at.asitplus.wallet:vclib-openid-versionCatalog:4.0.0")
+            from("at.asitplus.wallet:vck-openid-versionCatalog:5.0.0")
         }
     }
 }

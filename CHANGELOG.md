@@ -1,5 +1,8 @@
 # Changelog
 
+Version 5.0.1:
+ - Remove storing user in session, but pass reference by query param
+
 Version 5.0.0:
  - Update to vck 5.0.0
 

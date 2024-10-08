@@ -6,16 +6,12 @@ import at.asitplus.signum.indispensable.asn1.*
 import at.asitplus.signum.indispensable.asn1.encoding.Asn1
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
-import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.VerifierAgent
-import at.asitplus.wallet.lib.data.AttributeIndex
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.ClientIdScheme.CertificateSanDns
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import io.github.aakira.napier.Napier
-import jakarta.servlet.http.HttpServletRequest
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
@@ -83,16 +79,17 @@ class ApiController(
     @ResponseBody
     fun apiItems(): List<ApiItem> = authenticatedUsers.mapNotNull { it.value.toApiItem() }
 
-    @GetMapping("/api/self")
+    @GetMapping("/api/single/{id}")
     @ResponseBody
-    fun apiSelf(httpServletRequest: HttpServletRequest): ResponseEntity<ApiItem> {
-        val attr = httpServletRequest.session.getAttribute(SIOP_2_USER)
-        Napier.i("/api/self: $attr")
-        return (attr as? Siop2User)?.apiItem?.let {
-            ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(it)
-        } ?: ResponseEntity.notFound().build()
+    fun apiSingle(@PathVariable id: String): ResponseEntity<ApiItem> {
+        Napier.i("/api/single called with $id")
+        return authenticatedUsers.mapNotNull { it.value.toApiItem() }
+            .firstOrNull { it.id == id }
+            ?.let {
+                ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(it)
+            } ?: ResponseEntity.notFound().build()
     }
 
     @PostMapping("/api/remove")
@@ -185,15 +182,19 @@ class ApiController(
     @PostMapping("/siopv2/postsuccess")
     fun siopv2PostSuccessPage(
         @RequestBody requestBody: String,
-        httpServletRequest: HttpServletRequest
     ): ResponseEntity<String> = runBlocking {
         Napier.i("/siopv2/postsuccess called with $requestBody")
         val params: AuthenticationResponseParameters = requestBody.decodeFromPostBody()
         val user = validateSiopResponse(params)
         Napier.i("Storing user at ${user.apiItem.id}: $user")
         authenticatedUsers[user.apiItem.id] = user
-        httpServletRequest.getSession(true).setAttribute(SIOP_2_USER, user)
-        ResponseEntity.status(HttpStatus.FOUND).header(HttpHeaders.LOCATION, customerSuccessUrl).build()
+        val urlWithId = ServletUriComponentsBuilder
+            .fromHttpUrl(customerSuccessUrl)
+            .queryParam("id", user.apiItem.id)
+            .toUriString()
+        ResponseEntity.status(HttpStatus.FOUND)
+            .header(HttpHeaders.LOCATION, urlWithId)
+            .build()
     }
 
     private suspend fun validateSiopResponse(params: AuthenticationResponseParameters): Siop2User {
@@ -237,7 +238,6 @@ class ApiController(
 private fun String.getDnsName() = UriComponentsBuilder.fromUriString(this).build().host ?: "wallet.a-sit.at"
 
 
-private const val SIOP_2_USER = "siop2user"
 private const val PARAM_ATTRIBUTES = "attributes"
 private const val PARAM_URLPREFIX = "urlprefix"
 private const val PARAM_REPRESENTATION = "representation"

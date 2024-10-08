@@ -4,7 +4,7 @@ const createBasicSetup = function() {
   // --- CONFIG --------------------------------------------------------
 
   const config = {
-    selfURL: 'api/self',
+    singleUrl: 'api/single/',
     itemsUrl: 'api/items',
     removeUrl: 'api/remove',
     timeUpdateRate: 1000,
@@ -77,16 +77,12 @@ const createBasicSetup = function() {
     const itemInterval = setInterval(updateData, config.itemsUpdateRate); // periodically
   }
 
-  async function updateByCookie() {
+  async function updateItemById(id) {
     try {
-      console.log('updateByCookie');
-
-      let response = await fetch(config.selfURL, {
-          credentials: 'include'
-      });
+      console.log('updateItemById');
+      let response = await fetch(config.singleUrl + id);
       const item = await response.json();
       console.log('item: ', item);
-
       updateItems([item]);
       updateTime();
     } catch (error) {
@@ -148,7 +144,7 @@ const createBasicSetup = function() {
     isSet,
     filterClaims,
     startPeriodicUpdate,
-    updateByCookie,
+    updateItemById,
   }
 }
 

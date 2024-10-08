@@ -25,7 +25,9 @@
         const app = createApp({
             setup: createBasicSetup
         }).mount('#app');
-        app.updateByCookie();
+        const urlParams = new URLSearchParams(window.location.search);
+        const idParam = urlParams.get('id');
+        app.updateItemById(idParam);
     </script>
 </head>
 <body id="app" style="background-color: #f3f3f3">

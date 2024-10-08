@@ -1,5 +1,6 @@
 package at.asit.apps.terminal_sp.prototype.server
 
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.idaustria.IdAustriaCredential
@@ -130,7 +131,7 @@ fun IsoDocumentParsed.toApiItemCredential() =
     )
 
 private fun String.sha256() = runCatching {
-    MessageDigest.getInstance("SHA-256").digest(this.encodeToByteArray()).encodeToString(Base64())
+    MessageDigest.getInstance("SHA-256").digest(this.encodeToByteArray()).encodeToString(Base64UrlStrict)
 }.getOrElse { this.hashCode().toString() }
 
 private fun IssuerSignedItem.elementValueToString() = when (elementValue) {
