@@ -2,6 +2,7 @@
 
 Version 5.0.1:
  - Remove storing user in session, but pass reference by query param
+ - Implement OpenID4VP correctly by returning `redirect_uri` on receiving authentication response from wallet
 
 Version 5.0.0:
  - Update to vck 5.0.0

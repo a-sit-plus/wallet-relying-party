@@ -182,19 +182,19 @@ class ApiController(
     @PostMapping("/siopv2/postsuccess")
     fun siopv2PostSuccessPage(
         @RequestBody requestBody: String,
-    ): ResponseEntity<String> = runBlocking {
+    ): ResponseEntity<OpenId4VpSuccess> = runBlocking {
         Napier.i("/siopv2/postsuccess called with $requestBody")
         val params: AuthenticationResponseParameters = requestBody.decodeFromPostBody()
         val user = validateSiopResponse(params)
         Napier.i("Storing user at ${user.apiItem.id}: $user")
         authenticatedUsers[user.apiItem.id] = user
-        val urlWithId = ServletUriComponentsBuilder
+        val redirectUrlWithId = ServletUriComponentsBuilder
             .fromHttpUrl(customerSuccessUrl)
             .queryParam("id", user.apiItem.id)
             .toUriString()
-        ResponseEntity.status(HttpStatus.FOUND)
-            .header(HttpHeaders.LOCATION, urlWithId)
-            .build()
+        ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(OpenId4VpSuccess(redirectUrlWithId))
     }
 
     private suspend fun validateSiopResponse(params: AuthenticationResponseParameters): Siop2User {
