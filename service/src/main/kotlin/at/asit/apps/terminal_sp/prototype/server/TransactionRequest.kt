@@ -7,12 +7,12 @@ import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
 import kotlinx.serialization.Serializable
 
 @Serializable
-data class QrCodeRequest(
+data class TransactionRequest(
     val credentialType: String? = null,
     val representation: String? = null,
     val urlprefix: String,
     val attributes: Collection<String>? = null,
-    val credentials: List<QrCodeRequestCredential>? = null,
+    val credentials: List<TransactionRequestCredential>? = null,
 ) {
     fun toRequestOptionsCredential() = OidcSiopVerifier.RequestOptionsCredential(
         credentialScheme = credentialType
@@ -28,7 +28,7 @@ data class QrCodeRequest(
 }
 
 @Serializable
-data class QrCodeRequestCredential(
+data class TransactionRequestCredential(
     val credentialType: String? = null,
     val representation: String? = null,
     val attributes: List<String>? = null,
@@ -42,3 +42,4 @@ data class QrCodeRequestCredential(
         requestedAttributes = attributes?.ifEmpty { null }?.toList(),
     )
 }
+

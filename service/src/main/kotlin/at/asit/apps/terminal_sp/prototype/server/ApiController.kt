@@ -16,7 +16,6 @@ import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
 import org.springframework.beans.factory.annotation.Value
-import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.ResponseEntity
@@ -98,9 +97,15 @@ class ApiController(
         authenticatedUsers.remove(id)?.toApiItem()?.let { ResponseEntity.ok(it) }
             ?: ResponseEntity.notFound().build()
 
+    @PostMapping("/transaction/create")
+    @ResponseBody
+    fun transactionCreate(@RequestBody request: TransactionRequest) = runBlocking {
+        Napier.i("/transaction/create called with $request")
+    }
+
     @PostMapping("/siopv2/generateQrCode")
     @ResponseBody
-    fun generateQrCode(@RequestBody request: QrCodeRequest): ResponseEntity<ByteArray> = runBlocking {
+    fun generateQrCode(@RequestBody request: TransactionRequest): ResponseEntity<ByteArray> = runBlocking {
         Napier.i("/siopv2/generateQrCode called with $request")
         val qrCodeUrl = buildQrCodeUrl(request)
         val bytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
@@ -111,12 +116,12 @@ class ApiController(
 
     @PostMapping("/siopv2/generateQrCodeUrl")
     @ResponseBody
-    fun qrCodeUrl(@RequestBody request: QrCodeRequest): ResponseEntity<String> = runBlocking {
+    fun qrCodeUrl(@RequestBody request: TransactionRequest): ResponseEntity<String> = runBlocking {
         Napier.i("/siopv2/generateQrCodeUrl called with $request")
         ResponseEntity.ok().body(buildQrCodeUrl(request))
     }
 
-    private fun buildQrCodeUrl(request: QrCodeRequest) = ServletUriComponentsBuilder.fromUriString(request.urlprefix)
+    private fun buildQrCodeUrl(request: TransactionRequest) = ServletUriComponentsBuilder.fromUriString(request.urlprefix)
         .queryParam(
             "request_uri", ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
                 .pathSegment("siopv2", "request")
@@ -146,8 +151,8 @@ class ApiController(
         @RequestParam(name = PARAM_CREDENTIALTYPE) credentialType: String?,
         @RequestParam(name = PARAM_CREDENTIALS) credentialsSerialized: String?,
     ): ResponseEntity<String> = runBlocking {
-        val credentials = credentialsSerialized?.let { Json.decodeFromString<List<QrCodeRequestCredential>>(it) }
-        val qrCodeRequest = QrCodeRequest(credentialType, representation, urlprefix, attributes, credentials)
+        val credentials = credentialsSerialized?.let { Json.decodeFromString<List<TransactionRequestCredential>>(it) }
+        val qrCodeRequest = TransactionRequest(credentialType, representation, urlprefix, attributes, credentials)
         Napier.i("/siopv2/request called with $qrCodeRequest")
         val state = createSafeState()
         val requestOptions = OidcSiopVerifier.RequestOptions(

@@ -1,5 +1,8 @@
 # Changelog
 
+Version 5.0.2:
+ - Refactor to use transactions for QR code generation and receiving credentials
+
 Version 5.0.1:
  - Remove storing user in session, but pass reference by query param
  - Implement OpenID4VP correctly by returning `redirect_uri` on receiving authentication response from wallet
