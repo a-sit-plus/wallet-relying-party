@@ -13,8 +13,6 @@ import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.ClientIdScheme.CertificateSa
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.encodeToString
-import kotlinx.serialization.json.Json
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -29,6 +27,8 @@ import qrcode.QRCode
 import java.util.*
 import kotlin.collections.set
 import kotlin.random.Random
+import kotlin.uuid.ExperimentalUuidApi
+import kotlin.uuid.Uuid
 
 
 @Controller
@@ -36,7 +36,8 @@ class ApiController(
     @Value("\${app.public-url}")
     private val publicUrl: String,
 ) {
-    private val authenticatedUsers: MutableMap<String, AuthenticatedPrincipal> = HashMap()
+    private val transactions: MutableMap<String, Transaction> = HashMap()
+    private val transactionToUser: MutableMap<String, AuthenticatedPrincipal> = HashMap()
     private val extensions = listOf(X509CertificateExtension(
         KnownOIDs.subjectAltName_2_5_29_17,
         critical = false,
@@ -55,11 +56,6 @@ class ApiController(
             .pathSegment("customer-success.html")
             .toUriString()
     }
-    private val postSuccessUrl by lazy {
-        ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
-            .pathSegment("siopv2", "postsuccess")
-            .toUriString()
-    }
     private val metadataUrl by lazy {
         ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
             .pathSegment("siopv2", "metadata")
@@ -76,96 +72,108 @@ class ApiController(
 
     @GetMapping("/api/items")
     @ResponseBody
-    fun apiItems(): List<ApiItem> = authenticatedUsers.mapNotNull { it.value.toApiItem() }
+    fun apiItems(): List<ApiItem> = transactionToUser.mapNotNull { it.value.toApiItem() }
 
     @GetMapping("/api/single/{id}")
     @ResponseBody
     fun apiSingle(@PathVariable id: String): ResponseEntity<ApiItem> {
-        Napier.i("/api/single called with $id")
-        return authenticatedUsers.mapNotNull { it.value.toApiItem() }
-            .firstOrNull { it.id == id }
-            ?.let {
-                ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(it)
-            } ?: ResponseEntity.notFound().build()
+        Napier.i("/api/single/$id called with")
+        return transactionToUser[id]?.toApiItem()?.let {
+            Napier.i("/api/single/$id returns $it")
+            ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(it)
+        } ?: ResponseEntity.notFound().build<ApiItem>()
+            .also { Napier.w("/api/single/$id returns NOT_FOUND") }
     }
 
     @PostMapping("/api/remove")
     @ResponseBody
     fun removeApiItem(@RequestBody id: String): ResponseEntity<ApiItem> =
-        authenticatedUsers.remove(id)?.toApiItem()?.let { ResponseEntity.ok(it) }
+        transactionToUser.remove(id)?.toApiItem()?.let { ResponseEntity.ok(it) }
             ?: ResponseEntity.notFound().build()
 
-    @PostMapping("/transaction/create")
+    @OptIn(ExperimentalUuidApi::class)
+    @PostMapping("/transaction/create", produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseBody
     fun transactionCreate(@RequestBody request: TransactionRequest) = runBlocking {
         Napier.i("/transaction/create called with $request")
+        val transactionId = Uuid.random().toString()
+        val qrCodeUrl = buildQrCodeUrl(request, transactionId)
+        val qrCodeBytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
+        val response = TransactionResponse(qrCodeBytes, qrCodeUrl, transactionId)
+        Napier.i("/transaction/create returns $transactionId with $qrCodeUrl")
+        ResponseEntity.ok().body(response)
     }
 
-    @PostMapping("/siopv2/generateQrCode")
+    @GetMapping("/transaction/get/{id}")
     @ResponseBody
-    fun generateQrCode(@RequestBody request: TransactionRequest): ResponseEntity<ByteArray> = runBlocking {
-        Napier.i("/siopv2/generateQrCode called with $request")
-        val qrCodeUrl = buildQrCodeUrl(request)
-        val bytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
-        Napier.i("/siopv2/generateQrCode returns with qrCodeUrl $qrCodeUrl")
-        Napier.i("/siopv2/generateQrCode returns with bytes ${bytes.size}")
-        ResponseEntity.ok().contentType(MediaType.IMAGE_PNG).body(bytes)
-    }
-
-    @PostMapping("/siopv2/generateQrCodeUrl")
-    @ResponseBody
-    fun qrCodeUrl(@RequestBody request: TransactionRequest): ResponseEntity<String> = runBlocking {
-        Napier.i("/siopv2/generateQrCodeUrl called with $request")
-        ResponseEntity.ok().body(buildQrCodeUrl(request))
-    }
-
-    private fun buildQrCodeUrl(request: TransactionRequest) = ServletUriComponentsBuilder.fromUriString(request.urlprefix)
-        .queryParam(
-            "request_uri", ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
-                .pathSegment("siopv2", "request")
-                .queryParam(PARAM_URLPREFIX, request.urlprefix)
-                .apply {
-                    request.credentialType?.let { queryParam(PARAM_CREDENTIALTYPE, it) }
-                    request.representation?.let { queryParam(PARAM_REPRESENTATION, it) }
-                    request.attributes?.let { queryParam(PARAM_ATTRIBUTES, it) }
-                    request.credentials?.let { queryParam(PARAM_CREDENTIALS, Json.encodeToString(it)) }
-                }
-                .toUriString()
-        )
-        .queryParam("client_id", publicUrl.getDnsName())
-        .queryParam("client_metadata_uri", metadataUrl)
-        .toUriString()
-
-
-    /**
-     * Creates SIOPv2 request object, with response_mode=post
-     */
-    @ResponseBody
-    @GetMapping("/siopv2/request")
-    fun siopv2RequestObject(
-        @RequestParam(name = PARAM_ATTRIBUTES) attributes: Collection<String>?,
-        @RequestParam(name = PARAM_REPRESENTATION) representation: String?,
-        @RequestParam(name = PARAM_URLPREFIX) urlprefix: String,
-        @RequestParam(name = PARAM_CREDENTIALTYPE) credentialType: String?,
-        @RequestParam(name = PARAM_CREDENTIALS) credentialsSerialized: String?,
-    ): ResponseEntity<String> = runBlocking {
-        val credentials = credentialsSerialized?.let { Json.decodeFromString<List<TransactionRequestCredential>>(it) }
-        val qrCodeRequest = TransactionRequest(credentialType, representation, urlprefix, attributes, credentials)
-        Napier.i("/siopv2/request called with $qrCodeRequest")
+    fun transactionGet(@PathVariable id: String): ResponseEntity<String> = runBlocking {
+        Napier.i("/transaction/$id called")
+        val transactionRequest = transactions[id]
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
+                .also { Napier.w("/transaction/$id returns NOT_FOUND") }
         val state = createSafeState()
         val requestOptions = OidcSiopVerifier.RequestOptions(
             state = state,
             responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
-            responseUrl = postSuccessUrl,
-            credentials = qrCodeRequest.toRequestOptionsCredentials(),
+            responseUrl = buildPostSuccessUrl(id),
+            credentials = transactionRequest.request.toRequestOptionsCredentials(),
         )
         val requestObjectJws = verifierProtocol.createAuthnRequestAsSignedRequestObject(requestOptions).getOrElse {
-            Napier.w("/siopv2/request error", it)
+            Napier.w("/transaction/$id error", it)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
         }
-        ResponseEntity.ok(requestObjectJws.serialize())
+        val result = requestObjectJws.serialize()
+            .also { Napier.i("/transaction/$id returns $it") }
+        ResponseEntity.ok(result)
+    }
+
+    /**
+     * Expects SIOPv2 authn response as request body,
+     * called from Wallet App upon answering authn request from [siopv2RequestObject].
+     */
+    @PostMapping("/transaction/result/{id}")
+    fun transactionPost(
+        @PathVariable id: String,
+        @RequestBody requestBody: String,
+    ) = runBlocking {
+        Napier.i("/transaction/result/$id called with $requestBody")
+        if (transactions.remove(id) == null) {
+            Napier.w("/transaction/result/$id returns NOT_FOUND")
+            throw ResponseStatusException(HttpStatus.NOT_FOUND)
+        }
+        val params: AuthenticationResponseParameters = requestBody.decodeFromPostBody()
+        val user = validateSiopResponse(params)
+        Napier.i("Storing user for transaction $id: $user")
+        transactionToUser[id] = user
+        val redirectUrlWithId = ServletUriComponentsBuilder
+            .fromHttpUrl(customerSuccessUrl)
+            .queryParam("id", id)
+            .toUriString()
+        ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(OpenId4VpSuccess(redirectUrlWithId))
+    }
+
+    private fun buildQrCodeUrl(request: TransactionRequest, transactionId: String) =
+        ServletUriComponentsBuilder.fromUriString(request.urlprefix)
+            .queryParam("request_uri", buildTransactionUrl(request, transactionId))
+            .queryParam("client_id", publicUrl.getDnsName())
+            .queryParam("client_metadata_uri", metadataUrl)
+            .toUriString()
+
+    private fun buildTransactionUrl(request: TransactionRequest, transactionId: String) = runBlocking {
+        transactions[transactionId] = Transaction(transactionId, request)
+        ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
+            .pathSegment("transaction", "get", transactionId)
+            .toUriString()
+    }
+
+    private fun buildPostSuccessUrl(transactionId: String) = runBlocking {
+        ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
+            .pathSegment("transaction", "result", transactionId)
+            .toUriString()
     }
 
     /**
@@ -178,28 +186,6 @@ class ApiController(
         ResponseEntity.ok()
             .contentType(MediaType.APPLICATION_JSON)
             .body(verifierProtocol.createSignedMetadata().getOrThrow().payload.decodeToString())
-    }
-
-    /**
-     * Expects SIOPv2 authn response as request body,
-     * called from Wallet App upon answering authn request from [siopv2RequestObject].
-     */
-    @PostMapping("/siopv2/postsuccess")
-    fun siopv2PostSuccessPage(
-        @RequestBody requestBody: String,
-    ): ResponseEntity<OpenId4VpSuccess> = runBlocking {
-        Napier.i("/siopv2/postsuccess called with $requestBody")
-        val params: AuthenticationResponseParameters = requestBody.decodeFromPostBody()
-        val user = validateSiopResponse(params)
-        Napier.i("Storing user at ${user.apiItem.id}: $user")
-        authenticatedUsers[user.apiItem.id] = user
-        val redirectUrlWithId = ServletUriComponentsBuilder
-            .fromHttpUrl(customerSuccessUrl)
-            .queryParam("id", user.apiItem.id)
-            .toUriString()
-        ResponseEntity.ok()
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(OpenId4VpSuccess(redirectUrlWithId))
     }
 
     private suspend fun validateSiopResponse(params: AuthenticationResponseParameters): Siop2User {
@@ -242,9 +228,3 @@ class ApiController(
 
 private fun String.getDnsName() = UriComponentsBuilder.fromUriString(this).build().host ?: "wallet.a-sit.at"
 
-
-private const val PARAM_ATTRIBUTES = "attributes"
-private const val PARAM_URLPREFIX = "urlprefix"
-private const val PARAM_REPRESENTATION = "representation"
-private const val PARAM_CREDENTIALTYPE = "credentialType"
-private const val PARAM_CREDENTIALS = "credentials"

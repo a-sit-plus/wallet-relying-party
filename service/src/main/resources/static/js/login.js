@@ -4,8 +4,7 @@ import {createApp, ref} from 'vue'
 
 const URLs = {
     loginConfigUrl: 'js/login-config.json',
-    qrCodeUrl: 'siopv2/generateQrCode',
-    qrCodeUrlUrl: 'siopv2/generateQrCodeUrl'
+    transactionUrl: 'transaction/create'
 }
 
 const loadConfig = async function() {
@@ -89,31 +88,21 @@ const createBasicSetup = function(config) {
             }
             console.log(`generateQrCode: fetching ${JSON.stringify(request)}`)
 
-            const response = await fetch(URLs.qrCodeUrl, {
+            const response = await fetch(URLs.transactionUrl, {
                 method: 'POST',
                 headers: {"Content-Type": "application/json"},
                 body: JSON.stringify(request),
             })
             if (response.ok) {
-                const data = (await response.blob());
-                console.log(`generateQrCode: got ${data.size} bytes`)
-                qrCode.value.src = URL.createObjectURL(data)
+                const data = await response.json();
+                console.log(`generateQrCode: got ${data}`)
+                qrCode.value.src = "data:image/png;base64," + data.qrCodePng;
+                qrCodeUrl.value.message = data.qrCodeUrl
                 error.value.message = null
             } else {
                 const data = (await response.text())
                 console.log(`generateQrCode: error ${data}`)
                 throw data
-            }
-
-            const urlResponse = await fetch(URLs.qrCodeUrlUrl, {
-                method: 'POST',
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify(request),
-            })
-            if (urlResponse.ok) {
-                qrCodeUrl.value.message = await urlResponse.text()
-            } else {
-                qrCodeUrl.value.message = null
             }
         } catch (err) {
             console.log(`error: ${err}`)
