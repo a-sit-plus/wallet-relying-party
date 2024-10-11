@@ -4,7 +4,8 @@ import {createApp, ref} from 'vue'
 
 const URLs = {
     loginConfigUrl: 'js/login-config.json',
-    transactionUrl: 'transaction/create'
+    transactionUrl: 'transaction/create',
+    resultUrl: 'api/single/'
 }
 
 const loadConfig = async function() {
@@ -24,6 +25,9 @@ const createBasicSetup = function(config) {
     const error = ref({message: null})
     const qrCode = ref({src: null})
     const qrCodeUrl = ref({message: null})
+    const transactionId = ref({id: null})
+    const transactionResult = ref({item: null})
+    let resultInterval = null
 
     // --- FUNCTIONS -----------------------------------------------
 
@@ -95,9 +99,11 @@ const createBasicSetup = function(config) {
             })
             if (response.ok) {
                 const data = await response.json();
-                console.log(`generateQrCode: got ${data}`)
+                console.log(`generateQrCode: got ${data}`);
                 qrCode.value.src = "data:image/png;base64," + data.qrCodePng;
-                qrCodeUrl.value.message = data.qrCodeUrl
+                qrCodeUrl.value.message = data.qrCodeUrl;
+                transactionId.value.id = data.id;
+                startPeriodicUpdate();
                 error.value.message = null
             } else {
                 const data = (await response.text())
@@ -111,7 +117,52 @@ const createBasicSetup = function(config) {
         }
     }
 
+    async function loadResult() {
+        try {
+            if (transactionId.value.id == null)
+                return;
+            console.log('loadResult for ' + transactionId.value.id);
+            let response = await fetch(URLs.resultUrl + transactionId.value.id);
+            const data = await response.json();
+            console.log('loadResult got: ', data);
+            if (response.ok) {
+                transactionResult.value.item = data;
+                clearInterval(resultInterval);
+            }
+        } catch (error) {
+            console.log('error: ', error);
+        }
+    }
+
+    async function startPeriodicUpdate() {
+        loadResult(); // initially
+        resultInterval = setInterval(loadResult, 2000); // periodically
+    }
+
     updateProfile(config.profiles[0]);
+
+    // --- FORMATTERS ----------------------------------------------------
+
+    function toggleDetails(item) {
+        // show details of item
+        item.showDetails = !(item.showDetails == true)
+    }
+
+    function filterClaims(item) {
+        const deepCopy = JSON.parse(JSON.stringify(item));
+        delete deepCopy.timestamp;
+        delete deepCopy.credentials;
+        delete deepCopy.expiredTime;
+        delete deepCopy.imageDataBase64;
+        delete deepCopy.showDetails;
+        return deepCopy;
+    }
+
+    // --- CHECKER -------------------------------------------------------
+
+    function isSet(value) {
+        return value && value != "N/A" && value != "data:image;base64,null" ;
+    }
 
     // --- RETURNS -------------------------------------------------
 
@@ -127,6 +178,11 @@ const createBasicSetup = function(config) {
         updateUrlprefix,
         updateAttribute,
         generateQrCode,
+        transactionId,
+        transactionResult,
+        toggleDetails,
+        filterClaims,
+        isSet
     }
 }
 
