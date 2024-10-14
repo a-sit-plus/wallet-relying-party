@@ -5,7 +5,7 @@ import {createApp, ref} from 'vue'
 const URLs = {
     loginConfigUrl: 'js/login-config.json',
     transactionUrl: 'transaction/create',
-    resultUrl: 'api/single/'
+    resultUrl: 'api/single/',
 }
 
 const loadConfig = async function() {
@@ -23,9 +23,11 @@ const createBasicSetup = function(config) {
 
     const reqSelection = ref({urlprefix: null, credentials: []})
     const error = ref({message: null})
-    const qrCode = ref({src: null})
-    const qrCodeUrl = ref({message: null})
-    const transactionId = ref({id: null})
+    const reqResult = ref({
+        id: null,
+        qrCodeSrc: null,
+        linkSrc: null,
+    })
     const transactionResult = ref({item: null})
     let resultInterval = null
 
@@ -159,7 +161,7 @@ const createBasicSetup = function(config) {
         try {
             const validationErrors = validate();
             if (validationErrors.length > 0) {
-              qrCode.value.src = null
+              reqResult.value = null
               error.value.message = "Validation Error: " + validationErrors.join(", ")
               return;
             }
@@ -183,7 +185,7 @@ const createBasicSetup = function(config) {
             }
             console.log(`generateQrCode: fetching ${JSON.stringify(request)}`)
 
-            // request QR code
+            // request QR code, link url and id
             const response = await fetch(URLs.transactionUrl, {
                 method: 'POST',
                 headers: {"Content-Type": "application/json"},
@@ -192,9 +194,11 @@ const createBasicSetup = function(config) {
             if (response.ok) {
                 const data = await response.json();
                 console.log(`generateQrCode: got ${data}`);
-                qrCode.value.src = "data:image/png;base64," + data.qrCodePng;
-                qrCodeUrl.value.message = data.qrCodeUrl;
-                transactionId.value.id = data.id;
+                reqResult.value = {
+                  qrCodeSrc: "data:image/png;base64," + data.qrCodePng,
+                  linkSrc: data.qrCodeUrl,
+                  id: data.id,
+                }
                 startPeriodicUpdate();
                 error.value.message = null
             } else {
@@ -204,17 +208,17 @@ const createBasicSetup = function(config) {
             }
         } catch (err) {
             console.log(`error: ${err}`)
-            qrCode.value.src = null
+            reqResult.value = null
             error.value.message = "Error: " + err
         }
     }
 
     async function loadResult() {
         try {
-            if (transactionId.value.id == null)
+            if (reqResult.value.id == null)
                 return;
-            console.log('loadResult for ' + transactionId.value.id);
-            let response = await fetch(URLs.resultUrl + transactionId.value.id);
+            console.log('loadResult for ' + reqResult.value.id);
+            let response = await fetch(URLs.resultUrl + reqResult.value.id);
             const data = await response.json();
             console.log('loadResult got: ', data);
             if (response.ok) {
@@ -262,8 +266,7 @@ const createBasicSetup = function(config) {
         config,
         reqSelection,
         error,
-        qrCode,
-        qrCodeUrl,
+        reqResult,
         updateProfile,
         updateSchemeType,
         updateRepresentation,
@@ -272,7 +275,6 @@ const createBasicSetup = function(config) {
         removeCredential,
         updateAttribute,
         generateQrCode,
-        transactionId,
         transactionResult,
         toggleDetails,
         filterClaims,

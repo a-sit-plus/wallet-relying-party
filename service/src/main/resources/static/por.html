@@ -31,7 +31,7 @@
               return profile.label == "PoR Mandatory";
           });
           app.updateProfile(selectedProfile);
-          //app.generateQrCode();
+          app.generateQrCode();
         })();
     </script>
 </head>
@@ -64,16 +64,16 @@
         {{ error.message }}
     </div>
 
-    <div v-if="qrCode.src" class="row gy-2 mb-3">
+    <div v-if="reqResult != null && reqResult.qrCodeSrc != null && reqResult.linkSrc != null" class="row gy-2 mb-3">
         <div class="col-md-6 border rounded p-2 bg-white">
             <h2>Option A: Wallet App</h2>
             <p>Scan the QR Code with your Wallet App:</p>
-            <img id="qrcode" width="300px" :src="qrCode.src" />
+            <img id="qrcode" width="300px" :src="reqResult.qrCodeSrc" />
         </div>
         <div v-if="qrCodeUrl.message" class="col-md-6 border rounded p-2 bg-white">
             <h2>Option B: Online Wallet</h2>
             <p>Open the following Link with the Online Wallet:</p>
-            <a target="_blank" :href="qrCodeUrl.message" class="btn btn-primary mb-3">Open Online Wallet</a>
+            <a target="_blank" :href="reqResult.linkSrc" class="btn btn-primary mb-3">Open Online Wallet</a>
         </div>
     </div>
 
@@ -109,13 +109,13 @@
                  v-for="credential in reqSelection.credentials"
                  :key="credential.schemeType">
               <legend class="">
-                <p v-if="credential.schemeType && credential.schemeType.label">
+                <span v-if="credential.schemeType && credential.schemeType.label">
                   Credential: {{ credential.schemeType.label }}
-                  <button type="button" class="btn btn-light" @click="removeCredential(credential)"><i class="bi-trash3"></i></button>
-                </p>
-                <p v-else>
+                </span>
+                <span v-else>
                   Credential: Unknown
-                </p>
+                </span>
+                <button type="button" class="btn btn-light" @click="removeCredential(credential)"><i class="bi-trash3"></i></button>
               </legend>
               <div class="col-lg-7 overflow-hidden">
                 <fieldset class="row mb-3">
