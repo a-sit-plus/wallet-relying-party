@@ -40,37 +40,37 @@ const createBasicSetup = function(config) {
 
         let credentials = []
         for (let key in profile.credentials) {
-          let credential = profile.credentials[key]
+            let credential = profile.credentials[key]
 
-          // for value in profile, get expanded label/value form from config
-          const schemeType = config.schemeTypes.find((type) => type.value == credential.schemeType)
-          const representation = config.representation.find((type) => type.value == credential.representation)
+            // for value in profile, get expanded label/value form from config
+            const schemeType = config.schemeTypes.find((type) => type.value == credential.schemeType)
+            const representation = config.representation.find((type) => type.value == credential.representation)
 
-          let attrs = []
-          if (schemeType) {
-              // find attributes that are marked as isSelected in profile
-              const selected = credential.attributes.reduce(function (acc, attr) {
-                  if (attr.isSelected) acc.push(attr.value)
-                  return acc
-              }, [])
+            let attrs = []
+            if (schemeType) {
+                // find attributes that are marked as isSelected in profile
+                const selected = credential.attributes.reduce(function (acc, attr) {
+                    if (attr.isSelected) acc.push(attr.value)
+                    return acc
+                }, [])
 
-              // take all attribtues from config for this credential type, and mark some as isSelected
-              attrs = schemeType.attributes.map(function (attr) {
-                  attr.isSelected = selected.includes(attr.value)
-                  return attr
-              })
-          }
+                // take all attribtues from config for this credential type, and mark some as isSelected
+                attrs = schemeType.attributes.map(function (attr) {
+                    attr.isSelected = selected.includes(attr.value)
+                    return attr
+                })
+            }
 
-          credentials.push({
-            schemeType: schemeType,
-            representation: representation,
-            attributes: attrs
-          })
+            credentials.push({
+                schemeType: schemeType,
+                representation: representation,
+                attributes: attrs
+            })
         }
 
         reqSelection.value = {
-          urlprefix: urlprefix,
-          credentials: credentials
+            urlprefix: urlprefix,
+            credentials: credentials
         }
 
         console.log('updateProfile result', reqSelection.value)
@@ -100,9 +100,9 @@ const createBasicSetup = function(config) {
     async function addCredential() {
         console.log('addCredential')
         reqSelection.value.credentials.push({
-          "schemeType": null,
-          "representation": null,
-          "attributes": []
+            "schemeType": null,
+            "representation": null,
+            "attributes": []
         })
     }
 
@@ -113,46 +113,46 @@ const createBasicSetup = function(config) {
     }
 
     function validate () {
-      const errors = [];
+        const errors = [];
 
-      // get allowed values
-      const allowedPrefixes = config.urlprefix.map(function (x) {
-        return x.value
-      })
-      const allowedSchemeTypes = config.schemeTypes.map(function (x) {
-        return x.value
-      })
-      const allowedRepresentations = config.representation.map(function (x) {
-        return x.value
-      })
+        // get allowed values
+        const allowedPrefixes = config.urlprefix.map(function (x) {
+            return x.value
+        })
+        const allowedSchemeTypes = config.schemeTypes.map(function (x) {
+            return x.value
+        })
+        const allowedRepresentations = config.representation.map(function (x) {
+            return x.value
+        })
 
-      // check url prefix
-      const prefix = reqSelection.value.urlprefix
-      if (prefix == null || typeof prefix != "object" || typeof prefix.value != "string")
-        errors.push("URL Prefix not set")
-      else if (!allowedPrefixes.includes(prefix.value))
-        errors.push("URL Prefix invalid")
+        // check url prefix
+        const prefix = reqSelection.value.urlprefix
+        if (prefix == null || typeof prefix != "object" || typeof prefix.value != "string")
+            errors.push("URL Prefix not set")
+        else if (!allowedPrefixes.includes(prefix.value))
+            errors.push("URL Prefix invalid")
 
-      // check credentials
-      for (let index in reqSelection.value.credentials) {
-        const credential = reqSelection.value.credentials[index]
+        // check credentials
+        for (let index in reqSelection.value.credentials) {
+            const credential = reqSelection.value.credentials[index]
 
-        // check scheme type
-        const schemeType = credential.schemeType
-        if (schemeType == null || typeof schemeType != "object" || typeof schemeType.value != "string")
-          errors.push("Credential Type not set")
-        else if (!allowedSchemeTypes.includes(schemeType.value))
-          errors.push("Credential Type invalid")
+            // check scheme type
+            const schemeType = credential.schemeType
+            if (schemeType == null || typeof schemeType != "object" || typeof schemeType.value != "string")
+                errors.push("Credential Type not set")
+            else if (!allowedSchemeTypes.includes(schemeType.value))
+                errors.push("Credential Type invalid")
 
-        // check representation type
-        const representation = credential.representation
-        if (representation == null || typeof representation != "object" || typeof representation.value != "string")
-          errors.push("Presentation Type not set")
-        else if (!allowedRepresentations.includes(representation.value))
-          errors.push("Presentation Type invalid")
-      }
+            // check representation type
+            const representation = credential.representation
+            if (representation == null || typeof representation != "object" || typeof representation.value != "string")
+                errors.push("Presentation Type not set")
+            else if (!allowedRepresentations.includes(representation.value))
+                errors.push("Presentation Type invalid")
+        }
 
-      return errors;
+        return errors;
     }
 
     async function generateQrCode() {
@@ -161,23 +161,23 @@ const createBasicSetup = function(config) {
         try {
             const validationErrors = validate();
             if (validationErrors.length > 0) {
-              reqResult.value = null
-              error.value.message = "Validation Error: " + validationErrors.join(", ")
-              return;
+                reqResult.value = null
+                error.value.message = "Validation Error: " + validationErrors.join(", ")
+                return;
             }
 
             // build request payload
             // from form inputs, take values and only selected attributes
             const credentials = reqSelection.value.credentials.map(function (credential) {
-              return {
-                  credentialType: credential.schemeType.value,
-                  representation: credential.representation.value,
-                  attributes: credential.attributes.filter(function (attr) {
-                      return attr.isSelected
-                  }).map(function (attr) {
-                      return attr.value
-                  }),
-              }
+                return {
+                    credentialType: credential.schemeType.value,
+                    representation: credential.representation.value,
+                    attributes: credential.attributes.filter(function (attr) {
+                        return attr.isSelected
+                    }).map(function (attr) {
+                        return attr.value
+                    }),
+                }
             })
             const request = {
                 urlprefix: reqSelection.value.urlprefix.value,
@@ -195,9 +195,9 @@ const createBasicSetup = function(config) {
                 const data = await response.json();
                 console.log(`generateQrCode: got ${data}`);
                 reqResult.value = {
-                  qrCodeSrc: "data:image/png;base64," + data.qrCodePng,
-                  linkSrc: data.qrCodeUrl,
-                  id: data.id,
+                    qrCodeSrc: "data:image/png;base64," + data.qrCodePng,
+                    linkSrc: data.qrCodeUrl,
+                    id: data.id,
                 }
                 startPeriodicUpdate();
                 error.value.message = null
@@ -223,7 +223,7 @@ const createBasicSetup = function(config) {
             console.log('loadResult got: ', data);
             if (response.ok) {
                 transactionResult.value.item = data;
-                clearInterval(resultInterval);
+                stopPeriodicUpdate()
             }
         } catch (error) {
             console.log('error: ', error);
@@ -231,8 +231,17 @@ const createBasicSetup = function(config) {
     }
 
     async function startPeriodicUpdate() {
-        loadResult(); // initially
-        resultInterval = setInterval(loadResult, 2000); // periodically
+        if (resultInterval == null) {
+            loadResult() // initially
+            resultInterval = setInterval(loadResult, 2000) // periodically
+        }
+    }
+
+    async function stopPeriodicUpdate() {
+        if (resultInterval != null) {
+            resultInterval = null
+            clearInterval(resultInterval)
+        }
     }
 
     updateProfile(config.profiles[0]);
@@ -265,8 +274,9 @@ const createBasicSetup = function(config) {
     return {
         config,
         reqSelection,
-        error,
         reqResult,
+        error,
+        transactionResult,
         updateProfile,
         updateSchemeType,
         updateRepresentation,
@@ -275,7 +285,6 @@ const createBasicSetup = function(config) {
         removeCredential,
         updateAttribute,
         generateQrCode,
-        transactionResult,
         toggleDetails,
         filterClaims,
         isSet
