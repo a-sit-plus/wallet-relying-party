@@ -2,10 +2,13 @@ import {createApp, ref} from 'vue'
 
 // --- STATIC --------------------------------------------------------
 
+const DEBUG = false
+
 const URLs = {
     loginConfigUrl: 'js/login-config.json',
-    transactionUrl: 'transaction/create',
+    transactionUrl: DEBUG ? 'api/transaction-create' : 'transaction/create',
     resultUrl: 'api/single/',
+    successPageUrl: 'customer-success.html?id=',
 }
 
 const loadConfig = async function() {
@@ -28,7 +31,7 @@ const createBasicSetup = function(config) {
         qrCodeSrc: null,
         linkSrc: null,
     })
-    const transactionResult = ref({item: null})
+
     let resultInterval = null
 
     // --- FUNCTIONS -----------------------------------------------
@@ -187,9 +190,9 @@ const createBasicSetup = function(config) {
 
             // request QR code, link url and id
             const response = await fetch(URLs.transactionUrl, {
-                method: 'POST',
+                method: DEBUG ? 'GET' : 'POST',
                 headers: {"Content-Type": "application/json"},
-                body: JSON.stringify(request),
+                body: DEBUG ? null : JSON.stringify(request),
             })
             if (response.ok) {
                 const data = await response.json();
@@ -199,7 +202,6 @@ const createBasicSetup = function(config) {
                     linkSrc: data.qrCodeUrl,
                     id: data.id,
                 }
-                startPeriodicUpdate();
                 error.value.message = null
             } else {
                 const data = (await response.text())
@@ -215,15 +217,15 @@ const createBasicSetup = function(config) {
 
     async function loadResult() {
         try {
-            if (reqResult.value.id == null)
+            if (reqResult.value == null || reqResult.value.id == null)
                 return;
             console.log('loadResult for ' + reqResult.value.id);
             let response = await fetch(URLs.resultUrl + reqResult.value.id);
             const data = await response.json();
             console.log('loadResult got: ', data);
             if (response.ok) {
-                transactionResult.value.item = data;
-                stopPeriodicUpdate()
+                // navigate to success page
+                window.location.href = URLs.successPageUrl + reqResult.value.id
             }
         } catch (error) {
             console.log('error: ', error);
@@ -237,37 +239,7 @@ const createBasicSetup = function(config) {
         }
     }
 
-    async function stopPeriodicUpdate() {
-        if (resultInterval != null) {
-            clearInterval(resultInterval)
-            resultInterval = null
-        }
-    }
-
-    updateProfile(config.profiles[0]);
-
-    // --- FORMATTERS ----------------------------------------------------
-
-    function toggleDetails(item) {
-        // show details of item
-        item.showDetails = !(item.showDetails == true)
-    }
-
-    function filterClaims(item) {
-        const deepCopy = JSON.parse(JSON.stringify(item));
-        delete deepCopy.timestamp;
-        delete deepCopy.credentials;
-        delete deepCopy.expiredTime;
-        delete deepCopy.imageDataBase64;
-        delete deepCopy.showDetails;
-        return deepCopy;
-    }
-
-    // --- CHECKER -------------------------------------------------------
-
-    function isSet(value) {
-        return value && value != "N/A" && value != "data:image;base64,null" ;
-    }
+    updateProfile(config.profiles[0])
 
     // --- RETURNS -------------------------------------------------
 
@@ -276,7 +248,6 @@ const createBasicSetup = function(config) {
         reqSelection,
         reqResult,
         error,
-        transactionResult,
         updateProfile,
         updateSchemeType,
         updateRepresentation,
@@ -285,9 +256,7 @@ const createBasicSetup = function(config) {
         removeCredential,
         updateAttribute,
         generateQrCode,
-        toggleDetails,
-        filterClaims,
-        isSet
+        startPeriodicUpdate,
     }
 }
 

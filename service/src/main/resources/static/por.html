@@ -33,6 +33,7 @@
             });
             app.updateProfile(selectedProfile);
             app.generateQrCode();
+            app.startPeriodicUpdate();
         })();
     </script>
 </head>
@@ -75,54 +76,6 @@
             <h2>Option B: Online Wallet</h2>
             <p>Open the following Link with the Online Wallet:</p>
             <a target="_blank" :href="reqResult.linkSrc" class="btn btn-primary mb-3">Open Online Wallet</a>
-        </div>
-    </div>
-
-    <div class="row gy-2 mb-3 border rounded bg-white">
-        <p v-if="transactionResult.item == null">There are no recent authentication results.</p>
-        <div v-if="transactionResult.item != null" class="row g-0 overflow-hidden flex-md-row mb-8 shadow-sm rounded">
-            <div v-if="isSet(transactionResult.item.imageDataBase64)" class="col-lg-4 text-bg-dark"
-                 style="text-align: center">
-                <img style="max-height: 400px;max-width: 100%" :src="transactionResult.item.imageDataBase64"/>
-            </div>
-            <div :class="isSet(transactionResult.item.imageDataBase64) ? 'col-lg-8' : 'col-lg-12'"
-                 class="p-4 d-flex flex-column position-static">
-                <div class="foldout mb-1" :class="transactionResult.item.showDetails ? '' : 'foldout-preview'">
-                    <div v-if="!transactionResult.item.showDetails" class="foldout-button">
-                        <button type="button" class="btn btn-outline-secondary btn-sm"
-                                @click="toggleDetails(transactionResult.item)">
-                            More Details
-                            <i class="bi-caret-down-fill"></i>
-                        </button>
-                    </div>
-                    <div v-if="transactionResult.item.showDetails" class="foldout-button">
-                        <button type="button" class="btn btn-outline-secondary btn-sm"
-                                @click="toggleDetails(transactionResult.item)">
-                            Less Details
-                            <i class="bi-caret-up-fill"></i>
-                        </button>
-                    </div>
-
-                    <h3 v-if="isSet(transactionResult.item.firstname) || isSet(transactionResult.item.lastname)" class="mb-1">
-                        {{ transactionResult.item.firstname }} {{ transactionResult.item.lastname }}
-                    </h3>
-
-                    <p v-for="(value, key) in filterClaims(transactionResult.item)" :key="key" class="text-truncate mb-1"
-                       style="max-width: 100%;">
-                        <span class="fw-semibold">{{ key }}</span>: {{ value }}
-                    </p>
-
-                    <div v-for="(credential, key) in transactionResult.item.credentials" :key="key" class="border rounded p-2 bg-light">
-                        <h4>Credential Type: {{ credential.credentialType }}</h4>
-                        <p v-for="(value, key) in credential.allFields" :key="key"
-                            class="text-truncate mb-1"
-                            style="max-width: 100%;">
-                            <span class="fw-semibold">{{ key }}</span>: {{ value }}
-                        </p>
-                    </div>
-                    <div class="foldout-fade"></div>
-                </div>
-            </div>
         </div>
     </div>
 
