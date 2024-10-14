@@ -95,7 +95,7 @@
                              :key="item.value"
                              class="form-check">
                             <input class="form-check-input" type="radio" name="urlprefix" :value="item.value"
-                                   :checked="reqSelection.urlprefix == item.value" @click="updateUrlprefix(item)">
+                                   :checked="reqSelection.urlprefix && reqSelection.urlprefix.value == item.value" @click="updateUrlprefix(item)">
                             <label class="form-check-label">
                                 {{ item.label }} - <span class="text-primary">{{ item.value }}</span>
                             </label>

@@ -34,6 +34,8 @@ const createBasicSetup = function(config) {
     async function updateProfile(profile) {
         console.log('updateProfile', profile)
 
+        const urlprefix = config.urlprefix.find((up) => up.value == profile.urlprefix)
+
         let credentials = []
         for (let key in profile.credentials) {
           let credential = profile.credentials[key]
@@ -65,7 +67,7 @@ const createBasicSetup = function(config) {
         }
 
         reqSelection.value = {
-          urlprefix: profile.urlprefix,
+          urlprefix: urlprefix,
           credentials: credentials
         }
 
@@ -85,7 +87,7 @@ const createBasicSetup = function(config) {
 
     async function updateUrlprefix(urlprefix) {
         console.log('updateUrlprefix', urlprefix)
-        reqSelection.value.urlprefix = urlprefix.value
+        reqSelection.value.urlprefix = urlprefix
     }
 
     async function updateAttribute(attribute) {
@@ -108,10 +110,60 @@ const createBasicSetup = function(config) {
         reqSelection.value.credentials.splice(index, 1)
     }
 
+    function validate () {
+      const errors = [];
+
+      // get allowed values
+      const allowedPrefixes = config.urlprefix.map(function (x) {
+        return x.value
+      })
+      const allowedSchemeTypes = config.schemeTypes.map(function (x) {
+        return x.value
+      })
+      const allowedRepresentations = config.representation.map(function (x) {
+        return x.value
+      })
+
+      // check url prefix
+      const prefix = reqSelection.value.urlprefix
+      if (prefix == null || typeof prefix != "object" || typeof prefix.value != "string")
+        errors.push("URL Prefix not set")
+      else if (!allowedPrefixes.includes(prefix.value))
+        errors.push("URL Prefix invalid")
+
+      // check credentials
+      for (let index in reqSelection.value.credentials) {
+        const credential = reqSelection.value.credentials[index]
+
+        // check scheme type
+        const schemeType = credential.schemeType
+        if (schemeType == null || typeof schemeType != "object" || typeof schemeType.value != "string")
+          errors.push("Credential Type not set")
+        else if (!allowedSchemeTypes.includes(schemeType.value))
+          errors.push("Credential Type invalid")
+
+        // check representation type
+        const representation = credential.representation
+        if (representation == null || typeof representation != "object" || typeof representation.value != "string")
+          errors.push("Presentation Type not set")
+        else if (!allowedRepresentations.includes(representation.value))
+          errors.push("Presentation Type invalid")
+      }
+
+      return errors;
+    }
+
     async function generateQrCode() {
         console.log('generateQrCode', reqSelection.value)
 
         try {
+            const validationErrors = validate();
+            if (validationErrors.length > 0) {
+              qrCode.value.src = null
+              error.value.message = "Validation Error: " + validationErrors.join(", ")
+              return;
+            }
+
             // build request payload
             // from form inputs, take values and only selected attributes
             const credentials = reqSelection.value.credentials.map(function (credential) {
@@ -126,7 +178,7 @@ const createBasicSetup = function(config) {
               }
             })
             const request = {
-                urlprefix: reqSelection.value.urlprefix,
+                urlprefix: reqSelection.value.urlprefix.value,
                 credentials: credentials,
             }
             console.log(`generateQrCode: fetching ${JSON.stringify(request)}`)
