@@ -61,7 +61,7 @@
                         v-for="item in loginList"
                         :key="item.id"
                         class="col">
-                    <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm bg-light">
+                    <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm bg-white">
                         <div v-if="isSet(item.imageDataBase64)" class="col-lg-4 text-bg-dark"
                              style="text-align: center">
                             <img style="max-height: 400px;max-width: 100%" :src="item.imageDataBase64"/>
@@ -93,21 +93,14 @@
                                     <span class="fw-semibold">{{ key }}</span>: {{ value }}
                                 </p>
 
-                                <p><span class="fw-semibold">All credentials</span>:</p>
-                                <ul>
-                                    <li v-for="(credential, key) in item.credentials" :key="key">
-                                        <p><span class="fw-semibold">Credential type</span>: {{ credential.credentialType }}
-                                        </p>
-                                        <p><span class="fw-semibold">Full data</span>:</p>
-                                        <ul>
-                                            <li v-for="(value, key) in credential.allFields" :key="key"
-                                                class="text-truncate mb-1"
-                                                style="max-width: 100%;">
-                                                <span class="fw-semibold">{{ key }}</span>: {{ value }}
-                                            </li>
-                                        </ul>
-                                    </li>
-                                </ul>
+                                <div v-for="(credential, key) in item.credentials" :key="key" class="border rounded p-2 bg-light my-3">
+                                    <h4>Credential Type: {{ credential.credentialType }}</h4>
+                                    <p v-for="(value, key) in credential.allFields" :key="key"
+                                        class="text-truncate mb-1"
+                                        style="max-width: 100%;">
+                                        <span class="fw-semibold">{{ key }}</span>: {{ value }}
+                                    </p>
+                                </div>
                                 <div class="foldout-fade"></div>
                             </div>
                             <div class="text-body-tertiary mt-auto ms-auto">Authenticated {{ item.expiredTime }} ago

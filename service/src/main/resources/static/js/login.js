@@ -239,8 +239,8 @@ const createBasicSetup = function(config) {
 
     async function stopPeriodicUpdate() {
         if (resultInterval != null) {
-            resultInterval = null
             clearInterval(resultInterval)
+            resultInterval = null
         }
     }
 
