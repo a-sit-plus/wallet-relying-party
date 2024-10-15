@@ -33,6 +33,7 @@
             });
             app.updateProfile(selectedProfile);
             app.generateQrCode();
+            app.compareRequestChanged(true);
             app.startPeriodicUpdate();
         })();
     </script>
@@ -50,7 +51,7 @@
     </div>
 </header>
 
-<div class="container px-4 py-5">
+<div class="container px-4 py-5 position-relative">
 
     <div class="row">
         <h3 class="fs-2 text-body-emphasis">
@@ -66,7 +67,18 @@
         {{ error.message }}
     </div>
 
-    <div v-if="reqResult != null && reqResult.qrCodeSrc != null && reqResult.linkSrc != null" class="row gy-2 mb-3">
+    <div v-if="reqChanged.changed && !error.message" class="z-3 position-absolute rounded w-100">
+        <div class="card w-50 mx-auto mt-5 text-center">
+            <div class="card-body">
+                <h5 class="card-title">Request Data Changed</h5>
+                <p class="card-text">You have changed the request data. Please refresh the QR code and online wallet link.</p>
+                <button @click="generateQrCode()" class="btn btn-primary">Refresh Request</button>
+            </div>
+        </div>
+    </div>
+    <div v-if="reqResult != null && reqResult.qrCodeSrc != null && reqResult.linkSrc != null"
+        class="row gy-2 mb-3"
+        :class="{ 'blur' : reqChanged.changed}">
         <div class="col-md-6 border rounded p-2 bg-white">
             <h2>Option A: Wallet App</h2>
             <p>Scan the QR Code with your Wallet App:</p>
@@ -83,7 +95,7 @@
       <div class="accordion-item">
         <h2 class="accordion-header" id="headingOne">
           <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-            Request Details
+              Request Details
           </button>
         </h2>
         <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#accordionRequest">
@@ -112,10 +124,10 @@
                  :key="credential.schemeType">
               <legend class="">
                 <span v-if="credential.schemeType && credential.schemeType.label">
-                  Credential: {{ credential.schemeType.label }}
+                    Credential: {{ credential.schemeType.label }}
                 </span>
                 <span v-else>
-                  Credential: Unknown
+                    Credential: Unknown
                 </span>
                 <button type="button" class="btn btn-light" @click="removeCredential(credential)"><i class="bi-trash3"></i></button>
               </legend>

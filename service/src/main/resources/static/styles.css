@@ -42,3 +42,8 @@
     );
     pointer-events: none; /* so the text is still selectable */
 }
+
+/* other styles */
+.blur {
+    filter: blur(8px);
+}

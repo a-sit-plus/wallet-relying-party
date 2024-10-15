@@ -31,6 +31,10 @@ const createBasicSetup = function(config) {
         qrCodeSrc: null,
         linkSrc: null,
     })
+    const reqChanged = ref({
+        oldRequestJSON: null,
+        changed: false,
+    })
 
     let resultInterval = null
 
@@ -75,29 +79,34 @@ const createBasicSetup = function(config) {
             urlprefix: urlprefix,
             credentials: credentials
         }
-
         console.log('updateProfile result', reqSelection.value)
+
+        compareRequestChanged()
     }
 
     async function updateSchemeType(credential, schemeType) {
         console.log('updateSchemeType', schemeType)
         credential.schemeType = schemeType
         credential.attributes = schemeType.attributes
+        compareRequestChanged()
     }
 
     async function updateRepresentation(credential, representation) {
         console.log('updateRepresentation', representation)
         credential.representation = representation
+        compareRequestChanged()
     }
 
     async function updateUrlprefix(urlprefix) {
         console.log('updateUrlprefix', urlprefix)
         reqSelection.value.urlprefix = urlprefix
+        compareRequestChanged()
     }
 
     async function updateAttribute(attribute) {
         console.log('updateAttribute', attribute)
         attribute.isSelected = !attribute.isSelected;
+        compareRequestChanged()
     }
 
     async function addCredential() {
@@ -107,6 +116,7 @@ const createBasicSetup = function(config) {
             "representation": null,
             "attributes": []
         })
+        compareRequestChanged()
     }
 
     async function removeCredential(credential) {
@@ -158,6 +168,28 @@ const createBasicSetup = function(config) {
         return errors;
     }
 
+    function createRequestJSON() {
+        // build request payload
+        // from form inputs, take values and only selected attributes
+        const credentials = reqSelection.value.credentials.map(function (credential) {
+            return {
+                credentialType: credential.schemeType.value,
+                representation: credential.representation.value,
+                attributes: credential.attributes.filter(function (attr) {
+                    return attr.isSelected
+                }).map(function (attr) {
+                    return attr.value
+                }),
+            }
+        })
+        const request = {
+            urlprefix: reqSelection.value.urlprefix.value,
+            credentials: credentials,
+        }
+
+        return JSON.stringify(request)
+    }
+
     async function generateQrCode() {
         console.log('generateQrCode', reqSelection.value)
 
@@ -169,30 +201,14 @@ const createBasicSetup = function(config) {
                 return;
             }
 
-            // build request payload
-            // from form inputs, take values and only selected attributes
-            const credentials = reqSelection.value.credentials.map(function (credential) {
-                return {
-                    credentialType: credential.schemeType.value,
-                    representation: credential.representation.value,
-                    attributes: credential.attributes.filter(function (attr) {
-                        return attr.isSelected
-                    }).map(function (attr) {
-                        return attr.value
-                    }),
-                }
-            })
-            const request = {
-                urlprefix: reqSelection.value.urlprefix.value,
-                credentials: credentials,
-            }
-            console.log(`generateQrCode: fetching ${JSON.stringify(request)}`)
+            const requestJSON = createRequestJSON()
+            console.log(`generateQrCode: fetching ${requestJSON}`)
 
             // request QR code, link url and id
             const response = await fetch(URLs.transactionUrl, {
                 method: DEBUG ? 'GET' : 'POST',
                 headers: {"Content-Type": "application/json"},
-                body: DEBUG ? null : JSON.stringify(request),
+                body: DEBUG ? null : requestJSON,
             })
             if (response.ok) {
                 const data = await response.json();
@@ -203,6 +219,7 @@ const createBasicSetup = function(config) {
                     id: data.id,
                 }
                 error.value.message = null
+                resetRequestChanged()
             } else {
                 const data = (await response.text())
                 console.log(`generateQrCode: error ${data}`)
@@ -239,6 +256,27 @@ const createBasicSetup = function(config) {
         }
     }
 
+    function resetRequestChanged() {
+        try {
+            const requestJSON = createRequestJSON()
+            const changed = requestJSON != reqChanged.value.oldRequestJSON
+            reqChanged.value.changed = false
+            reqChanged.value.oldRequestJSON = requestJSON
+        } catch (error) {
+            reqChanged.value.changed = false
+        }
+    }
+
+    function compareRequestChanged() {
+        try {
+            const requestJSON = createRequestJSON()
+            const changed = requestJSON != reqChanged.value.oldRequestJSON
+            reqChanged.value.changed = changed
+        } catch (error) {
+            reqChanged.value.changed = true
+        }
+    }
+
     updateProfile(config.profiles[0])
 
     // --- RETURNS -------------------------------------------------
@@ -248,6 +286,7 @@ const createBasicSetup = function(config) {
         reqSelection,
         reqResult,
         error,
+        reqChanged,
         updateProfile,
         updateSchemeType,
         updateRepresentation,
@@ -257,6 +296,8 @@ const createBasicSetup = function(config) {
         updateAttribute,
         generateQrCode,
         startPeriodicUpdate,
+        resetRequestChanged,
+        compareRequestChanged,
     }
 }
 
