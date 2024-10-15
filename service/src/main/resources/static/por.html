@@ -33,7 +33,7 @@
             });
             app.updateProfile(selectedProfile);
             app.generateQrCode();
-            app.compareRequestChanged(true);
+            app.resetRequestChanged();
             app.startPeriodicUpdate();
         })();
     </script>
@@ -81,13 +81,17 @@
         :class="{ 'blur' : reqChanged.changed}">
         <div class="col-md-6 border rounded p-2 bg-white">
             <h2>Option A: Wallet App</h2>
-            <p>Scan the QR Code with your Wallet App:</p>
-            <img id="qrcode" width="300px" :src="reqResult.qrCodeSrc" />
+            <p>Scan the QR code with your Wallet App:</p>
+            <div class="text-center">
+                <img id="qrcode" width="300px" :src="reqResult.qrCodeSrc" />
+            </div>
         </div>
         <div class="col-md-6 border rounded p-2 bg-white">
             <h2>Option B: Online Wallet</h2>
-            <p>Open the following Link with the Online Wallet:</p>
-            <a target="_blank" :href="reqResult.linkSrc" class="btn btn-primary mb-3">Open Online Wallet</a>
+            <p>Open the following link to authenticate via the Online Wallet:</p>
+            <div class="text-center">
+                <a target="_blank" :href="reqResult.linkSrc" class="btn btn-primary mb-3">Open Online Wallet</a>
+            </div>
         </div>
     </div>
 
