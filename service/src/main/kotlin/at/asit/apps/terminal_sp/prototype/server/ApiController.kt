@@ -93,7 +93,7 @@ class ApiController(
     @OptIn(ExperimentalUuidApi::class)
     @PostMapping("/transaction/create", produces = [MediaType.APPLICATION_JSON_VALUE])
     @ResponseBody
-    fun transactionCreate(@RequestBody request: TransactionRequest) = runBlocking {
+    fun transactionCreate(@RequestBody request: TransactionRequest): ResponseEntity<TransactionResponse> = runBlocking {
         Napier.i("/transaction/create called with $request")
         val transactionId = Uuid.random().toString()
         val qrCodeUrl = buildQrCodeUrl(request, transactionId)
@@ -128,13 +128,13 @@ class ApiController(
 
     /**
      * Expects SIOPv2 authn response as request body,
-     * called from Wallet App upon answering authn request from [siopv2RequestObject].
+     * called from Wallet App upon answering authn request from [transactionGet].
      */
     @PostMapping("/transaction/result/{id}")
     fun transactionPost(
         @PathVariable id: String,
         @RequestBody requestBody: String,
-    ) = runBlocking {
+    ): ResponseEntity<OpenId4VpSuccess> = runBlocking {
         Napier.i("/transaction/result/$id called with $requestBody")
         if (transactions.remove(id) == null) {
             Napier.w("/transaction/result/$id returns NOT_FOUND")
