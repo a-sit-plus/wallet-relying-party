@@ -29,7 +29,7 @@
                 setup: function () { return createBasicSetup(config); }
             }).mount('#app');
             const selectedProfile = config.profiles.find(function(profile){
-                return profile.label == "PoR Mandatory";
+                return profile.label == "Combined PID+PoR";
             });
             app.updateProfile(selectedProfile);
             app.generateQrCode();

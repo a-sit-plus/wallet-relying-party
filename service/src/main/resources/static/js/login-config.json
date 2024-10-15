@@ -344,6 +344,39 @@
           ]
         }
       ]
+    },
+    { "label": "Combined PID+PoR",
+      "urlprefix": "https://wallet.a-sit.at/mobile",
+      "credentials": [
+        {
+          "schemeType": "urn:eu.europa.ec.eudi:pid:1",
+          "representation": "SD_JWT",
+          "attributes": [
+            { "label": "family_name", "value": "family_name", "isSelected": true },
+            { "label": "given_name", "value": "given_name", "isSelected": true },
+            { "label": "birth_date", "value": "birth_date", "isSelected": true },
+            { "label": "age_over_18", "value": "age_over_18", "isSelected": true },
+            { "label": "issuance_date", "value": "issuance_date", "isSelected": true },
+            { "label": "expiry_date", "value": "expiry_date", "isSelected": true },
+            { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true },
+            { "label": "issuing_country", "value": "issuing_country", "isSelected": true }
+          ]
+        },
+        {
+          "schemeType": "eu.europa.ec.eudi.por.1",
+          "representation": "SD_JWT",
+          "attributes": [
+            { "label": "legal_person_identifier", "value": "legal_person_identifier", "isSelected": true },
+            { "label": "legal_name", "value": "legal_name", "isSelected": true },
+            { "label": "full_powers", "value": "full_powers", "isSelected": true },
+            { "label": "effective_from_date", "value": "effective_from_date", "isSelected": true },
+            { "label": "issuance_date", "value": "issuance_date", "isSelected": true },
+            { "label": "expiry_date", "value": "expiry_date", "isSelected": true },
+            { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true },
+            { "label": "issuing_country", "value": "issuing_country", "isSelected": true }
+          ]
+        }
+      ]
     }
   ]
 }
