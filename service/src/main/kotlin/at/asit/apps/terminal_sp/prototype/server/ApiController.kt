@@ -76,16 +76,13 @@ class ApiController(
 
     @GetMapping("/api/single/{id}")
     @ResponseBody
-    fun apiSingle(@PathVariable id: String): ResponseEntity<ApiItem> {
-        Napier.i("/api/single/$id called with")
-        return transactionToUser[id]?.toApiItem()?.let {
+    fun apiSingle(@PathVariable id: String): ResponseEntity<ApiItem> =
+        transactionToUser[id]?.toApiItem()?.let {
             Napier.i("/api/single/$id returns $it")
             ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(it)
-        } ?: ResponseEntity.notFound().build<ApiItem>()
-            .also { Napier.w("/api/single/$id returns NOT_FOUND") }
-    }
+        } ?: ResponseEntity.notFound().build()
 
     @PostMapping("/api/remove")
     @ResponseBody
