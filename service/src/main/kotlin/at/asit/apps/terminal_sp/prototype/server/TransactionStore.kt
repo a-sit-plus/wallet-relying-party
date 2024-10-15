@@ -1,18 +1,33 @@
 package at.asit.apps.terminal_sp.prototype.server
 
-import org.springframework.security.core.AuthenticatedPrincipal
+import okio.withLock
 import org.springframework.stereotype.Service
-import java.util.HashMap
+import java.util.concurrent.locks.ReentrantLock
 
 @Service
 class TransactionStore {
-    private val transactionToUser: MutableMap<String, AuthenticatedPrincipal> = HashMap()
+    private val lock = ReentrantLock()
+    private val entries: MutableList<Entry> = mutableListOf()
 
-    fun getApiItems(): List<ApiItem> = transactionToUser.mapNotNull { it.value.toApiItem() }
-    fun getApiItem(id: String): ApiItem? = transactionToUser[id]?.toApiItem()
-    fun removeApiItem(id: String): ApiItem? = transactionToUser.remove(id)?.toApiItem()
-    fun put(id: String, user: Siop2User) {
-        transactionToUser[id] = user
+    fun getApiItems(): List<ApiItem> = entries.map { it.apiItem }
+
+    fun getApiItem(id: String): ApiItem? = entries.firstOrNull { it.id == id }?.apiItem
+
+    fun removeApiItem(id: String): ApiItem? = lock.withLock {
+        val entry = entries.firstOrNull { it.id == id }
+        if (entry != null) {
+            entries.remove(entry)
+        }
+        return entry?.apiItem
     }
 
+    fun put(id: String, user: Siop2User) {
+        lock.withLock {
+            user.toApiItem()?.let { entries.add(Entry(id, it)) }
+        }
+    }
 }
+
+
+data class Entry(val id: String, val apiItem: ApiItem)
+
