@@ -35,9 +35,9 @@ import kotlin.uuid.Uuid
 class ApiController(
     @Value("\${app.public-url}")
     private val publicUrl: String,
+    private val transactionStore: TransactionStore,
 ) {
     private val transactions: MutableMap<String, Transaction> = HashMap()
-    private val transactionToUser: MutableMap<String, AuthenticatedPrincipal> = HashMap()
     private val extensions = listOf(X509CertificateExtension(
         KnownOIDs.subjectAltName_2_5_29_17,
         critical = false,
@@ -72,12 +72,12 @@ class ApiController(
 
     @GetMapping("/api/items")
     @ResponseBody
-    fun apiItems(): List<ApiItem> = transactionToUser.mapNotNull { it.value.toApiItem() }
+    fun apiItems(): List<ApiItem> = transactionStore.getApiItems()
 
     @GetMapping("/api/single/{id}")
     @ResponseBody
     fun apiSingle(@PathVariable id: String): ResponseEntity<ApiItem> =
-        transactionToUser[id]?.toApiItem()?.let {
+        transactionStore.getApiItem(id)?.let {
             Napier.i("/api/single/$id returns $it")
             ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
@@ -87,7 +87,7 @@ class ApiController(
     @PostMapping("/api/remove")
     @ResponseBody
     fun removeApiItem(@RequestBody id: String): ResponseEntity<ApiItem> =
-        transactionToUser.remove(id)?.toApiItem()?.let { ResponseEntity.ok(it) }
+        transactionStore.removeApiItem(id).let { ResponseEntity.ok(it) }
             ?: ResponseEntity.notFound().build()
 
     @OptIn(ExperimentalUuidApi::class)
@@ -143,7 +143,7 @@ class ApiController(
         val params: AuthenticationResponseParameters = requestBody.decodeFromPostBody()
         val user = validateSiopResponse(params)
         Napier.i("Storing user for transaction $id: $user")
-        transactionToUser[id] = user
+        transactionStore.put(id, user)
         val redirectUrlWithId = ServletUriComponentsBuilder
             .fromHttpUrl(customerSuccessUrl)
             .queryParam("id", id)
@@ -219,9 +219,9 @@ class ApiController(
 
     private fun createSafeState() = Base64.getEncoder().encodeToString(Random.nextBytes(32))
 
-    private fun AuthenticatedPrincipal.toApiItem() = if (this is Siop2User) this.apiItem else null
-
 }
+
+fun AuthenticatedPrincipal.toApiItem() = if (this is Siop2User) this.apiItem else null
 
 private fun String.getDnsName() = UriComponentsBuilder.fromUriString(this).build().host ?: "wallet.a-sit.at"
 
