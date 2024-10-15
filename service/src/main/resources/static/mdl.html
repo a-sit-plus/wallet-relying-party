@@ -7,6 +7,7 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
           integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
 
     <script type="importmap">
@@ -32,6 +33,8 @@
           });
           app.updateProfile(ePrescrptionProfile);
           app.generateQrCode();
+          app.resetRequestChanged();
+          app.startPeriodicUpdate();
         })();
     </script>
 </head>
@@ -64,72 +67,30 @@
         {{ error.message }}
     </div>
 
-    <div v-if="qrCode.src" class="row gy-2 mb-3">
-        <div class="col-md-6 border rounded p-2 bg-white">
-            <h2>Option A: Wallet App</h2>
-            <p>Scan the QR Code with your Wallet App:</p>
-            <img id="qrcode" width="300px" :src="qrCode.src" />
-        </div>
-        <div v-if="qrCodeUrl.message" class="col-md-6 border rounded p-2 bg-white">
-            <h2>Option B: Online Wallet</h2>
-            <p>Open the following Link with the Online Wallet:</p>
-            <a target="_blank" :href="qrCodeUrl.message" class="btn btn-primary mb-3">Open Online Wallet</a>
+    <div v-if="reqChanged.changed && !error.message" class="z-3 position-absolute rounded w-100">
+        <div class="card w-50 mx-auto mt-5 text-center">
+            <div class="card-body">
+                <h5 class="card-title">Request Data Changed</h5>
+                <p class="card-text">You have changed the request data. Please refresh the QR code and online wallet link.</p>
+                <button @click="generateQrCode()" class="btn btn-primary">Refresh Request</button>
+            </div>
         </div>
     </div>
-
-    <div class="row gy-2 mb-3">
-        <div class="col-md-12 border rounded p-2 bg-white">
-            <p v-if="transactionResult.item == null">There are no recent authentication results.</p>
-            <div v-if="transactionResult.item != null" class="row g-0 border rounded overflow-hidden flex-md-row mb-8 shadow-sm bg-light">
-                <div v-if="isSet(transactionResult.item.imageDataBase64)" class="col-lg-4 text-bg-dark"
-                     style="text-align: center">
-                    <img style="max-height: 400px;max-width: 100%" :src="transactionResult.item.imageDataBase64"/>
-                </div>
-                <div :class="isSet(transactionResult.item.imageDataBase64) ? 'col-lg-8' : 'col-lg-12'"
-                     class="p-4 d-flex flex-column position-static">
-                    <div class="foldout mb-1" :class="transactionResult.item.showDetails ? '' : 'foldout-preview'">
-                        <div v-if="!transactionResult.item.showDetails" class="foldout-button">
-                            <button type="button" class="btn btn-outline-secondary btn-sm"
-                                    @click="toggleDetails(transactionResult.item)">
-                                More Details
-                                <i class="bi-caret-down-fill"></i>
-                            </button>
-                        </div>
-                        <div v-if="transactionResult.item.showDetails" class="foldout-button">
-                            <button type="button" class="btn btn-outline-secondary btn-sm"
-                                    @click="toggleDetails(transactionResult.item)">
-                                Less Details
-                                <i class="bi-caret-up-fill"></i>
-                            </button>
-                        </div>
-
-                        <h3 v-if="isSet(transactionResult.item.firstname) || isSet(transactionResult.item.lastname)" class="mb-1">
-                            {{ transactionResult.item.firstname }} {{ transactionResult.item.lastname }}
-                        </h3>
-
-                        <p v-for="(value, key) in filterClaims(transactionResult.item)" :key="key" class="text-truncate mb-1"
-                           style="max-width: 100%;">
-                            <span class="fw-semibold">{{ key }}</span>: {{ value }}
-                        </p>
-
-                        <p><span class="fw-semibold">All credentials</span>:</p>
-                        <ul>
-                            <li v-for="(credential, key) in transactionResult.item.credentials" :key="key">
-                                <p><span class="fw-semibold">Credential type</span>: {{ credential.credentialType }}
-                                </p>
-                                <p><span class="fw-semibold">Full data</span>:</p>
-                                <ul>
-                                    <li v-for="(value, key) in credential.allFields" :key="key"
-                                        class="text-truncate mb-1"
-                                        style="max-width: 100%;">
-                                        <span class="fw-semibold">{{ key }}</span>: {{ value }}
-                                    </li>
-                                </ul>
-                            </li>
-                        </ul>
-                        <div class="foldout-fade"></div>
-                    </div>
-                </div>
+    <div v-if="reqResult != null && reqResult.qrCodeSrc != null && reqResult.linkSrc != null"
+        class="row gy-2 mb-3"
+        :class="{ 'blur' : reqChanged.changed}">
+        <div class="col-md-6 border rounded p-2 bg-white">
+            <h2>Option A: Wallet App</h2>
+            <p>Scan the QR code with your Wallet App:</p>
+            <div class="text-center">
+                <img id="qrcode" width="300px" :src="reqResult.qrCodeSrc" />
+            </div>
+        </div>
+        <div class="col-md-6 border rounded p-2 bg-white">
+            <h2>Option B: Online Wallet</h2>
+            <p>Open the following link to authenticate via the Online Wallet:</p>
+            <div class="text-center">
+                <a target="_blank" :href="reqResult.linkSrc" class="btn btn-primary mb-3">Open Online Wallet</a>
             </div>
         </div>
     </div>
@@ -138,7 +99,7 @@
       <div class="accordion-item">
         <h2 class="accordion-header" id="headingOne">
           <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-            Request Details
+              Request Details
           </button>
         </h2>
         <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#accordionRequest">
@@ -146,13 +107,46 @@
             <div class="row">
               <div class="col-lg-7 overflow-hidden">
                 <fieldset class="row mb-3">
+                    <legend class="col-form-label col-sm-4 pt-0 fw-bold">URL Prefix</legend>
+                    <div class="col-sm-8">
+                        <div v-for="item in config.urlprefix"
+                             :key="item.value"
+                             class="form-check">
+                            <input class="form-check-input" type="radio" name="urlprefix" :value="item.value"
+                                   :checked="reqSelection.urlprefix && reqSelection.urlprefix.value == item.value" @click="updateUrlprefix(item)">
+                            <label class="form-check-label">
+                                {{ item.label }} - <span class="text-primary">{{ item.value }}</span>
+                            </label>
+                        </div>
+                    </div>
+                </fieldset>
+              </div>
+            </div>
+
+            <div class="row border-top pt-2"
+                 v-for="credential in reqSelection.credentials"
+                 :key="credential.schemeType">
+              <legend class="">
+                <span v-if="credential.schemeType && credential.schemeType.label">
+                    Credential: {{ credential.schemeType.label }}
+                </span>
+                <span v-else>
+                    Credential: Unknown
+                </span>
+                <button type="button" class="btn btn-light" @click="removeCredential(credential)"><i class="bi-trash3"></i></button>
+              </legend>
+              <div class="col-lg-7 overflow-hidden">
+                <fieldset class="row mb-3">
                     <legend class="col-form-label col-sm-4 pt-0 fw-bold">Credential Type</legend>
                     <div class="col-sm-8">
                         <div v-for="item in config.schemeTypes"
-                             :key="item.value"
+                             :key="credential.schemeType + '-' + item.value"
                              class="form-check">
-                            <input class="form-check-input" type="radio" name="credentialScheme" :value="item.value"
-                                   :checked="reqSelection.schemeType == item.value" @click="updateSchemeType(item)">
+                            <input class="form-check-input" type="radio"
+                                   :name="(credential.schemeType ? credential.schemeType.label : 'unknown') + '-credentialScheme'"
+                                   :value="item.value"
+                                   :checked="credential.schemeType && credential.schemeType.value == item.value"
+                                   @click="updateSchemeType(credential, item)">
                             <label class="form-check-label">
                                 {{ item.label }} - <span class="text-primary">{{ item.value }}</span>
                             </label>
@@ -164,26 +158,13 @@
                     <legend class="col-form-label col-sm-4 pt-0 fw-bold">Presentation Type</legend>
                     <div class="col-sm-8">
                         <div v-for="item in config.representation"
-                             :key="item.value"
+                             :key="credential.schemeType + '-' + item.value"
                              class="form-check">
-                            <input class="form-check-input" type="radio" name="representation" :value="item.value"
-                                   :checked="reqSelection.representation == item.value"
-                                   @click="updateRepresentation(item)">
-                            <label class="form-check-label">
-                                {{ item.label }} - <span class="text-primary">{{ item.value }}</span>
-                            </label>
-                        </div>
-                    </div>
-                </fieldset>
-
-                <fieldset class="row mb-3">
-                    <legend class="col-form-label col-sm-4 pt-0 fw-bold">URL Prefix</legend>
-                    <div class="col-sm-8">
-                        <div v-for="item in config.urlprefix"
-                             :key="item.value"
-                             class="form-check">
-                            <input class="form-check-input" type="radio" name="urlprefix" :value="item.value"
-                                   :checked="reqSelection.urlprefix == item.value" @click="updateUrlprefix(item)">
+                            <input class="form-check-input" type="radio"
+                                   :name="(credential.schemeType ? credential.schemeType.label : 'unknown') + '-representation'"
+                                   :value="item.value"
+                                   :checked="credential.representation && credential.representation.value == item.value"
+                                   @click="updateRepresentation(credential, item)">
                             <label class="form-check-label">
                                 {{ item.label }} - <span class="text-primary">{{ item.value }}</span>
                             </label>
@@ -196,12 +177,15 @@
                 <fieldset class="row mb-3">
                     <legend class="col-form-label col-sm-4 pt-0 fw-bold">Attributes</legend>
                     <div class="col-sm-8">
-                        <p v-if="reqSelection.attributes.length == 0">Please select a Credential Type.</p>
-                        <div v-for="item in reqSelection.attributes"
-                             :key="item.value"
+                        <p v-if="credential.attributes.length == 0">Please select a Credential Type.</p>
+                        <div v-for="item in credential.attributes"
+                             :key="credential.schemeType + '-' + item.value"
                              class="form-check">
-                            <input class="attributes form-check-input" type="checkbox" name="attributes"
-                                   :value="item.value" :checked="item.isSelected" @click="updateAttribute(item)">
+                            <input class="attributes form-check-input" type="checkbox"
+                                   :name="(credential.schemeType ? credential.schemeType.label : 'unknown') + '-attributes'"
+                                   :value="item.value"
+                                   :checked="item.isSelected"
+                                   @click="updateAttribute(item)">
                             <label class="form-check-label" for="attributes1">
                                 {{ item.label }}
                             </label>
@@ -210,6 +194,13 @@
                 </fieldset>
               </div>
             </div>
+
+            <div class="row border-top pt-2">
+              <p>
+                <button type="button" class="btn btn-light" @click="addCredential()"><i class="bi-plus"></i>Add Requested Credential</button>
+              </p>
+            </div>
+
             <div class="row">
               <div class="d-flex justify-content-center">
                 <button @click="generateQrCode()" class="btn btn-primary">Refresh Request</button>

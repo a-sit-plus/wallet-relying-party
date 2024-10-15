@@ -51,58 +51,47 @@
 
     <transition-group tag="div" name="fade" class="row mb-2">
 
-        <div
-                v-for="item in loginList"
-                :key="item.id"
-                class="col-md-6">
-            <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm bg-light">
+        <div v-for="item in loginList" :key="item.id" class="col-md-6">
+            <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm bg-white">
                 <div v-if="isSet(item.imageDataBase64)" class="col-lg-4 text-bg-dark" style="text-align: center">
                     <img style="max-height: 400px;max-width: 100%" :src="item.imageDataBase64"/>
                 </div>
                 <div :class="isSet(item.imageDataBase64) ? 'col-lg-8' : 'col-lg-12'"
                      class="p-4 d-flex flex-column position-static">
                     <div class="foldout mb-1" :class="item.showDetails ? '' : 'foldout-preview'">
-                        <div v-if="!item.showDetails" class="foldout-button">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" @click="toggleDetails(item)">
-                                More Details
-                                <i class="bi-caret-down-fill"></i>
-                            </button>
-                        </div>
-                        <div v-if="item.showDetails" class="foldout-button">
-                            <button type="button" class="btn btn-outline-secondary btn-sm" @click="toggleDetails(item)">
-                                Less Details
-                                <i class="bi-caret-up-fill"></i>
-                            </button>
-                        </div>
+                       <div v-if="!item.showDetails" class="foldout-button">
+                           <button type="button" class="btn btn-outline-secondary btn-sm"
+                                   @click="toggleDetails(item)">
+                               More Details
+                               <i class="bi-caret-down-fill"></i>
+                           </button>
+                       </div>
+                       <div v-if="item.showDetails" class="foldout-button">
+                           <button type="button" class="btn btn-outline-secondary btn-sm"
+                                   @click="toggleDetails(item)">
+                               Less Details
+                               <i class="bi-caret-up-fill"></i>
+                           </button>
+                       </div>
 
-                        <h3 v-if="isSet(item.firstname) || isSet(item.lastname)" class="mb-1">
-                            {{ item.firstname }} {{ item.lastname }}
-                        </h3>
+                       <h3 v-if="isSet(item.firstname) || isSet(item.lastname)" class="mb-1">
+                           {{ item.firstname }} {{ item.lastname }}
+                       </h3>
 
-                        <p v-for="(value, key) in filterClaims(item)" :key="key" class="text-truncate mb-1"
-                           style="max-width: 100%;">
-                            <span class="fw-semibold">{{ key }}</span>: {{ value }}
-                        </p>
+                       <p v-for="(value, key) in filterClaims(item)" :key="key" class="text-truncate mb-1"
+                          style="max-width: 100%;">
+                           <span class="fw-semibold">{{ key }}</span>: {{ value }}
+                       </p>
 
-
-                        <p><span class="fw-semibold">All credentials</span>:</p>
-                        <ul>
-                            <li v-for="(credential, key) in item.credentials" :key="key">
-                                <p><span class="fw-semibold">Credential type</span>: {{ credential.credentialType }}
-                                </p>
-                                <p><span class="fw-semibold">Full data</span>:</p>
-                                <ul>
-                                    <li v-for="(value, key) in credential.allFields" :key="key"
-                                        class="text-truncate mb-1"
-                                        style="max-width: 100%;">
-                                        <span class="fw-semibold">{{ key }}</span>: {{ value }}
-                                    </li>
-                                </ul>
-                            </li>
-                        </ul>
-                        <div class="foldout-fade"></div>
+                       <div v-for="(credential, key) in item.credentials" :key="key" class="border rounded p-2 bg-light my-3">
+                           <h4>Credential Type: {{ credential.credentialType }}</h4>
+                           <p v-for="(value, key) in credential.allFields" :key="key"
+                               class="text-break mb-1">
+                               <span class="fw-semibold">{{ key }}</span>: {{ value }}
+                           </p>
+                       </div>
+                       <div class="foldout-fade"></div>
                     </div>
-
                     <div class="text-body-tertiary mb-1">Authenticated {{ item.expiredTime }} ago</div>
                     <div class="mt-auto ms-auto d-md-flex gap-2">
                         <button @click="seen(item)" type="button" class="btn btn-outline-danger">

@@ -77,7 +77,8 @@ const createBasicSetup = function(config) {
 
         reqSelection.value = {
             urlprefix: urlprefix,
-            credentials: credentials
+            credentials: credentials,
+            profileLabel: profile.label,
         }
         console.log('updateProfile result', reqSelection.value)
 
@@ -228,7 +229,7 @@ const createBasicSetup = function(config) {
         } catch (err) {
             console.log(`error: ${err}`)
             reqResult.value = null
-            error.value.message = "Error: " + err
+            error.value.message = "Error generating request: " + err
         }
     }
 
