@@ -2,29 +2,32 @@ import {createApp, ref} from 'vue'
 
 // --- STATIC --------------------------------------------------------
 
-const DEBUG = false
+const STATIC_DEV = false
 
 const URLs = {
     loginConfigUrl: 'js/login-config.json',
-    transactionUrl: DEBUG ? 'api/transaction-create' : 'transaction/create',
+    transactionUrl: STATIC_DEV ? 'api/transaction-create' : 'transaction/create',
     resultUrl: 'api/single/',
     successPageUrl: 'customer-success.html?id=',
 }
 
 const loadConfig = async function() {
     // load from json
-    const response = await fetch(URLs.loginConfigUrl);
-    const config = await response.json();
-    //console.log(config);
+    const response = await fetch(URLs.loginConfigUrl)
+    const config = await response.json()
+    //console.log(config)
 
-    return config;
+    return config
 }
 
 const createBasicSetup = function(config) {
 
     // --- STATE ---------------------------------------------------
 
-    const reqSelection = ref({urlprefix: null, credentials: []})
+    const reqSelection = ref({
+        urlprefix: null,
+        credentials: [],
+    })
     const error = ref({message: null})
     const reqResult = ref({
         id: null,
@@ -56,16 +59,11 @@ const createBasicSetup = function(config) {
             let attrs = []
             if (schemeType) {
                 // find attributes that are marked as isSelected in profile
-                const selected = credential.attributes.reduce(function (acc, attr) {
-                    if (attr.isSelected) acc.push(attr.value)
-                    return acc
-                }, [])
+                const selected = credential.attributes.filter(x => x.isSelected).map(x => x.value)
 
                 // take all attribtues from config for this credential type, and mark some as isSelected
-                attrs = schemeType.attributes.map(function (attr) {
-                    attr.isSelected = selected.includes(attr.value)
-                    return attr
-                })
+                schemeType.attributes.forEach(attr => attr.isSelected = selected.includes(attr.value))
+                attrs = schemeType.attributes
             }
 
             credentials.push({
@@ -106,7 +104,7 @@ const createBasicSetup = function(config) {
 
     async function updateAttribute(attribute) {
         console.log('updateAttribute', attribute)
-        attribute.isSelected = !attribute.isSelected;
+        attribute.isSelected = !attribute.isSelected
         compareRequestChanged()
     }
 
@@ -127,18 +125,12 @@ const createBasicSetup = function(config) {
     }
 
     function validate () {
-        const errors = [];
+        const errors = []
 
         // get allowed values
-        const allowedPrefixes = config.urlprefix.map(function (x) {
-            return x.value
-        })
-        const allowedSchemeTypes = config.schemeTypes.map(function (x) {
-            return x.value
-        })
-        const allowedRepresentations = config.representation.map(function (x) {
-            return x.value
-        })
+        const allowedPrefixes = config.urlprefix.map(x => x.value)
+        const allowedSchemeTypes = config.schemeTypes.map(x => x.value)
+        const allowedRepresentations = config.representation.map(x => x.value)
 
         // check url prefix
         const prefix = reqSelection.value.urlprefix
@@ -166,21 +158,17 @@ const createBasicSetup = function(config) {
                 errors.push("Presentation Type invalid")
         }
 
-        return errors;
+        return errors
     }
 
     function createRequestJSON() {
         // build request payload
         // from form inputs, take values and only selected attributes
-        const credentials = reqSelection.value.credentials.map(function (credential) {
+        const credentials = reqSelection.value.credentials.map(credential => {
             return {
                 credentialType: credential.schemeType.value,
                 representation: credential.representation.value,
-                attributes: credential.attributes.filter(function (attr) {
-                    return attr.isSelected
-                }).map(function (attr) {
-                    return attr.value
-                }),
+                attributes: credential.attributes.filter(x => x.isSelected).map(x => x.valuse),
             }
         })
         const request = {
@@ -195,11 +183,11 @@ const createBasicSetup = function(config) {
         console.log('generateQrCode', reqSelection.value)
 
         try {
-            const validationErrors = validate();
+            const validationErrors = validate()
             if (validationErrors.length > 0) {
                 reqResult.value = null
                 error.value.message = "Validation Error: " + validationErrors.join(", ")
-                return;
+                return
             }
 
             const requestJSON = createRequestJSON()
@@ -207,13 +195,13 @@ const createBasicSetup = function(config) {
 
             // request QR code, link url and id
             const response = await fetch(URLs.transactionUrl, {
-                method: DEBUG ? 'GET' : 'POST',
+                method: STATIC_DEV ? 'GET' : 'POST',
                 headers: {"Content-Type": "application/json"},
-                body: DEBUG ? null : requestJSON,
+                body: STATIC_DEV ? null : requestJSON,
             })
             if (response.ok) {
-                const data = await response.json();
-                console.log(`generateQrCode: got ${data}`);
+                const data = await response.json()
+                console.log(`generateQrCode: got ${data}`)
                 reqResult.value = {
                     qrCodeSrc: "data:image/png;base64," + data.qrCodePng,
                     linkSrc: data.qrCodeUrl,
@@ -237,16 +225,16 @@ const createBasicSetup = function(config) {
         try {
             if (reqResult.value == null || reqResult.value.id == null)
                 return;
-            console.log('loadResult for ' + reqResult.value.id);
-            let response = await fetch(URLs.resultUrl + reqResult.value.id);
-            const data = await response.json();
-            console.log('loadResult got: ', data);
+            console.log('loadResult for ' + reqResult.value.id)
+            let response = await fetch(URLs.resultUrl + reqResult.value.id)
+            const data = await response.json()
+            console.log('loadResult got: ', data)
             if (response.ok) {
                 // navigate to success page
                 window.location.href = URLs.successPageUrl + reqResult.value.id
             }
         } catch (error) {
-            console.log('error: ', error);
+            console.log('error: ', error)
         }
     }
 
