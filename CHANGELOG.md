@@ -1,5 +1,8 @@
 # Changelog
 
+Version 5.0.3:
+ - Update to vck 5.0.1
+
 Version 5.0.2:
  - Refactor to use transactions for QR code generation and receiving credentials
 

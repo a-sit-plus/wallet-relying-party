@@ -204,7 +204,7 @@ class ApiController(
                 result.toApiItemCredential().toSiop2User()
 
             is OidcSiopVerifier.AuthnResponseResult.SuccessIso ->
-                result.document.toApiItemCredential().toSiop2User()
+                result.toApiItemCredentials().toSiop2User()
 
             is OidcSiopVerifier.AuthnResponseResult.Error ->
                 throw RuntimeException(result.reason)

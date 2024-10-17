@@ -8,6 +8,7 @@ import at.asitplus.wallet.idaustria.IdAustriaScheme
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
+import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult.*
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -73,18 +74,17 @@ private fun ApiItemCredential.withFilteredPortraitClaims() = ApiItemCredential(
 
 fun ApiItemCredential.getClaim(claim: String) = this.allFields.entries.firstOrNull { it.key == claim }?.value
 
-fun OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults.toApiItemCredentials() =
-    validationResults.mapNotNull {
-        when (it) {
-            is OidcSiopVerifier.AuthnResponseResult.Error -> null
-            is OidcSiopVerifier.AuthnResponseResult.IdToken -> null
-            is OidcSiopVerifier.AuthnResponseResult.Success -> it.vp.toApiItemCredential()
-            is OidcSiopVerifier.AuthnResponseResult.SuccessIso -> it.document.toApiItemCredential()
-            is OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt -> it.toApiItemCredential()
-            is OidcSiopVerifier.AuthnResponseResult.ValidationError -> null
-            is OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults -> null
-        }
+fun VerifiablePresentationValidationResults.toApiItemCredentials() = validationResults.flatMap {
+    when (it) {
+        is Error -> listOf()
+        is IdToken -> listOf()
+        is Success -> listOf(it.vp.toApiItemCredential())
+        is SuccessIso -> it.toApiItemCredentials()
+        is SuccessSdJwt -> listOf(it.toApiItemCredential())
+        is ValidationError -> listOf()
+        is VerifiablePresentationValidationResults -> listOf()
     }
+}.filterNotNull()
 
 fun VerifiablePresentationParsed.toApiItemCredential() =
     verifiableCredentials
@@ -118,17 +118,18 @@ private fun EuPidCredential.toApiItemCredential() =
         credentialType = EuPidScheme.vcType,
     )
 
-fun OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt.toApiItemCredential() =
+fun SuccessSdJwt.toApiItemCredential() =
     ApiItemCredential(
         allFields = disclosures.associate { it.claimName to it.claimValue.content },
         credentialType = sdJwt.verifiableCredentialType,
     )
 
-fun IsoDocumentParsed.toApiItemCredential() =
+fun SuccessIso.toApiItemCredentials() = documents.map { doc ->
     ApiItemCredential(
-        allFields = validItems.associate { it.elementIdentifier to it.elementValueToString() },
-        credentialType = mso.docType,
+        allFields = doc.validItems.associate { it.elementIdentifier to it.elementValueToString() },
+        credentialType = doc.mso.docType,
     )
+}
 
 private fun String.sha256() = runCatching {
     MessageDigest.getInstance("SHA-256").digest(this.encodeToByteArray()).encodeToString(Base64UrlStrict)
