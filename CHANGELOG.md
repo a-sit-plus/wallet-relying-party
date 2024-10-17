@@ -2,6 +2,7 @@
 
 Version 5.0.3:
  - Update to vck 5.0.1
+ - Update UI to allow for combined presentation of two or more credentials
 
 Version 5.0.2:
  - Refactor to use transactions for QR code generation and receiving credentials
