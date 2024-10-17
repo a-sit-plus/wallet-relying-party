@@ -99,14 +99,14 @@ const createBasicSetup = function() {
       // notify server that record can be removed
       const response = await fetch(config.removeUrl, {
         method: 'POST',
-        body: item.id,
-      })
-      const data = await response.json()
-      console.log('response: ', data)
-
+        body: item.id
+      });
       // on OK, remove item from list
-      if (response.ok)
+      if (response.ok) {
+        const data = await response.json()
+        console.log('response: ', data)
         loginList.value.splice(loginList.value.indexOf(item), 1)
+      }
     } catch (error) {
       console.log('error: ', error)
     }

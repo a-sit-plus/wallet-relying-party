@@ -11,7 +11,7 @@ const URLs = {
     successPageUrl: 'customer-success.html?id=',
 }
 
-const loadConfig = async function() {
+const loadConfig = async function () {
     // load from json
     const response = await fetch(URLs.loginConfigUrl)
     const config = await response.json()
@@ -20,7 +20,7 @@ const loadConfig = async function() {
     return config
 }
 
-const createBasicSetup = function(config) {
+const createBasicSetup = function (config) {
 
     // --- STATE ---------------------------------------------------
 
@@ -124,8 +124,8 @@ const createBasicSetup = function(config) {
         reqSelection.value.credentials.splice(index, 1)
     }
 
-    function validate () {
-        const errors = []
+    function validate() {
+        const errors = [];
 
         // get allowed values
         const allowedPrefixes = config.urlprefix.map(x => x.value)
@@ -225,11 +225,11 @@ const createBasicSetup = function(config) {
         try {
             if (reqResult.value == null || reqResult.value.id == null)
                 return;
-            console.log('loadResult for ' + reqResult.value.id)
-            let response = await fetch(URLs.resultUrl + reqResult.value.id)
-            const data = await response.json()
-            console.log('loadResult got: ', data)
+            console.log('loadResult for ' + reqResult.value.id);
+            let response = await fetch(URLs.resultUrl + reqResult.value.id);
             if (response.ok) {
+                const data = await response.json();
+                console.log('loadResult got: ', data);
                 // navigate to success page
                 window.location.href = URLs.successPageUrl + reqResult.value.id
             }
@@ -290,4 +290,4 @@ const createBasicSetup = function(config) {
     }
 }
 
-export { loadConfig, createBasicSetup }
+export {loadConfig, createBasicSetup}
