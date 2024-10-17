@@ -7,7 +7,6 @@ import at.asitplus.wallet.idaustria.IdAustriaCredential
 import at.asitplus.wallet.idaustria.IdAustriaScheme
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult.*
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import io.matthewnelson.encoding.base64.Base64
@@ -38,7 +37,7 @@ fun List<ApiItemCredential>.toSiop2User() = Siop2User(
         lastname = firstNotNullOfOrNull { it.getFamilyName() } ?: "N/A",
         imageDataBase64 = firstNotNullOfOrNull { it.getPortrait() }?.let { "data:image;base64,$it" },
         timestamp = Instant.now().toEpochMilli(),
-        credentials = this.map { it.withFilteredPortraitClaims() }
+        credentials = this
     )
 )
 
@@ -49,7 +48,7 @@ fun ApiItemCredential.toSiop2User() = Siop2User(
         lastname = getFamilyName() ?: "N/A",
         imageDataBase64 = getPortrait()?.let { "data:image;base64,$it" },
         timestamp = Instant.now().toEpochMilli(),
-        credentials = listOf(withFilteredPortraitClaims())
+        credentials = listOf(this)
     )
 )
 
@@ -63,14 +62,6 @@ private fun ApiItemCredential.getFamilyName() = getClaim(EuPidScheme.Attributes.
 private fun ApiItemCredential.getGivenName() = getClaim(EuPidScheme.Attributes.GIVEN_NAME)
     ?: getClaim(IdAustriaScheme.Attributes.FIRSTNAME)
     ?: getClaim(MobileDrivingLicenceDataElements.GIVEN_NAME)
-
-private fun ApiItemCredential.withFilteredPortraitClaims() = ApiItemCredential(
-    jwtCredential = this.jwtCredential,
-    allFields = this.allFields
-        .filterNot { it.key == MobileDrivingLicenceDataElements.PORTRAIT }
-        .filterNot { it.key == IdAustriaScheme.Attributes.PORTRAIT },
-    credentialType = this.credentialType
-)
 
 fun ApiItemCredential.getClaim(claim: String) = this.allFields.entries.firstOrNull { it.key == claim }?.value
 
