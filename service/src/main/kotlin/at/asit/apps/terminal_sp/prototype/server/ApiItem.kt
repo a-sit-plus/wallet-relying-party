@@ -17,6 +17,7 @@ data class ApiItem(
 @Serializable
 data class ApiItemCredential(
     val jwtCredential: JsonElement? = null,
+    // TODO Make this a JSONObject?
     val allFields: Map<String, String> = mapOf(),
     val credentialType: String? = null,
 )

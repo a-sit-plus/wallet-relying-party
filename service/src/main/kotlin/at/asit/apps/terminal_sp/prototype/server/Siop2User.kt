@@ -14,7 +14,9 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.encodeToJsonElement
+import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.security.core.AuthenticatedPrincipal
 import java.security.MessageDigest
 import java.time.Instant
@@ -111,8 +113,10 @@ private fun EuPidCredential.toApiItemCredential() =
 
 fun SuccessSdJwt.toApiItemCredential() =
     ApiItemCredential(
-        allFields = disclosures.associate { it.claimName to it.claimValue.content },
-        credentialType = sdJwt.verifiableCredentialType,
+        allFields = disclosures
+            .filter { it.claimName != null && it.claimValue is JsonPrimitive }
+            .associate { it.claimName!! to it.claimValue.jsonPrimitive.content },
+        credentialType = verifiableCredentialSdJwt.verifiableCredentialType,
     )
 
 fun SuccessIso.toApiItemCredentials() = documents.map { doc ->

@@ -65,9 +65,8 @@ class ApiController(
 
     private suspend fun newVerifier(): OidcSiopVerifier = OidcSiopVerifier(
         verifier = verifier,
-        relyingPartyUrl = publicUrl.getDnsName(),
         keyMaterial = verifierKeyMaterial,
-        clientIdScheme = CertificateSanDns(listOf(verifierKeyMaterial.getCertificate()!!))
+        clientIdScheme = CertificateSanDns(listOf(verifierKeyMaterial.getCertificate()!!), publicUrl.getDnsName())
     )
 
     @GetMapping("/api/items")
@@ -113,7 +112,7 @@ class ApiController(
         val state = createSafeState()
         val requestOptions = OidcSiopVerifier.RequestOptions(
             state = state,
-            responseMode = OpenIdConstants.ResponseMode.DIRECT_POST,
+            responseMode = OpenIdConstants.ResponseMode.DirectPost,
             responseUrl = buildPostSuccessUrl(id),
             credentials = transactionRequest.request.toRequestOptionsCredentials(),
         )

@@ -10,7 +10,7 @@ plugins {
 }
 
 group = "at.asitplus"
-version = "5.0.3-SNAPSHOT"
+version = "5.1.0-SNAPSHOT"
 
 kotlin {
     jvmToolchain(17)
@@ -27,7 +27,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 
     implementation(napier())
-    implementation("at.asitplus.wallet:vck-openid:5.0.1")
+    implementation("at.asitplus.wallet:vck-openid:5.1.0")
     implementation("at.asitplus.wallet:idacredential:3.9.1")
     implementation("at.asitplus.wallet:eupidcredential:2.2.1")
     implementation("at.asitplus.wallet:mobiledrivinglicence:1.1.1")
@@ -41,3 +41,8 @@ tasks.getByName<BootJar>("bootJar") {
     this.launchScript()
 }
 
+repositories {
+    mavenCentral()
+    maven("https://s01.oss.sonatype.org/content/repositories/snapshots/")
+    maven("https://oss.sonatype.org/content/repositories/snapshots/")
+}
