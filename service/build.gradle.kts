@@ -24,6 +24,7 @@ dependencies {
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation("io.github.g0dkar:qrcode-kotlin:4.0.6")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
+    implementation("de.codecentric:spring-boot-admin-client:3.2.3")
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 
     implementation(napier())
@@ -36,6 +37,9 @@ dependencies {
     implementation("at.asitplus.wallet:eprescription:1.1.0")
 }
 
+springBoot {
+    buildInfo()
+}
 
 tasks.getByName<BootJar>("bootJar") {
     this.launchScript()
