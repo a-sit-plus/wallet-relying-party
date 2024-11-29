@@ -105,10 +105,10 @@ class ApiController(
     @GetMapping("/transaction/get/{id}")
     @ResponseBody
     fun transactionGet(@PathVariable id: String): ResponseEntity<String> = runBlocking {
-        Napier.i("/transaction/$id called")
+        Napier.i("/transaction/get/$id called")
         val transactionRequest = transactions[id]
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
-                .also { Napier.w("/transaction/$id returns NOT_FOUND") }
+                .also { Napier.w("/transaction/get/$id returns NOT_FOUND") }
         val state = createSafeState()
         val requestOptions = OidcSiopVerifier.RequestOptions(
             state = state,
@@ -117,7 +117,7 @@ class ApiController(
             credentials = transactionRequest.request.toRequestOptionsCredentials(),
         )
         val requestObjectJws = verifierProtocol.createAuthnRequestAsSignedRequestObject(requestOptions).getOrElse {
-            Napier.w("/transaction/$id error", it)
+            Napier.w("/transaction/get/$id error", it)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
         }
         val result = requestObjectJws.serialize()
