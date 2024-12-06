@@ -31,8 +31,8 @@ const createBasicSetup = function (config) {
     const error = ref({message: null})
     const reqResult = ref({
         id: null,
-        qrCodeSrc: null,
-        linkSrc: null,
+        remoteWalletUrl: null,
+        qrCodes: null,
     })
     const reqChanged = ref({
         oldRequestJSON: null,
@@ -187,9 +187,14 @@ const createBasicSetup = function (config) {
                 const data = await response.json()
                 console.log(`generateQrCode: got ${data}`)
                 reqResult.value = {
-                    qrCodeSrc: "data:image/png;base64," + data.qrCodePng,
-                    linkSrc: data.qrCodeUrl,
                     id: data.id,
+                    remoteWalletUrl: data.remoteWalletUrl,
+                    qrCodes: data.qrCodes.map((x) => ({
+                        "name": x.name.replaceAll(" ", "-"),
+                        "prefix": x.prefix,
+                        "png": x.png,
+                        "url": x.url
+                    }))
                 }
                 error.value.message = null
                 resetRequestChanged()

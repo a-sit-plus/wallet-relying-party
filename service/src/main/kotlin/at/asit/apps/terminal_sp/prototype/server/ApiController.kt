@@ -9,6 +9,8 @@ import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.ClientIdScheme.RedirectUri
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import io.github.aakira.napier.Napier
+import io.matthewnelson.encoding.base64.Base64
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.runBlocking
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
@@ -48,6 +50,11 @@ class ApiController(
             .toUriString()
     }
     private val verifierProtocol: OidcSiopVerifier by lazy { runBlocking { newVerifier() } }
+    private val knownPrefixes = listOf(
+        "HAIP" to "haip://",
+        "EUDI" to "eudi-openid4vp://",
+        "MDOC" to "mdoc-openid4vp://",
+    )
 
     private suspend fun newVerifier(): OidcSiopVerifier = OidcSiopVerifier(
         verifier = verifier,
@@ -81,12 +88,20 @@ class ApiController(
     fun transactionCreate(@RequestBody request: TransactionRequest): ResponseEntity<TransactionResponse> = runBlocking {
         Napier.i("/transaction/create called with $request")
         val transactionId = Uuid.random().toString()
-        val qrCodeUrl = buildQrCodeUrl(request, transactionId)
-        val qrCodeBytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
-        val response = TransactionResponse(qrCodeBytes, qrCodeUrl, transactionId)
-        Napier.i("/transaction/create returns $transactionId with $qrCodeUrl")
+        val transactionUrl = buildTransactionUrl(request, transactionId)
+        val qrCodes = knownPrefixes.map { (name, prefix) ->
+            val qrCodeUrl = buildQrCodeUrl(transactionUrl, prefix)
+            val qrCodeBytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
+            TransactionResponseQrCode(name, prefix, qrCodeBytes.toDataUrl(), qrCodeUrl)
+        }
+        val remoreWalletPrefix = "https://wallet.a-sit.at/remote/" + if (request.simple) "simple" else ""
+        val remoteWalletUrl = buildQrCodeUrl(transactionUrl, remoreWalletPrefix)
+        val response = TransactionResponse(transactionId, qrCodes, remoteWalletUrl)
+        Napier.i("/transaction/create returns $response")
         ResponseEntity.ok().body(response)
     }
+
+    private fun ByteArray.toDataUrl(): String = "data:image/png;base64," + encodeToString(Base64())
 
     @GetMapping("/transaction/get/{id}")
     @ResponseBody
@@ -138,9 +153,9 @@ class ApiController(
             .body(OpenId4VpSuccess(redirectUrlWithId))
     }
 
-    private fun buildQrCodeUrl(request: TransactionRequest, transactionId: String) =
-        ServletUriComponentsBuilder.fromUriString(if (request.simple) "https://wallet.a-sit.at/request/simple" else "https://wallet.a-sit.at/remote/")
-            .queryParam("request_uri", buildTransactionUrl(request, transactionId))
+    private fun buildQrCodeUrl(requestUri: String, urlPrefix: String) =
+        ServletUriComponentsBuilder.fromUriString(urlPrefix)
+            .queryParam("request_uri", requestUri)
             .queryParam("client_id", clientId)
             .queryParam("client_metadata_uri", metadataUrl)
             .toUriString()
@@ -202,7 +217,7 @@ class ApiController(
         }
     }
 
-    private fun createSafeState() = Base64.getEncoder().encodeToString(Random.nextBytes(32))
+    private fun createSafeState() = Random.nextBytes(32).encodeToString(Base64())
 
 }
 
