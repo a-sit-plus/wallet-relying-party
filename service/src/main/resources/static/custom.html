@@ -68,24 +68,6 @@
             </li>
         </ul>
         <div class="bg-white border rounded py-3">
-          <div class="row">
-            <div class="col-lg-7 overflow-hidden">
-              <fieldset class="row mb-3">
-                  <legend class="col-form-label col-sm-4 pt-0 fw-bold">URL Prefix</legend>
-                  <div class="col-sm-8">
-                      <div v-for="item in config.urlprefix"
-                           :key="item.value"
-                           class="form-check">
-                          <input class="form-check-input" type="radio" name="urlprefix" :value="item.value"
-                                 :checked="reqSelection.urlprefix && reqSelection.urlprefix.value == item.value" @click="updateUrlprefix(item)">
-                          <label class="form-check-label">
-                              {{ item.label }} - <span class="text-primary">{{ item.value }}</span>
-                          </label>
-                      </div>
-                  </div>
-              </fieldset>
-            </div>
-          </div>
 
           <div class="row border-top pt-2"
                v-for="credential in reqSelection.credentials"

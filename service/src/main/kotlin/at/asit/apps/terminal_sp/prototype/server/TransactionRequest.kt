@@ -19,7 +19,7 @@ import kotlinx.serialization.encoding.Encoder
 data class TransactionRequest(
     val credentialType: String? = null,
     val representation: String? = null,
-    val urlprefix: String,
+    val simple: Boolean = false,
     val attributes: Collection<String>? = null,
     val credentials: List<TransactionRequestCredential>? = null,
 ) {

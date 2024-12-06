@@ -19,7 +19,6 @@ import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.*
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
-import org.springframework.web.util.UriComponentsBuilder
 import qrcode.QRCode
 import java.util.*
 import kotlin.collections.set
@@ -101,7 +100,7 @@ class ApiController(
             state = state,
             responseMode = OpenIdConstants.ResponseMode.DirectPost,
             responseUrl = buildPostSuccessUrl(id),
-            credentials = transactionRequest.request.toRequestOptionsCredentials(),
+            credentials = transactionRequest.request.toRequestOptionsCredentials(), // TODO Attributes optional!
         )
         val requestObjectJws = verifierProtocol.createAuthnRequestAsSignedRequestObject(requestOptions).getOrElse {
             Napier.w("/transaction/get/$id error", it)
@@ -140,7 +139,7 @@ class ApiController(
     }
 
     private fun buildQrCodeUrl(request: TransactionRequest, transactionId: String) =
-        ServletUriComponentsBuilder.fromUriString(request.urlprefix)
+        ServletUriComponentsBuilder.fromUriString(if (request.simple) "https://wallet.a-sit.at/request/simple" else "https://wallet.a-sit.at/remote/")
             .queryParam("request_uri", buildTransactionUrl(request, transactionId))
             .queryParam("client_id", clientId)
             .queryParam("client_metadata_uri", metadataUrl)
@@ -208,6 +207,4 @@ class ApiController(
 }
 
 fun AuthenticatedPrincipal.toApiItem() = if (this is Siop2User) this.apiItem else null
-
-private fun String.getDnsName() = UriComponentsBuilder.fromUriString(this).build().host ?: "wallet.a-sit.at"
 

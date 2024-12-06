@@ -148,15 +148,9 @@
     { "label": "SD-JWT", "value": "SD_JWT" },
     { "label": "ISO mDoc", "value": "ISO_MDOC" }
   ],
-  "urlprefix": [
-    { "label": "HAIP", "value": "haip://" },
-    { "label": "EUDI", "value": "eudi-openid4vp://" },
-    { "label": "MDOC OpenId4VP", "value": "mdoc-openid4vp://" },
-    { "label": "A-SIT Wallet", "value": "https://wallet.a-sit.at/remote/" }
-  ],
   "profiles": [
     { "label": "Custom",
-      "urlprefix": null,
+      "simple": false,
       "credentials": [
         {
           "schemeType": null,
@@ -166,7 +160,7 @@
       ]
     },
     { "label": "E-Prescription",
-      "urlprefix": "https://wallet.a-sit.at/remote/",
+      "simple": false,
       "credentials": [
         {
           "schemeType": "eu.europa.ehealth.eprescription.1",
@@ -180,7 +174,7 @@
       ]
     },
     { "label": "ID Verification",
-      "urlprefix": "https://wallet.a-sit.at/remote/",
+      "simple": false,
       "credentials": [
         {
           "schemeType": "at.gv.id-austria.2023.1",
@@ -194,7 +188,7 @@
       ]
     },
     { "label": "Age Verification",
-      "urlprefix": "https://wallet.a-sit.at/remote/",
+      "simple": false,
       "credentials": [
         {
           "schemeType": "at.gv.id-austria.2023.1",
@@ -209,7 +203,7 @@
       ]
     },
     { "label": "PoR Mandatory",
-      "urlprefix": "https://wallet.a-sit.at/remote/",
+      "simple": false,
       "credentials": [
         {
           "schemeType": "eu.europa.ec.eudi.por.1",
@@ -233,7 +227,7 @@
       ]
     },
     { "label": "CoR Mandatory",
-      "urlprefix": "https://wallet.a-sit.at/remote/",
+      "simple": false,
       "credentials": [
         {
           "schemeType": "eu.europa.ec.eudi.cor.1",
@@ -259,7 +253,7 @@
       ]
     },
     { "label": "PID Mandatory",
-      "urlprefix": "https://wallet.a-sit.at/remote/",
+      "simple": false,
       "credentials": [
         {
           "schemeType": "urn:eu.europa.ec.eudi:pid:1",
@@ -298,7 +292,7 @@
       ]
     },
     { "label": "mDL Mandatory",
-      "urlprefix": "https://wallet.a-sit.at/remote/",
+      "simple": false,
       "credentials": [
         {
           "schemeType": "org.iso.18013.5.1.mDL",
@@ -346,7 +340,7 @@
       ]
     },
     { "label": "Combined PID+PoR",
-      "urlprefix": "https://wallet.a-sit.at/remote/",
+      "simple": false,
       "credentials": [
         {
           "schemeType": "urn:eu.europa.ec.eudi:pid:1",

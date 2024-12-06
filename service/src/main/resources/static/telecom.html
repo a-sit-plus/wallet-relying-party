@@ -27,7 +27,6 @@
           let config = await loadConfig();
           config.profiles = [
             { "label": "PID Telecom",
-              "urlprefix": "https://wallet.a-sit.at/remote/",
               "credentials": [
                 {
                   "schemeType": "urn:eu.europa.ec.eudi:pid:1",
@@ -120,25 +119,6 @@
         </h2>
         <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#accordionRequest">
           <div class="accordion-body">
-            <div class="row">
-              <div class="col-lg-7 overflow-hidden">
-                <fieldset class="row mb-3">
-                    <legend class="col-form-label col-sm-4 pt-0 fw-bold">URL Prefix</legend>
-                    <div class="col-sm-8">
-                        <div v-for="item in config.urlprefix"
-                             :key="item.value"
-                             class="form-check">
-                            <input class="form-check-input" type="radio" name="urlprefix" :value="item.value"
-                                   :checked="reqSelection.urlprefix && reqSelection.urlprefix.value == item.value" @click="updateUrlprefix(item)">
-                            <label class="form-check-label">
-                                {{ item.label }} - <span class="text-primary">{{ item.value }}</span>
-                            </label>
-                        </div>
-                    </div>
-                </fieldset>
-              </div>
-            </div>
-
             <div class="row border-top pt-2"
                  v-for="credential in reqSelection.credentials"
                  :key="credential.schemeType">

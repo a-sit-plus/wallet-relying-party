@@ -2,6 +2,8 @@
 
 Version 5.2.0:
  - Update to vc-k 5.2.0
+ - Remove URL prefix from request details
+ - Allow selecting URL prefix when displaying QR Code
 
 Version 5.1.0:
  - Update to vc-k 5.1.0

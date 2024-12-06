@@ -25,7 +25,7 @@ const createBasicSetup = function (config) {
     // --- STATE ---------------------------------------------------
 
     const reqSelection = ref({
-        urlprefix: null,
+        simple: false,
         credentials: [],
     })
     const error = ref({message: null})
@@ -45,8 +45,6 @@ const createBasicSetup = function (config) {
 
     async function updateProfile(profile) {
         console.log('updateProfile', profile)
-
-        const urlprefix = config.urlprefix.find((up) => up.value == profile.urlprefix)
 
         let credentials = []
         for (let key in profile.credentials) {
@@ -74,7 +72,7 @@ const createBasicSetup = function (config) {
         }
 
         reqSelection.value = {
-            urlprefix: urlprefix,
+            simple: profile.simple,
             credentials: credentials,
             profileLabel: profile.label,
         }
@@ -93,12 +91,6 @@ const createBasicSetup = function (config) {
     async function updateRepresentation(credential, representation) {
         console.log('updateRepresentation', representation)
         credential.representation = representation
-        compareRequestChanged()
-    }
-
-    async function updateUrlprefix(urlprefix) {
-        console.log('updateUrlprefix', urlprefix)
-        reqSelection.value.urlprefix = urlprefix
         compareRequestChanged()
     }
 
@@ -128,16 +120,8 @@ const createBasicSetup = function (config) {
         const errors = [];
 
         // get allowed values
-        const allowedPrefixes = config.urlprefix.map(x => x.value)
         const allowedSchemeTypes = config.schemeTypes.map(x => x.value)
         const allowedRepresentations = config.representation.map(x => x.value)
-
-        // check url prefix
-        const prefix = reqSelection.value.urlprefix
-        if (prefix == null || typeof prefix != "object" || typeof prefix.value != "string")
-            errors.push("URL Prefix not set")
-        else if (!allowedPrefixes.includes(prefix.value))
-            errors.push("URL Prefix invalid")
 
         // check credentials
         for (let index in reqSelection.value.credentials) {
@@ -172,7 +156,7 @@ const createBasicSetup = function (config) {
             }
         })
         const request = {
-            urlprefix: reqSelection.value.urlprefix.value,
+            simple: reqSelection.value.simple,
             credentials: credentials,
         }
 
@@ -279,7 +263,6 @@ const createBasicSetup = function (config) {
         updateProfile,
         updateSchemeType,
         updateRepresentation,
-        updateUrlprefix,
         addCredential,
         removeCredential,
         updateAttribute,
