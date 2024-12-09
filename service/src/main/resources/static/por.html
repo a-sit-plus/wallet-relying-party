@@ -24,12 +24,16 @@
     <script type="module">
         import {loadConfig, createBasicSetup} from 'login'
         import {createApp, ref} from 'vue'
+        import HeaderComp from './HeaderComp.js'
 
         (async function () {
             const config = await loadConfig();
             let app = createApp({
                 setup: function () {
                     return createBasicSetup(config);
+                },
+                components: {
+                    HeaderComp
                 }
             }).mount('#app');
             const selectedProfile = config.profiles.find(function (profile) {
@@ -44,16 +48,7 @@
 </head>
 <body id="app" style="background-color: #f3f3f3">
 
-<header class="p-3 text-bg-primary">
-    <div class="container">
-        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start d-flex mb-2 mb-lg-0 me-md-auto text-white fs-3 fw-bold">
-            <a class="link-light text-decoration-none" href="index.html">A-SIT Demo Wallet Service Provider</a>
-            <div class="ms-auto btn btn-light fs-4">
-                <a href="https://www.a-sit.at/"><img style="height: 1em" src="images/ASIT Logo.png"/></a>
-            </div>
-        </div>
-    </div>
-</header>
+<header-comp></header-comp>
 
 <div class="container px-4 py-5 position-relative">
 

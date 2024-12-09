@@ -21,9 +21,13 @@
     <script type="module">
         import {createBasicSetup} from 'result'
         import {createApp} from 'vue'
+        import HeaderComp from './HeaderComp.js'
 
         const app = createApp({
-            setup: createBasicSetup
+            setup: createBasicSetup,
+            components: {
+                HeaderComp
+            }
         }).mount('#app');
         const urlParams = new URLSearchParams(window.location.search);
         const idParam = urlParams.get('id');
@@ -32,16 +36,7 @@
 </head>
 <body id="app" style="background-color: #f3f3f3">
 
-<header class="p-3 text-bg-primary">
-    <div class="container">
-        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start d-flex mb-2 mb-lg-0 me-md-auto text-white fs-3 fw-bold">
-            <a class="link-light text-decoration-none" href="index.html">A-SIT Demo Wallet Service Provider</a>
-            <div class="ms-auto btn btn-light fs-4">
-                <a href="https://www.a-sit.at/"><img style="height: 1em" src="images/ASIT Logo.png"/></a>
-            </div>
-        </div>
-    </div>
-</header>
+<header-comp></header-comp>
 
 <div class="container my-5">
     <div class="row alert alert-success" role="alert">

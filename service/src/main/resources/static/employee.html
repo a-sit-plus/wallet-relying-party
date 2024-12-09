@@ -21,9 +21,13 @@
     <script type="module">
         import {createBasicSetup} from 'result'
         import {createApp} from 'vue'
+        import HeaderComp from './HeaderComp.js'
 
         const app = createApp({
-            setup: createBasicSetup
+            setup: createBasicSetup,
+            components: {
+                HeaderComp
+            }
         }).mount('#app');
         app.startPeriodicUpdate();
     </script>
