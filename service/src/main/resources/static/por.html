@@ -16,7 +16,8 @@
         {
           "imports": {
             "login": "./js/login.js",
-            "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+            "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js",
+            "header-comp": "./js/templates/header-comp.js"
           }
         }
     </script>
@@ -24,7 +25,7 @@
     <script type="module">
         import {loadConfig, createBasicSetup} from 'login'
         import {createApp, ref} from 'vue'
-        import HeaderComp from './HeaderComp.js'
+        import HeaderComp from 'header-comp'
 
         (async function () {
             const config = await loadConfig();
