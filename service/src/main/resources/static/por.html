@@ -19,6 +19,7 @@
             "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js",
             "header-comp": "./js/templates/header-comp.js",
             "request-details-comp": "./js/templates/request-details-comp.js",
+            "login-options-comp": "./js/templates/login-options-comp.js",
             "main-config": "./js/login-config.json"
           }
         }
@@ -29,6 +30,7 @@
         import {createApp, ref} from 'vue'
         import HeaderComp from 'header-comp'
         import RequestDetailsComp from 'request-details-comp'
+        import LoginOptionsComp from 'login-options-comp'
         import config from "main-config" with { type: "json" };
 
         createApp({
@@ -45,7 +47,8 @@
             },
             components: {
                 HeaderComp,
-                RequestDetailsComp
+                RequestDetailsComp,
+                LoginOptionsComp
             }
         }).mount('#app');
     </script>
@@ -70,52 +73,11 @@
         {{ error.message }}
     </div>
 
-    <div v-if="reqChanged.changed && !error.message" class="z-3 position-absolute rounded w-100">
-        <div class="card w-50 mx-auto mt-5 text-center">
-            <div class="card-body">
-                <h5 class="card-title">Request Data Changed</h5>
-                <p class="card-text">You have changed the request data. Please refresh the QR code and online wallet
-                    link.</p>
-                <button @click="generateQrCode()" class="btn btn-primary">Refresh Request</button>
-            </div>
-        </div>
-    </div>
-    <div v-if="reqResult != null && reqResult.qrCodes != null"
-         class="card"
-         :class="{ 'blur' : reqChanged.changed}">
-
-        <div class="card-header">
-            <ul class="nav nav-tabs card-header-tabs" role="tablist">
-                <li class="nav-item" v-for="(qrCode, index) in reqResult.qrCodes">
-                    <button class="nav-link" data-bs-toggle="tab"
-                            :data-bs-target="`#tab-${qrCode.name}`"
-                            :class="{ 'active' : index == 0}"
-                            type="button">
-                        {{ qrCode.name }}
-                    </button>
-                </li>
-            </ul>
-        </div>
-        <div class="card-body tab-content container">
-            <div v-for="(qrCode, index) in reqResult.qrCodes"
-                 class="tab-pane row"
-                 role="tabpanel"
-                 :id="`tab-${qrCode.name}`"
-                 :class="{ 'active' : index == 0}">
-                <p>Either scan the QR code with your mobile app or click the link to open your Wallet</p>
-                <div class="text-left">
-                    <a target="_blank" :href="qrCode.url">
-                        <img width="300px" :src="qrCode.png"/>
-                    </a>
-                </div>
-                <p>The whole link is: <a target="_blank" :href="qrCode.url">{{ qrCode.url }}</a></p>
-                <div class="text-center">
-                    <a target="_blank" :href="reqResult.remoteWalletUrl" class="btn btn-primary mb-3"
-                       :title="reqResult.remoteWalletUrl">Open Remote Wallet</a>
-                </div>
-            </div>
-        </div>
-    </div>
+    <login-options-comp
+      :result="reqResult"
+      :changed="reqChanged"
+      :error="error"
+      @generate-qr-code="generateQrCode"></login-options-comp>
 
     <request-details-comp
       :request="reqSelection" :config="config"
@@ -124,7 +86,7 @@
       @update-attribute="updateAttribute"
       @add-credential="addCredential"
       @generate-qr-code="generateQrCode"
-      />
+      ></request-details-comp>
 </div>
 
 </body>

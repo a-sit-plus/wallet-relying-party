@@ -2,15 +2,15 @@ import {ref} from 'vue'
 
 export default {
     props: [
-      'request',
-      'config'
+        'request',
+        'config'
     ],
     emits: [
-      'updateSchemeType',
-      'updateRepresentation',
-      'updateAttribute',
-      'addCredential',
-      'generateQrCode'
+        'updateSchemeType',
+        'updateRepresentation',
+        'updateAttribute',
+        'addCredential',
+        'generateQrCode'
     ],
     setup() { },
     template: `

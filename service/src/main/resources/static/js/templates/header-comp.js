@@ -1,19 +1,18 @@
 import {ref} from 'vue'
 
 export default {
-    setup() {
-    },
+    setup() { },
     template: `
 <header class="p-3 text-bg-primary">
-<div class="container">
-  <div
-      class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start d-flex mb-2 mb-lg-0 me-md-auto text-white fs-3 fw-bold">
-    <a class="link-light text-decoration-none" href="index.html">A-SIT Demo Wallet Service Provider</a>
-    <div class="ms-auto btn btn-light fs-4">
-      <a href="https://wallet.a-sit.at/"><img style="height: 1em" src="images/ASIT Logo.png"/></a>
+  <div class="container">
+    <div
+        class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start d-flex mb-2 mb-lg-0 me-md-auto text-white fs-3 fw-bold">
+      <a class="link-light text-decoration-none" href="index.html">A-SIT Demo Wallet Service Provider</a>
+      <div class="ms-auto btn btn-light fs-4">
+        <a href="https://wallet.a-sit.at/"><img style="height: 1em" src="images/ASIT Logo.png"/></a>
+      </div>
     </div>
   </div>
-</div>
 </header>
 `
 }
