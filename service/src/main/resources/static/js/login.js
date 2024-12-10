@@ -5,19 +5,9 @@ import {createApp, ref} from 'vue'
 const STATIC_DEV = false
 
 const URLs = {
-    loginConfigUrl: 'js/login-config.json',
     transactionUrl: STATIC_DEV ? 'api/transaction-create' : 'transaction/create',
     resultUrl: 'api/single/',
     successPageUrl: 'customer-success.html?id=',
-}
-
-const loadConfig = async function () {
-    // load from json
-    const response = await fetch(URLs.loginConfigUrl)
-    const config = await response.json()
-    //console.log(config)
-
-    return config
 }
 
 const createBasicSetup = function (config) {
@@ -278,4 +268,4 @@ const createBasicSetup = function (config) {
     }
 }
 
-export {loadConfig, createBasicSetup}
+export {createBasicSetup}
