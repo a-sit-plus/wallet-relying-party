@@ -8,7 +8,7 @@ export default {
         'generateQrCode'
     ],
     template: `
-<div v-if="changed.changed && !error.message" class="z-3 position-absolute rounded w-100">
+<div v-if="result != null && result.qrCodes != null && changed.changed && !error.message" class="z-3 position-absolute rounded w-100">
     <div class="card w-50 mx-auto mt-5 text-center">
         <div class="card-body">
             <h5 class="card-title">Request Data Changed</h5>
@@ -20,7 +20,7 @@ export default {
 </div>
 
 <div v-if="result != null && result.qrCodes != null"
-     class="card"
+     class="card mb-3"
      :class="{ 'blur' : changed.changed}">
 
     <div class="card-header">

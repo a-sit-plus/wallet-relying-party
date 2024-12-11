@@ -13,30 +13,51 @@
         {
           "imports": {
             "login": "./js/login.js",
-            "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+            "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js",
+            "header-comp": "./js/templates/header-comp.js",
+            "title-comp": "./js/templates/title-comp.js",
+            "error-alert-comp": "./js/templates/error-alert-comp.js",
+            "success-alert-comp": "./js/templates/success-alert-comp.js",
+            "accordion-comp": "./js/templates/accordion-comp.js",
+            "login-options-comp": "./js/templates/login-options-comp.js",
+            "request-details-comp": "./js/templates/request-details-comp.js",
+            "main-config": "./js/login-config.json"
           }
         }
     </script>
 
     <script type="module">
-        import {loadConfig, createBasicSetup} from 'login'
-        import {createApp} from 'vue'
-        import HeaderComp from './HeaderComp.js'
+        import {createBasicSetup} from 'login'
+        import {createApp, ref} from 'vue'
+        import HeaderComp from 'header-comp'
+        import TitleComp from 'title-comp'
+        import ErrorAlertComp from 'error-alert-comp'
+        import SuccessAlertComp from 'success-alert-comp'
+        import AccordionComp from 'accordion-comp'
+        import LoginOptionsComp from 'login-options-comp'
+        import RequestDetailsComp from 'request-details-comp'
+        import config from "main-config" with { type: "json" };
 
-        (async function () {
-          const config = await loadConfig();
-          let app = createApp({
-              setup: function () { return createBasicSetup(config); },
-              components: {
-                  HeaderComp
-              }
-          }).mount('#app');
-          app.updateProfile(config.profiles[0]);
-          app.resetRequestChanged();
-        })();
+        createApp({
+            setup: function () {
+                let app = createBasicSetup(config);
+                app.updateProfile(config.profiles[0]);
+                app.resetRequestChanged();
+                return app
+            },
+            components: {
+                HeaderComp,
+                TitleComp,
+                ErrorAlertComp,
+                SuccessAlertComp,
+                AccordionComp,
+                LoginOptionsComp,
+                RequestDetailsComp
+            }
+        }).mount('#app');
     </script>
 </head>
-<body id="app" style="background-color: #f3f3f3">
+<body id="app">
 
 <header-comp></header-comp>
 
@@ -44,14 +65,13 @@
     <div class="row g-4 py-5 row-cols-1 row-cols-lg-2">
         <div class="col">
             <div class="p-3 border rounded bg-white mb-3">
-              <h3 class="fs-2 text-body-emphasis">
-                  <i width="1em" height="1em" class="bi-person"></i>
-                  Customer-Page
-              </h3>
-              <p>
-                  The customer starts the authentication process by scanning the QR code placed on the counter.
-                  Please make a selection to generate the QR code:
-              </p>
+
+              <title-comp title="Customer-Page" icon="bi-person">
+                  <p>
+                      The customer starts the authentication process by scanning the QR code placed on the counter.
+                      Please make a selection to generate the QR code:
+                  </p>
+              </title-comp>
 
               <div class="row mb-3">
                   <ul class="nav nav-tabs">
@@ -63,114 +83,30 @@
                              @click="updateProfile(item)">{{ item.label }}</a>
                       </li>
                   </ul>
-                  <div>
-                    <div class="row border-top pt-2"
-                         v-for="credential in reqSelection.credentials"
-                         :key="credential.schemeType">
-                      <legend class="">
-                        <span v-if="credential.schemeType && credential.schemeType.label">
-                            Credential: {{ credential.schemeType.label }}
-                        </span>
-                        <span v-else>
-                            Credential: Unknown
-                        </span>
-                        <button type="button" class="btn btn-light" @click="removeCredential(credential)"><i class="bi-trash3"></i></button>
-                      </legend>
+                  <div class="position-relative">
 
-                      <fieldset class="row mb-3">
-                          <legend class="col-form-label col-sm-4 pt-0 fw-bold">Credential Type</legend>
-                          <div class="col-sm-8">
-                              <div v-for="item in config.schemeTypes"
-                                   :key="credential.schemeType + '-' + item.value"
-                                   class="form-check">
-                                  <input class="form-check-input" type="radio"
-                                         :name="(credential.schemeType ? credential.schemeType.label : 'unknown') + '-credentialScheme'"
-                                         :value="item.value"
-                                         :checked="credential.schemeType && credential.schemeType.value == item.value"
-                                         @click="updateSchemeType(credential, item)">
-                                  <label class="form-check-label">
-                                      {{ item.label }} - <span class="text-primary">{{ item.value }}</span>
-                                  </label>
-                              </div>
-                          </div>
-                      </fieldset>
+                    <request-details-comp
+                      :request="reqSelection" :config="config"
+                      :single-column="true"
+                      qr-button-text="Generate QR Code"
+                      @update-scheme-type="updateSchemeType"
+                      @update-representation="updateRepresentation"
+                      @update-attribute="updateAttribute"
+                      @add-credential="addCredential"
+                      @remove-credential="removeCredential"
+                      @generate-qr-code="generateQrCode"
+                      ></request-details-comp>
 
-                      <fieldset class="row mb-3">
-                          <legend class="col-form-label col-sm-4 pt-0 fw-bold">Presentation Type</legend>
-                          <div class="col-sm-8">
-                              <div v-for="item in config.representation"
-                                   :key="credential.schemeType + '-' + item.value"
-                                   class="form-check">
-                                  <input class="form-check-input" type="radio"
-                                         :name="(credential.schemeType ? credential.schemeType.label : 'unknown') + '-representation'"
-                                         :value="item.value"
-                                         :checked="credential.representation && credential.representation.value == item.value"
-                                         @click="updateRepresentation(credential, item)">
-                                  <label class="form-check-label">
-                                      {{ item.label }} - <span class="text-primary">{{ item.value }}</span>
-                                  </label>
-                              </div>
-                          </div>
-                      </fieldset>
+                    <error-alert-comp :error="error"></error-alert-comp>
 
-                      <fieldset class="row mb-3">
-                          <legend class="col-form-label col-sm-4 pt-0 fw-bold">Attributes</legend>
-                          <div class="col-sm-8">
-                              <p v-if="credential.attributes.length == 0">Please select a Credential Type.</p>
-                              <div v-for="item in credential.attributes"
-                                   :key="credential.schemeType + '-' + item.value"
-                                   class="form-check">
-                                  <input class="attributes form-check-input" type="checkbox"
-                                         :name="(credential.schemeType ? credential.schemeType.label : 'unknown') + '-attributes'"
-                                         :value="item.value"
-                                         :checked="item.isSelected"
-                                         @click="updateAttribute(item)">
-                                  <label class="form-check-label" for="attributes1">
-                                      {{ item.label }}
-                                  </label>
-                              </div>
-                          </div>
-                      </fieldset>
-                    </div>
+                    <success-alert-comp :result="reqResult"></success-alert-comp>
 
-                    <div class="row border-top pt-2">
-                      <p>
-                        <button type="button" class="btn btn-light" @click="addCredential()"><i class="bi-plus"></i>Add Requested Credential</button>
-                      </p>
-                    </div>
+                    <login-options-comp
+                      :result="reqResult"
+                      :changed="reqChanged"
+                      :error="error"
+                      @generate-qr-code="generateQrCode"></login-options-comp>
 
-                    <div class="row">
-                      <div class="d-flex justify-content-center mb-3">
-                        <button @click="generateQrCode()" class="btn btn-primary">Generate Request</button>
-                      </div>
-                    </div>
-
-                    <div v-if="error.message" class="row alert alert-danger mx-1 mb-3" role="alert">
-                        {{ error.message }}
-                    </div>
-
-                    <div v-if="reqResult != null && reqResult.qrCodeSrc != null" class="row alert alert-success mx-1 mb-3" role="alert">
-                        <p>Request has been generated successfully!</p>
-                    </div>
-
-                    <div v-if="reqResult != null && reqResult.qrCodeSrc != null && reqResult.linkSrc != null"
-                        class="row"
-                        :class="{ 'blur' : reqChanged.changed}">
-                        <div class="mb-3">
-                            <h2>Option A: Wallet App</h2>
-                            <p>Scan the QR code with your Wallet App:</p>
-                            <div class="text-center">
-                                <img id="qrcode" width="300px" :src="reqResult.qrCodeSrc" />
-                            </div>
-                        </div>
-                        <div>
-                            <h2>Option B: Online Wallet</h2>
-                            <p>Open the following link to authenticate via the Online Wallet:</p>
-                            <div class="text-center">
-                                <a target="_blank" :href="reqResult.linkSrc" class="btn btn-primary mb-3">Open Online Wallet</a>
-                            </div>
-                        </div>
-                    </div>
                   </div>
               </div>
             </div>
@@ -178,20 +114,20 @@
 
         <div class="col">
             <div class="p-3 border rounded bg-white">
-                <h3 class="fs-2 text-body-emphasis">
-                    <i width="1em" height="1em" class="bi-bank"></i>
-                    Employee-Page
-                </h3>
-                <p>
-                    Employees are presented with all recent authentication results on the Employee-Page.
-                    The identity data of these authentication results can be used to compare whether the right person is standing in front of the counter.
-                </p>
-                <div class="d-flex justify-content-end">
-                    <a href="employee.html" class="btn btn-primary">
-                        Employee Page
-                        <i class="bi-chevron-right"></i>
-                    </a>
-                </div>
+
+                <title-comp title="Employee-Page" icon="bi-bank">
+                    <p>
+                        Employees are presented with all recent authentication results on the Employee-Page.
+                        The identity data of these authentication results can be used to compare whether the right person is standing in front of the counter.
+                    </p>
+                    <div class="d-flex justify-content-end">
+                        <a href="employee.html" class="btn btn-primary">
+                            Employee Page
+                            <i class="bi-chevron-right"></i>
+                        </a>
+                    </div>
+                </title-comp>
+
             </div>
         </div>
     </div>

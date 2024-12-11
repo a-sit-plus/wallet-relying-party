@@ -40,7 +40,6 @@
             setup: function () {
                 let app = createBasicSetup(config);
                 app.updateProfile(config.profiles[0]);
-                app.generateQrCode();
                 app.resetRequestChanged();
                 app.startPeriodicUpdate();
                 return app
