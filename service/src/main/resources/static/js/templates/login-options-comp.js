@@ -1,5 +1,3 @@
-import {ref} from 'vue'
-
 export default {
     props: [
         'result',
@@ -9,7 +7,6 @@ export default {
     emits: [
         'generateQrCode'
     ],
-    setup() { },
     template: `
 <div v-if="changed.changed && !error.message" class="z-3 position-absolute rounded w-100">
     <div class="card w-50 mx-auto mt-5 text-center">

@@ -1,5 +1,3 @@
-import {ref} from 'vue'
-
 export default {
     props: [
         'request',
@@ -10,9 +8,9 @@ export default {
         'updateRepresentation',
         'updateAttribute',
         'addCredential',
+        'removeCredential',
         'generateQrCode'
     ],
-    setup() { },
     template: `
 <div class="mb-3 accordion" id="accordionRequest">
     <div class="accordion-item">

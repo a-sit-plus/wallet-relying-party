@@ -1,7 +1,4 @@
-import {ref} from 'vue'
-
 export default {
-    setup() { },
     template: `
 <header class="p-3 text-bg-primary">
   <div class="container">

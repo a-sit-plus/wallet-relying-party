@@ -19,6 +19,7 @@
             "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js",
             "header-comp": "./js/templates/header-comp.js",
             "title-comp": "./js/templates/title-comp.js",
+            "error-comp": "./js/templates/error-comp.js",
             "login-options-comp": "./js/templates/login-options-comp.js",
             "request-details-comp": "./js/templates/request-details-comp.js",
             "main-config": "./js/login-config.json"
@@ -31,6 +32,7 @@
         import {createApp, ref} from 'vue'
         import HeaderComp from 'header-comp'
         import TitleComp from 'title-comp'
+        import ErrorComp from 'error-comp'
         import LoginOptionsComp from 'login-options-comp'
         import RequestDetailsComp from 'request-details-comp'
         import config from "main-config" with { type: "json" };
@@ -49,8 +51,9 @@
             },
             components: {
                 HeaderComp,
-                LoginOptionsComp,
                 TitleComp,
+                ErrorComp,
+                LoginOptionsComp,
                 RequestDetailsComp
             }
         }).mount('#app');
@@ -68,9 +71,7 @@
       </p>
     </title-comp>
 
-    <div v-if="error.message" class="row alert alert-danger" role="alert">
-        {{ error.message }}
-    </div>
+    <error-comp :error="error"></error-comp>
 
     <login-options-comp
       :result="reqResult"
@@ -84,6 +85,7 @@
       @update-representation="updateRepresentation"
       @update-attribute="updateAttribute"
       @add-credential="addCredential"
+      @remove-credential="removeCredential"
       @generate-qr-code="generateQrCode"
       ></request-details-comp>
 </div>

@@ -1,11 +1,8 @@
-import {ref} from 'vue'
-
 export default {
     props: [
         'title',
         'icon'
     ],
-    setup() { },
     template: `
 <div class="row">
     <h3 class="fs-2 text-body-emphasis">
