@@ -2,14 +2,11 @@ package at.asit.apps.terminal_sp.prototype.server
 
 import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.signum.indispensable.asn1.*
-import at.asitplus.signum.indispensable.asn1.encoding.Asn1
-import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
-import at.asitplus.signum.indispensable.pki.X509CertificateExtension
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.ClientIdScheme.CertificateSanDns
+import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.ClientIdScheme.RedirectUri
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.runBlocking
@@ -37,20 +34,10 @@ class ApiController(
     private val publicUrl: String,
     private val transactionStore: TransactionStore,
 ) {
+    private val clientId = publicUrl
     private val transactions: MutableMap<String, Transaction> = HashMap()
-    private val extensions = listOf(X509CertificateExtension(
-        KnownOIDs.subjectAltName_2_5_29_17,
-        critical = false,
-        Asn1EncapsulatingOctetString(listOf(
-            Asn1.Sequence {
-                +Asn1Primitive(
-                    SubjectAltNameImplicitTags.dNSName,
-                    Asn1String.UTF8(publicUrl.getDnsName()).encodeToTlv().content
-                )
-            }
-        ))))
-    private val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
-    private val verifier: VerifierAgent = VerifierAgent(verifierKeyMaterial)
+    private val verifierKeyMaterial = EphemeralKeyWithoutCert()
+    private val verifier: VerifierAgent = VerifierAgent(clientId)
     private val customerSuccessUrl by lazy {
         ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
             .pathSegment("customer-success.html")
@@ -66,7 +53,7 @@ class ApiController(
     private suspend fun newVerifier(): OidcSiopVerifier = OidcSiopVerifier(
         verifier = verifier,
         keyMaterial = verifierKeyMaterial,
-        clientIdScheme = CertificateSanDns(listOf(verifierKeyMaterial.getCertificate()!!), publicUrl.getDnsName())
+        clientIdScheme = RedirectUri(clientId)
     )
 
     @GetMapping("/api/items")
@@ -155,7 +142,7 @@ class ApiController(
     private fun buildQrCodeUrl(request: TransactionRequest, transactionId: String) =
         ServletUriComponentsBuilder.fromUriString(request.urlprefix)
             .queryParam("request_uri", buildTransactionUrl(request, transactionId))
-            .queryParam("client_id", publicUrl.getDnsName())
+            .queryParam("client_id", clientId)
             .queryParam("client_metadata_uri", metadataUrl)
             .toUriString()
 
@@ -177,11 +164,11 @@ class ApiController(
      */
     @ResponseBody
     @GetMapping("/siopv2/metadata")
-    fun siopv2Metadata(): ResponseEntity<String> = runBlocking {
+    fun siopv2Metadata(): ResponseEntity<RelyingPartyMetadata> = runBlocking {
         Napier.i("/siopv2/metadata called")
         ResponseEntity.ok()
             .contentType(MediaType.APPLICATION_JSON)
-            .body(verifierProtocol.createSignedMetadata().getOrThrow().payload.decodeToString())
+            .body(verifierProtocol.createSignedMetadata().getOrThrow().payload)
     }
 
     private suspend fun validateSiopResponse(params: AuthenticationResponseParameters): Siop2User {
