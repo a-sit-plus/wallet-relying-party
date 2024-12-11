@@ -18,8 +18,9 @@
             "login": "./js/login.js",
             "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js",
             "header-comp": "./js/templates/header-comp.js",
-            "request-details-comp": "./js/templates/request-details-comp.js",
+            "title-comp": "./js/templates/title-comp.js",
             "login-options-comp": "./js/templates/login-options-comp.js",
+            "request-details-comp": "./js/templates/request-details-comp.js",
             "main-config": "./js/login-config.json"
           }
         }
@@ -29,8 +30,9 @@
         import {createBasicSetup} from 'login'
         import {createApp, ref} from 'vue'
         import HeaderComp from 'header-comp'
-        import RequestDetailsComp from 'request-details-comp'
+        import TitleComp from 'title-comp'
         import LoginOptionsComp from 'login-options-comp'
+        import RequestDetailsComp from 'request-details-comp'
         import config from "main-config" with { type: "json" };
 
         createApp({
@@ -47,8 +49,9 @@
             },
             components: {
                 HeaderComp,
-                RequestDetailsComp,
-                LoginOptionsComp
+                LoginOptionsComp,
+                TitleComp,
+                RequestDetailsComp
             }
         }).mount('#app');
     </script>
@@ -59,15 +62,11 @@
 
 <div class="container px-4 py-5 position-relative">
 
-    <div class="row">
-        <h3 class="fs-2 text-body-emphasis">
-            <i width="1em" height="1em" class="bi-bank2"></i>
-            eGovernment & Power of Representation
-        </h3>
-        <p>
-            Login for a legal entity based on a power of representation.
-        </p>
-    </div>
+    <title-comp title="eGovernment & Power of Representation" icon="bi-bank2">
+      <p>
+          Login for a legal entity based on a power of representation.
+      </p>
+    </title-comp>
 
     <div v-if="error.message" class="row alert alert-danger" role="alert">
         {{ error.message }}

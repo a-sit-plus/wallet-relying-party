@@ -1,4 +1,4 @@
-import {ref, defineModel} from 'vue'
+import {ref} from 'vue'
 
 export default {
     props: [
