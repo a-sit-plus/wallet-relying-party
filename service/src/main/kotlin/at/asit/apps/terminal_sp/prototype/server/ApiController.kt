@@ -50,7 +50,7 @@ class ApiController(
             }
         ))))
     private val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
-    private val verifier: VerifierAgent = VerifierAgent(verifierKeyMaterial)
+    private val verifier: VerifierAgent = VerifierAgent(publicUrl)
     private val customerSuccessUrl by lazy {
         ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
             .pathSegment("customer-success.html")
@@ -181,7 +181,7 @@ class ApiController(
         Napier.i("/siopv2/metadata called")
         ResponseEntity.ok()
             .contentType(MediaType.APPLICATION_JSON)
-            .body(verifierProtocol.createSignedMetadata().getOrThrow().payload.decodeToString())
+            .body(verifierProtocol.createSignedMetadata().getOrThrow().payload.serialize())
     }
 
     private suspend fun validateSiopResponse(params: AuthenticationResponseParameters): Siop2User {
