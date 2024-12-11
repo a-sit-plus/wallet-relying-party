@@ -1,3 +1,4 @@
+import at.asitplus.gradle.ktor
 import at.asitplus.gradle.napier
 import org.springframework.boot.gradle.tasks.bundling.BootJar
 
@@ -35,6 +36,24 @@ dependencies {
     implementation("at.asitplus.wallet:powerofrepresentation:1.1.0")
     implementation("at.asitplus.wallet:certificateofresidence:2.1.0")
     implementation("at.asitplus.wallet:eprescription:1.1.0")
+
+
+    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")
+    testImplementation(ktor("client-java"))
+}
+
+tasks.test {
+    testLogging {
+        showExceptions = true
+        events = setOf(
+            org.gradle.api.tasks.testing.logging.TestLogEvent.FAILED,
+            org.gradle.api.tasks.testing.logging.TestLogEvent.PASSED
+        )
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+    systemProperty("org.slf4j.simpleLogger.defaultLogLevel", "DEBUG")
+    useJUnitPlatform()
 }
 
 springBoot {
