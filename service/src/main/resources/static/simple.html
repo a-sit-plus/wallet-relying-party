@@ -28,7 +28,7 @@
           config.profiles = [
               {
                   label: 'ID Verification',
-                  urlprefix: 'https://wallet.a-sit.at/mobile/simple',
+                  urlprefix: 'https://wallet.a-sit.at/remote/simple',
                   credentials: [
                     {
                       schemeType: 'at.gv.id-austria.2023.iso',
@@ -46,7 +46,7 @@
               }
           ];
           config.urlprefix.push({
-            "label": "A-SIT Wallet (Simplified)", "value": "https://wallet.a-sit.at/mobile/simple"
+            "label": "A-SIT Wallet (Simplified)", "value": "https://wallet.a-sit.at/remote/simple"
           });
           let app = createApp({
               setup: function () { return createBasicSetup(config); }
