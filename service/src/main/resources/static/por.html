@@ -19,7 +19,8 @@
             "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js",
             "header-comp": "./js/templates/header-comp.js",
             "title-comp": "./js/templates/title-comp.js",
-            "error-comp": "./js/templates/error-comp.js",
+            "error-alert-comp": "./js/templates/error-alert-comp.js",
+            "accordion-comp": "./js/templates/accordion-comp.js",
             "login-options-comp": "./js/templates/login-options-comp.js",
             "request-details-comp": "./js/templates/request-details-comp.js",
             "main-config": "./js/login-config.json"
@@ -32,7 +33,8 @@
         import {createApp, ref} from 'vue'
         import HeaderComp from 'header-comp'
         import TitleComp from 'title-comp'
-        import ErrorComp from 'error-comp'
+        import ErrorAlertComp from 'error-alert-comp'
+        import AccordionComp from 'accordion-comp'
         import LoginOptionsComp from 'login-options-comp'
         import RequestDetailsComp from 'request-details-comp'
         import config from "main-config" with { type: "json" };
@@ -52,43 +54,45 @@
             components: {
                 HeaderComp,
                 TitleComp,
-                ErrorComp,
+                ErrorAlertComp,
+                AccordionComp,
                 LoginOptionsComp,
                 RequestDetailsComp
             }
         }).mount('#app');
     </script>
 </head>
-<body id="app" style="background-color: #f3f3f3">
+<body id="app">
 
-<header-comp></header-comp>
+    <header-comp></header-comp>
 
-<div class="container px-4 py-5 position-relative">
+    <div class="container px-4 py-5 position-relative">
+        <title-comp title="eGovernment & Power of Representation" icon="bi-bank2">
+            <p>
+                Login for a legal entity based on a power of representation.
+            </p>
+        </title-comp>
 
-    <title-comp title="eGovernment & Power of Representation" icon="bi-bank2">
-      <p>
-          Login for a legal entity based on a power of representation.
-      </p>
-    </title-comp>
+        <error-alert-comp :error="error"></error-alert-comp>
 
-    <error-comp :error="error"></error-comp>
+        <login-options-comp
+          :result="reqResult"
+          :changed="reqChanged"
+          :error="error"
+          @generate-qr-code="generateQrCode"></login-options-comp>
 
-    <login-options-comp
-      :result="reqResult"
-      :changed="reqChanged"
-      :error="error"
-      @generate-qr-code="generateQrCode"></login-options-comp>
-
-    <request-details-comp
-      :request="reqSelection" :config="config"
-      @update-scheme-type="updateSchemeType"
-      @update-representation="updateRepresentation"
-      @update-attribute="updateAttribute"
-      @add-credential="addCredential"
-      @remove-credential="removeCredential"
-      @generate-qr-code="generateQrCode"
-      ></request-details-comp>
-</div>
+        <accordion-comp title="Request Details">
+            <request-details-comp
+              :request="reqSelection" :config="config"
+              @update-scheme-type="updateSchemeType"
+              @update-representation="updateRepresentation"
+              @update-attribute="updateAttribute"
+              @add-credential="addCredential"
+              @remove-credential="removeCredential"
+              @generate-qr-code="generateQrCode"
+              ></request-details-comp>
+        </accordion-comp>
+    </div>
 
 </body>
 </html>

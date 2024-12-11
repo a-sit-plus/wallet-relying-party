@@ -14,180 +14,83 @@
         {
           "imports": {
             "login": "./js/login.js",
-            "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+            "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js",
+            "header-comp": "./js/templates/header-comp.js",
+            "title-comp": "./js/templates/title-comp.js",
+            "error-alert-comp": "./js/templates/error-alert-comp.js",
+            "accordion-comp": "./js/templates/accordion-comp.js",
+            "login-options-comp": "./js/templates/login-options-comp.js",
+            "request-details-comp": "./js/templates/request-details-comp.js",
+            "main-config": "./js/login-config.json"
           }
         }
     </script>
 
     <script type="module">
-        import {loadConfig, createBasicSetup} from 'login'
+        import {createBasicSetup} from 'login'
         import {createApp, ref} from 'vue'
-        import HeaderComp from './HeaderComp.js'
+        import HeaderComp from 'header-comp'
+        import TitleComp from 'title-comp'
+        import ErrorAlertComp from 'error-alert-comp'
+        import AccordionComp from 'accordion-comp'
+        import LoginOptionsComp from 'login-options-comp'
+        import RequestDetailsComp from 'request-details-comp'
+        import config from "main-config" with { type: "json" };
 
-        (async function () {
-          const config = await loadConfig();
-          let app = createApp({
-              setup: function () { return createBasicSetup(config); },
-              components: {
-                  HeaderComp
-              }
-          }).mount('#app');
-          const ePrescrptionProfile = config.profiles.find(function(profile){
-              return profile.label == "mDL Mandatory";
-          });
-          app.updateProfile(ePrescrptionProfile);
-          app.generateQrCode();
-          app.resetRequestChanged();
-          app.startPeriodicUpdate();
-        })();
+        createApp({
+            setup: function () {
+                let app = createBasicSetup(config);
+                const selectedProfile = config.profiles.find(function (profile) {
+                    return profile.label == "mDL Mandatory";
+                });
+                app.updateProfile(selectedProfile);
+                app.generateQrCode();
+                app.resetRequestChanged();
+                app.startPeriodicUpdate();
+                return app
+            },
+            components: {
+                HeaderComp,
+                TitleComp,
+                ErrorAlertComp,
+                AccordionComp,
+                LoginOptionsComp,
+                RequestDetailsComp
+            }
+        }).mount('#app');
     </script>
 </head>
-<body id="app" style="background-color: #f3f3f3">
+<body id="app">
 
-<header-comp></header-comp>
+    <header-comp></header-comp>
 
-<div class="container px-4 py-5">
+    <div class="container px-4 py-5 position-relative">
+        <title-comp title="Mobile Driving License" icon="bi-car-front-fill">
+            <p>
+                Present a mobile driving license to an online service (remote use case).
+            </p>
+        </title-comp>
 
-    <div class="row">
-        <h3 class="fs-2 text-body-emphasis">
-            <i width="1em" height="1em" class="bi-car-front-fill"></i>
-            Mobile Driving License
-        </h3>
-        <p>
-            Present a mobile driving license to an online service (remote use case).
-        </p>
+        <error-alert-comp :error="error"></error-alert-comp>
+
+        <login-options-comp
+          :result="reqResult"
+          :changed="reqChanged"
+          :error="error"
+          @generate-qr-code="generateQrCode"></login-options-comp>
+
+        <accordion-comp title="Request Details">
+            <request-details-comp
+              :request="reqSelection" :config="config"
+              @update-scheme-type="updateSchemeType"
+              @update-representation="updateRepresentation"
+              @update-attribute="updateAttribute"
+              @add-credential="addCredential"
+              @remove-credential="removeCredential"
+              @generate-qr-code="generateQrCode"
+              ></request-details-comp>
+        </accordion-comp>
     </div>
-
-    <div v-if="error.message" class="row alert alert-danger" role="alert">
-        {{ error.message }}
-    </div>
-
-    <div v-if="reqChanged.changed && !error.message" class="z-3 position-absolute rounded w-100">
-        <div class="card w-50 mx-auto mt-5 text-center">
-            <div class="card-body">
-                <h5 class="card-title">Request Data Changed</h5>
-                <p class="card-text">You have changed the request data. Please refresh the QR code and online wallet link.</p>
-                <button @click="generateQrCode()" class="btn btn-primary">Refresh Request</button>
-            </div>
-        </div>
-    </div>
-    <div v-if="reqResult != null && reqResult.qrCodeSrc != null && reqResult.linkSrc != null"
-        class="row gy-2 mb-3"
-        :class="{ 'blur' : reqChanged.changed}">
-        <div class="col-md-6 border rounded p-2 bg-white">
-            <h2>Option A: Wallet App</h2>
-            <p>Scan the QR code with your Wallet App:</p>
-            <div class="text-center">
-                <img id="qrcode" width="300px" :src="reqResult.qrCodeSrc" />
-            </div>
-        </div>
-        <div class="col-md-6 border rounded p-2 bg-white">
-            <h2>Option B: Online Wallet</h2>
-            <p>Open the following link to authenticate via the Online Wallet:</p>
-            <div class="text-center">
-                <a target="_blank" :href="reqResult.linkSrc" class="btn btn-primary mb-3">Open Online Wallet</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="mb-3 accordion" id="accordionRequest">
-      <div class="accordion-item">
-        <h2 class="accordion-header" id="headingOne">
-          <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#collapseOne" aria-expanded="true" aria-controls="collapseOne">
-              Request Details
-          </button>
-        </h2>
-        <div id="collapseOne" class="accordion-collapse collapse" aria-labelledby="headingOne" data-bs-parent="#accordionRequest">
-          <div class="accordion-body">
-
-            <div class="row border-top pt-2"
-                 v-for="credential in reqSelection.credentials"
-                 :key="credential.schemeType">
-              <legend class="">
-                <span v-if="credential.schemeType && credential.schemeType.label">
-                    Credential: {{ credential.schemeType.label }}
-                </span>
-                <span v-else>
-                    Credential: Unknown
-                </span>
-                <button type="button" class="btn btn-light" @click="removeCredential(credential)"><i class="bi-trash3"></i></button>
-              </legend>
-              <div class="col-lg-7 overflow-hidden">
-                <fieldset class="row mb-3">
-                    <legend class="col-form-label col-sm-4 pt-0 fw-bold">Credential Type</legend>
-                    <div class="col-sm-8">
-                        <div v-for="item in config.schemeTypes"
-                             :key="credential.schemeType + '-' + item.value"
-                             class="form-check">
-                            <input class="form-check-input" type="radio"
-                                   :name="(credential.schemeType ? credential.schemeType.label : 'unknown') + '-credentialScheme'"
-                                   :value="item.value"
-                                   :checked="credential.schemeType && credential.schemeType.value == item.value"
-                                   @click="updateSchemeType(credential, item)">
-                            <label class="form-check-label">
-                                {{ item.label }} - <span class="text-primary">{{ item.value }}</span>
-                            </label>
-                        </div>
-                    </div>
-                </fieldset>
-
-                <fieldset class="row mb-3">
-                    <legend class="col-form-label col-sm-4 pt-0 fw-bold">Presentation Type</legend>
-                    <div class="col-sm-8">
-                        <div v-for="item in config.representation"
-                             :key="credential.schemeType + '-' + item.value"
-                             class="form-check">
-                            <input class="form-check-input" type="radio"
-                                   :name="(credential.schemeType ? credential.schemeType.label : 'unknown') + '-representation'"
-                                   :value="item.value"
-                                   :checked="credential.representation && credential.representation.value == item.value"
-                                   @click="updateRepresentation(credential, item)">
-                            <label class="form-check-label">
-                                {{ item.label }} - <span class="text-primary">{{ item.value }}</span>
-                            </label>
-                        </div>
-                    </div>
-                </fieldset>
-              </div>
-
-              <div class="col-lg-5">
-                <fieldset class="row mb-3">
-                    <legend class="col-form-label col-sm-4 pt-0 fw-bold">Attributes</legend>
-                    <div class="col-sm-8">
-                        <p v-if="credential.attributes.length == 0">Please select a Credential Type.</p>
-                        <div v-for="item in credential.attributes"
-                             :key="credential.schemeType + '-' + item.value"
-                             class="form-check">
-                            <input class="attributes form-check-input" type="checkbox"
-                                   :name="(credential.schemeType ? credential.schemeType.label : 'unknown') + '-attributes'"
-                                   :value="item.value"
-                                   :checked="item.isSelected"
-                                   @click="updateAttribute(item)">
-                            <label class="form-check-label" for="attributes1">
-                                {{ item.label }}
-                            </label>
-                        </div>
-                    </div>
-                </fieldset>
-              </div>
-            </div>
-
-            <div class="row border-top pt-2">
-              <p>
-                <button type="button" class="btn btn-light" @click="addCredential()"><i class="bi-plus"></i>Add Requested Credential</button>
-              </p>
-            </div>
-
-            <div class="row">
-              <div class="d-flex justify-content-center">
-                <button @click="generateQrCode()" class="btn btn-primary">Refresh Request</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-</div>
 
 </body>
 </html>
