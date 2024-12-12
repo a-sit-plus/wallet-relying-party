@@ -13,7 +13,9 @@
         {
           "imports": {
             "result": "./js/result.js",
-            "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js"
+            "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js",
+            "header-comp": "./js/templates/header-comp.js",
+            "login-results-comp": "./js/templates/login-results-comp.js"
           }
         }
     </script>
@@ -21,12 +23,14 @@
     <script type="module">
         import {createBasicSetup} from 'result'
         import {createApp} from 'vue'
-        import HeaderComp from './HeaderComp.js'
+        import HeaderComp from 'header-comp'
+        import LoginResultsComp from 'login-results-comp'
 
         const app = createApp({
             setup: createBasicSetup,
             components: {
-                HeaderComp
+                HeaderComp,
+                LoginResultsComp
             }
         }).mount('#app');
         const urlParams = new URLSearchParams(window.location.search);
@@ -34,67 +38,26 @@
         app.updateItemById(idParam);
     </script>
 </head>
-<body id="app" style="background-color: #f3f3f3">
+<body id="app">
+    <header-comp></header-comp>
 
-<header-comp></header-comp>
+    <div class="container my-5">
+        <div class="row alert alert-success" role="alert">
+            <h1>Authentication successful!</h1>
+            <p>The authentication process has been completed successfully.</p>
+        </div>
+        <div class="row">
+            <h1>Transmitted Data</h1>
+            <p>The following data has been transmitted to the service provider:</p>
 
-<div class="container my-5">
-    <div class="row alert alert-success" role="alert">
-        <h1>Authentication successful!</h1>
-        <p>The authentication process has been completed successfully.</p>
-    </div>
-    <div class="row">
-        <h1>Transmitted Data</h1>
-        <p>The following data has been transmitted to the service provider:</p>
-
-        <div class="container">
-            <p v-if="loginList.length == 0">There are no recent authentication results.</p>
-
-            <transition-group tag="div" name="fade" class="row mb-2">
-
-                <div v-for="item in loginList"
-                     :key="item.id"
-                     class="col">
-                    <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm bg-white">
-                        <div v-if="isSet(item.imageDataBase64)" class="col-lg-4 text-bg-dark text-center">
-                            <img style="max-height: 400px;max-width: 100%" :src="item.imageDataBase64"/>
-                        </div>
-                        <div :class="isSet(item.imageDataBase64) ? 'col-lg-8' : 'col-lg-12'"
-                             class="p-4 d-flex flex-column position-static">
-                            <div class="foldout mb-1">
-                                <h3 v-if="isSet(item.firstname) || isSet(item.lastname)" class="mb-1">
-                                    {{ item.firstname }} {{ item.lastname }}
-                                </h3>
-
-                                <p v-for="(value, key) in filterClaims(item)" :key="key" class="text-truncate mb-1"
-                                   style="max-width: 100%;">
-                                    <span class="fw-semibold">{{ key }}</span>: {{ value }}
-                                </p>
-
-                                <div v-for="(credential, key) in item.credentials" :key="key"
-                                     class="border rounded p-2 bg-light my-3">
-                                    <h4>Credential Type: {{ credential.credentialType }}</h4>
-                                    <p v-for="(value, key) in credential.allFields" :key="key"
-                                       class="text-break mb-1">
-                                        <span class="fw-semibold">{{ key }}</span>:
-                                        <span v-if="key == 'portrait' || key == 'signature_usual_mark'"
-                                              class="text-truncate d-inline-block"
-                                              style="max-width: 100%">{{ value }}</span>
-                                        <span v-else>{{ value }}</span>
-                                    </p>
-                                </div>
-                                <div class="foldout-fade"></div>
-                            </div>
-                            <div class="text-body-tertiary mt-auto ms-auto">
-                                Authenticated {{ item.expiredTime }} ago
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-            </transition-group>
+            <div class="container">
+              <login-results-comp
+                :login-list="loginList"
+                @toggle-details="toggleDetails"
+                @seen="seen"
+                ></login-results-comp>
+            </div>
         </div>
     </div>
-</div>
 </body>
 </html>

@@ -117,32 +117,12 @@ const createBasicSetup = function() {
     item.showDetails = !(item.showDetails == true)
   }
 
-  // --- FORMATTERS ----------------------------------------------------
-
-  function filterClaims(item) {
-    const deepCopy = JSON.parse(JSON.stringify(item))
-    delete deepCopy.timestamp
-    delete deepCopy.credentials
-    delete deepCopy.expiredTime
-    delete deepCopy.imageDataBase64
-    delete deepCopy.showDetails
-    return deepCopy
-  }
-
-  // --- CHECKER -------------------------------------------------------
-
-  function isSet(value) {
-    return value && value != "N/A" && value != "data:image;base64,null"
-  }
-
   // --- RETURNS -------------------------------------------------------
 
   return {
     loginList,
     seen,
     toggleDetails,
-    isSet,
-    filterClaims,
     startPeriodicUpdate,
     updateItemById,
   }
