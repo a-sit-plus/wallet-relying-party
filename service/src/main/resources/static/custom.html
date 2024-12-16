@@ -20,7 +20,7 @@
             "success-alert-comp": "./js/templates/success-alert-comp.js",
             "login-options-comp": "./js/templates/login-options-comp.js",
             "request-details-comp": "./js/templates/request-details-comp.js",
-            "main-config": "./js/login-config.json"
+            "main-config": "./js/login-config.js"
           }
         }
     </script>
@@ -34,7 +34,7 @@
         import SuccessAlertComp from 'success-alert-comp'
         import LoginOptionsComp from 'login-options-comp'
         import RequestDetailsComp from 'request-details-comp'
-        import config from "main-config" with { type: "json" };
+        import config from "main-config"
 
         createApp({
             setup: function () {

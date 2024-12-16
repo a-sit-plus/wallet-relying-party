@@ -1,4 +1,4 @@
-{ "schemeTypes": [
+export default { "schemeTypes": [
     { "label": "e-Prescription", "value": "eu.europa.ehealth.eprescription.1",
       "attributes": [
         { "label": "one_time_token", "value": "one_time_token", "isSelected": true },
