@@ -2,12 +2,7 @@ package at.asit.apps.terminal_sp.prototype.server
 
 import at.asit.apps.terminal_sp.prototype.server.util.AntilogSlf4jAdapter
 import at.asitplus.wallet.lib.Initializer.initOpenIdModule
-import at.asitplus.wallet.lib.agent.ClaimToBeIssued
-import at.asitplus.wallet.lib.agent.CredentialToBeIssued
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.oidc.AuthenticationResponseResult
@@ -20,7 +15,6 @@ import kotlinx.datetime.Clock
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.BeforeAll
-import org.junit.jupiter.api.BeforeEach
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
@@ -62,7 +56,6 @@ class ProcessTest {
                 TransactionRequest(
                     credentialType = AtomicAttribute2023.sdJwtType,
                     representation = ConstantIndex.CredentialRepresentation.SD_JWT.name,
-                    urlprefix = "haip://",
                     attributes = listOf(AtomicAttribute2023.CLAIM_GIVEN_NAME)
                 )
             )
@@ -94,7 +87,7 @@ class ProcessTest {
             remoteResourceRetriever = { url ->
                 mockMvc.get(url).andReturn().response.contentAsString
             })
-        val authenticationResponseResult = wallet.createAuthnResponse(transactionResponse.qrCodeUrl).getOrThrow()
+        val authenticationResponseResult = wallet.createAuthnResponse(transactionResponse.remoteWalletUrl).getOrThrow()
 
         authenticationResponseResult as AuthenticationResponseResult.Post
         mockMvc.post(authenticationResponseResult.url) {
