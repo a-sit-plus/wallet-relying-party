@@ -37,20 +37,37 @@ export default {
     </div>
     <div class="card-body tab-content container">
         <div v-for="(qrCode, index) in result.qrCodes"
-             class="tab-pane row"
+             class="tab-pane"
              role="tabpanel"
              :id="'tab-' + qrCode.name"
              :class="{ 'active' : index == 0}">
-            <p>Either scan the QR code with your mobile app or click the link to open your Wallet</p>
-            <div class="text-left">
-                <a target="_blank" :href="qrCode.url">
-                    <img width="300px" :src="qrCode.png"/>
-                </a>
+            <div class="row">
+            <div class="col-lg-4 border rounded p-2 bg-white">
+                <h2>Option A: Cross device</h2>
+                <p>Scan the QR code with your Wallet App:</p>
+                <div class="text-left">
+                    <a target="_blank" :href="qrCode.url">
+                        <img width="300px" :src="qrCode.png"/>
+                    </a>
+                </div>
             </div>
-            <p>The whole link is: <a target="_blank" :href="qrCode.url">{{ qrCode.url }}</a></p>
-            <div class="text-center">
-                <a target="_blank" :href="result.remoteWalletUrl" class="btn btn-primary mb-3"
-                   :title="result.remoteWalletUrl">Open Remote Wallet</a>
+            <div class="col-lg-4 border rounded p-2 bg-white">
+                <h2>Option B: Same device</h2>
+                <p>Click the following button to open the Wallet App on this device:</p>
+                <div class="text-center">
+                    <a target="_blank" :href="qrCode.url" class="btn btn-primary m-3">Open App Wallet</a>
+                </div>
+                <p>The whole link is: <a target="_blank" :href="qrCode.url">{{ qrCode.url }}</a></p>
+            </div>
+            
+            <div class="col-lg-4 border rounded p-2 bg-white">
+                <h2>Option C: Remote Wallet</h2>
+                <p>Click the following button to authenticate via the Remote Wallet:</p>
+                <div class="text-center">
+                    <a target="_blank" :href="result.remoteWalletUrl" class="btn btn-primary mb-3"
+                       :title="result.remoteWalletUrl">Open Remote Wallet</a>
+                </div>
+            </div>
             </div>
         </div>
     </div>
