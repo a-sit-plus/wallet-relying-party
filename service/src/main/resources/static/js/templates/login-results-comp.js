@@ -71,7 +71,7 @@ export default {
                           <h4>Credential Type: {{ credential.credentialType }}</h4>
                           <p v-for="(value, key) in credential.allFields" :key="key"
                              class="text-break mb-1">
-                              <span class="fw-semibold">{{ key }}</span>
+                              <span class="fw-semibold">{{ key }}: </span>
                               <span v-if="key == 'portrait' || key == 'signature_usual_mark'"
                                     class="text-truncate d-inline-block" style="max-width: 100%">{{ value }}</span>
                               <span v-else>{{ value }}</span>
