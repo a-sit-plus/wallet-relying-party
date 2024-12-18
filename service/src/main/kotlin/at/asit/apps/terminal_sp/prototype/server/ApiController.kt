@@ -94,8 +94,8 @@ class ApiController(
             val qrCodeBytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
             TransactionResponseQrCode(name, prefix, qrCodeBytes.toDataUrl(), qrCodeUrl)
         }
-        val remoreWalletPrefix = "https://wallet.a-sit.at/remote/" + if (request.simple) "simple" else ""
-        val remoteWalletUrl = buildQrCodeUrl(transactionUrl, remoreWalletPrefix)
+        val remoteWalletPrefix = "https://wallet.a-sit.at/remote/" + if (request.simple) "simple" else ""
+        val remoteWalletUrl = buildQrCodeUrl(transactionUrl, remoteWalletPrefix)
         val response = TransactionResponse(transactionId, qrCodes, remoteWalletUrl)
         Napier.i("/transaction/create returns $response")
         ResponseEntity.ok().body(response)

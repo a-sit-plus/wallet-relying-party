@@ -1,5 +1,8 @@
 # Changelog
 
+Version 5.2.1:
+ - Update to vc-k 5.2.1
+
 Version 5.2.0:
  - Update to vc-k 5.2.0
  - Remove URL prefix from request details
