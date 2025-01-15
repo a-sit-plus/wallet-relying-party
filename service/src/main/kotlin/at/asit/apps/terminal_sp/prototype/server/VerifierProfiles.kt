@@ -19,83 +19,77 @@ import kotlin.random.Random
 class VerifierProfiles(private val publicUrl: String) {
 
     val knownProfiles: List<Profile> = listOf(
-        "AT-GV-EGIZ-CUSTOMVERIFIER".let { clientId ->
-            Profile(
-                name = "HAIP",
-                label = "HAIP (Potential)",
-                urlPrefix = "haip://",
-                clientId = clientId,
-                verifier = OidcSiopVerifier(
-                    verifier = VerifierAgent(clientId),
-                    keyMaterial = EphemeralKeyWithoutCert(),
-                    clientIdScheme = PreRegistered(clientId)
-                ),
-                clientMetadataUrl = URLBuilder(publicUrl).apply {
-                    appendPathSegments("siopv2", "metadata", "HAIP")
-                }.buildString(),
-                buildQrCodeUrl = { requestUrl, urlPrefix ->
-                    with(URLBuilder(urlPrefix)) {
-                        AuthenticationRequestParameters(
-                            clientId = clientId,
-                            requestUri = requestUrl,
-                        ).encodeToParameters()
-                            .forEach { parameters.append(it.key, it.value) }
-                        buildString()
-                    }
-                }
+        object : Profile {
+            override val name = "HAIP"
+            override val label = "HAIP (Potential)"
+            override val urlPrefix = "haip://"
+            override val clientId = "AT-GV-EGIZ-CUSTOMVERIFIER"
+            override val verifier = OidcSiopVerifier(
+                verifier = VerifierAgent(clientId),
+                keyMaterial = EphemeralKeyWithoutCert(),
+                clientIdScheme = PreRegistered(clientId)
             )
+            override val clientMetadataUrl = URLBuilder(publicUrl).apply {
+                appendPathSegments("siopv2", "metadata", "HAIP")
+            }.buildString()
+
+            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String =
+                with(URLBuilder(urlPrefix)) {
+                    AuthenticationRequestParameters(
+                        clientId = clientId,
+                        requestUri = requestUrl,
+                    ).encodeToParameters()
+                        .forEach { parameters.append(it.key, it.value) }
+                    buildString()
+                }
         },
-        publicUrl.let { clientId ->
-            Profile(
-                name = "EUDI",
-                label = "EUDI",
-                urlPrefix = "eudi-openid4vp://",
-                clientId = clientId,
-                verifier = OidcSiopVerifier(
-                    verifier = VerifierAgent(clientId),
-                    keyMaterial = EphemeralKeyWithoutCert(),
-                    clientIdScheme = PreRegistered(clientId)
-                ),
-                clientMetadataUrl = URLBuilder(publicUrl).apply {
-                    appendPathSegments("siopv2", "metadata", "EUDI")
-                }.buildString(),
-                buildQrCodeUrl = { requestUrl, urlPrefix ->
-                    with(URLBuilder(urlPrefix)) {
-                        AuthenticationRequestParameters(
-                            clientId = clientId,
-                            requestUri = requestUrl,
-                        ).encodeToParameters()
-                            .forEach { parameters.append(it.key, it.value) }
-                        buildString()
-                    }
-                }
+        object : Profile {
+            override val name = "EUDI"
+            override val label = "EUDI"
+            override val urlPrefix = "eudi-openid4vp://"
+            override val clientId = publicUrl
+            override val verifier = OidcSiopVerifier(
+                verifier = VerifierAgent(clientId),
+                keyMaterial = EphemeralKeyWithoutCert(),
+                clientIdScheme = PreRegistered(clientId)
             )
+            override val clientMetadataUrl = URLBuilder(publicUrl).apply {
+                appendPathSegments("siopv2", "metadata", "EUDI")
+            }.buildString()
+
+            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String =
+                with(URLBuilder(urlPrefix)) {
+                    AuthenticationRequestParameters(
+                        clientId = clientId,
+                        requestUri = requestUrl,
+                    ).encodeToParameters()
+                        .forEach { parameters.append(it.key, it.value) }
+                    buildString()
+                }
         },
-        publicUrl.let { clientId ->
-            Profile(
-                name = "MDOC",
-                label = "ISO 18013-7",
-                urlPrefix = "mdoc-openid4vp://",
-                clientId = clientId,
-                verifier = OidcSiopVerifier(
-                    verifier = VerifierAgent(clientId),
-                    keyMaterial = EphemeralKeyWithoutCert(),
-                    clientIdScheme = PreRegistered(clientId),
-                ),
-                clientMetadataUrl = URLBuilder(publicUrl).apply {
-                    appendPathSegments("siopv2", "metadata", "MDOC")
-                }.buildString(),
-                buildQrCodeUrl = { requestUrl, urlPrefix ->
-                    with(URLBuilder(urlPrefix)) {
-                        AuthenticationRequestParameters(
-                            clientId = clientId,
-                            requestUri = requestUrl,
-                        ).encodeToParameters()
-                            .forEach { parameters.append(it.key, it.value) }
-                        buildString()
-                    }
-                }
+        object : Profile {
+            override val name = "MDOC"
+            override val label = "ISO 18013-7"
+            override val urlPrefix = "mdoc-openid4vp://"
+            override val clientId = publicUrl
+            override val verifier = OidcSiopVerifier(
+                verifier = VerifierAgent(clientId),
+                keyMaterial = EphemeralKeyWithoutCert(),
+                clientIdScheme = PreRegistered(clientId),
             )
+            override val clientMetadataUrl = URLBuilder(publicUrl).apply {
+                appendPathSegments("siopv2", "metadata", "MDOC")
+            }.buildString()
+
+            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String =
+                with(URLBuilder(urlPrefix)) {
+                    AuthenticationRequestParameters(
+                        clientId = clientId,
+                        requestUri = requestUrl,
+                    ).encodeToParameters()
+                        .forEach { parameters.append(it.key, it.value) }
+                    buildString()
+                }
         }
     )
 
@@ -105,7 +99,7 @@ class VerifierProfiles(private val publicUrl: String) {
 
 
 suspend fun Transaction.transactionGet(responseUrl: String): String {
-    val state = createSafeState()
+    val state = Random.nextBytes(32).encodeToString(Base64())
     val requestOptionsCredentials = request.toRequestOptionsCredentials()
     val requestOptions = OidcSiopVerifier.RequestOptions(
         state = state,
@@ -121,16 +115,12 @@ suspend fun Transaction.transactionGet(responseUrl: String): String {
     return requestObjectJws.serialize()
 }
 
-
-private fun createSafeState() = Random.nextBytes(32).encodeToString(Base64())
-
-
-data class Profile(
-    val name: String,
-    val label: String,
-    val urlPrefix: String,
-    val clientId: String,
-    val verifier: OidcSiopVerifier,
-    val clientMetadataUrl: String,
-    val buildQrCodeUrl: (requestUrl: String, urlPrefix: String) -> String,
-)
+interface Profile {
+    val name: String
+    val label: String
+    val urlPrefix: String
+    val clientId: String
+    val verifier: OidcSiopVerifier
+    val clientMetadataUrl: String
+    fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String
+}
