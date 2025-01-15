@@ -51,6 +51,7 @@ data class TransactionResponse(
 
 @Serializable
 data class TransactionProfile(
+    val id: String,
     val name: String,
     val label: String,
     val prefix: String,
@@ -59,6 +60,6 @@ data class TransactionProfile(
     val remoteWalletUrl: String
 ) {
     override fun toString(): String {
-        return "TransactionResponseQrCode(prefix='$prefix', png='${png.take(16)}...', url='$url', remoteWalletUrl='$remoteWalletUrl')"
+        return "TransactionResponseQrCode(id='$id', name='$name', label='$label', prefix='$prefix', png='${png.take(16)}...', url='$url', remoteWalletUrl='$remoteWalletUrl')"
     }
 }

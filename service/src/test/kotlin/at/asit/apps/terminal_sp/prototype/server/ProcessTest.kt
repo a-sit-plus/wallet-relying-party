@@ -12,6 +12,7 @@ import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
+import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.BeforeAll
@@ -65,10 +66,7 @@ class ProcessTest {
             status { isOk() }
         }.andReturn()
 
-        val transactionResponse = objectMapper.readValue<TransactionResponse>(
-            transactionResult.response.contentAsString,
-            TransactionResponse::class.java
-        )
+        val transactionResponse = Json.decodeFromString<TransactionResponse>(transactionResult.response.contentAsString)
 
         val holderKey = EphemeralKeyWithoutCert()
         val holder = HolderAgent(keyMaterial = holderKey)
@@ -87,7 +85,8 @@ class ProcessTest {
             remoteResourceRetriever = { url ->
                 mockMvc.get(url).andReturn().response.contentAsString
             })
-        val authenticationResponseResult = wallet.createAuthnResponse(transactionResponse.remoteWalletUrl).getOrThrow()
+        val firstProfile = transactionResponse.profiles.first()
+        val authenticationResponseResult = wallet.createAuthnResponse(firstProfile.remoteWalletUrl).getOrThrow()
 
         authenticationResponseResult as AuthenticationResponseResult.Post
         mockMvc.post(authenticationResponseResult.url) {
@@ -99,7 +98,7 @@ class ProcessTest {
             status { isOk() }
         }
 
-        val user = transactionStore.getApiItem(transactionResponse.id)
+        val user = transactionStore.getApiItem(firstProfile.id)
         assertNotNull(user)
         assertEquals(givenName, user!!.firstname)
     }
