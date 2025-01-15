@@ -47,19 +47,20 @@ data class TransactionRequestCredential(
 @Serializable
 data class TransactionResponse(
     val id: String,
-    val qrCodes: Collection<TransactionResponseQrCode>,
-    val remoteWalletUrl: String,
+    val profiles: Collection<TransactionProfile>,
 )
 
 @Serializable
-data class TransactionResponseQrCode(
+data class TransactionProfile(
     val name: String,
+    val label: String,
     val prefix: String,
     val png: String,
     val url: String,
+    val remoteWalletUrl: String
 ) {
     override fun toString(): String {
-        return "TransactionResponseQrCode(prefix='$prefix', png='${png.take(16)}...', url='$url')"
+        return "TransactionResponseQrCode(prefix='$prefix', png='${png.take(16)}...', url='$url', remoteWalletUrl='$remoteWalletUrl')"
     }
 }
 

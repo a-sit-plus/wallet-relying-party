@@ -7,7 +7,6 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.ClientIdScheme.PreRegistered
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.ClientIdScheme.RedirectUri
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base64.Base64
@@ -51,10 +50,17 @@ class ApiController(
             .toUriString()
     }
     private val verifierProtocol: OidcSiopVerifier by lazy { runBlocking { newVerifier() } }
-    private val knownPrefixes = listOf(
-        "HAIP" to "haip://",
-        "EUDI" to "eudi-openid4vp://",
-        "MDOC" to "mdoc-openid4vp://",
+
+    data class Profile(
+        val name: String,
+        val label: String,
+        val urlPrefix: String,
+    )
+
+    private val knownProfiles = listOf(
+        Profile("HAIP", "HAIP", "haip://"),
+        Profile("EUDI", "EUDI", "eudi-openid4vp://"),
+        Profile("MDOC", "ISO 18013-7", "mdoc-openid4vp://")
     )
 
     private suspend fun newVerifier(): OidcSiopVerifier = OidcSiopVerifier(
@@ -90,14 +96,14 @@ class ApiController(
         Napier.i("/transaction/create called with $request")
         val transactionId = Uuid.random().toString()
         val transactionUrl = buildTransactionUrl(request, transactionId)
-        val qrCodes = knownPrefixes.map { (name, prefix) ->
-            val qrCodeUrl = buildQrCodeUrl(transactionUrl, prefix)
+        val profiles = knownProfiles.map {
+            val qrCodeUrl = buildQrCodeUrl(transactionUrl, it.urlPrefix)
             val qrCodeBytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
-            TransactionResponseQrCode(name, prefix, qrCodeBytes.toDataUrl(), qrCodeUrl)
+            val remoteWalletPrefix = "https://wallet.a-sit.at/remote/" + if (request.simple) "simple" else ""
+            val remoteWalletUrl = buildQrCodeUrl(transactionUrl, remoteWalletPrefix)
+            TransactionProfile(it.name, it.label, it.urlPrefix, qrCodeBytes.toDataUrl(), qrCodeUrl, remoteWalletUrl)
         }
-        val remoteWalletPrefix = "https://wallet.a-sit.at/remote/" + if (request.simple) "simple" else ""
-        val remoteWalletUrl = buildQrCodeUrl(transactionUrl, remoteWalletPrefix)
-        val response = TransactionResponse(transactionId, qrCodes, remoteWalletUrl)
+        val response = TransactionResponse(transactionId, profiles)
         Napier.i("/transaction/create returns $response")
         ResponseEntity.ok().body(response)
     }
