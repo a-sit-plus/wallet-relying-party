@@ -1,12 +1,8 @@
 package at.asit.apps.terminal_sp.prototype.server
 
 import at.asitplus.openid.AuthenticationResponseParameters
-import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.ClientIdScheme.PreRegistered
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base64.Base64
@@ -24,7 +20,6 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import qrcode.QRCode
 import java.util.*
 import kotlin.collections.set
-import kotlin.random.Random
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -41,61 +36,12 @@ class ApiController(
             .pathSegment("customer-success.html")
             .toUriString()
     }
+    private val profiles = VerifierProfiles(publicUrl)
 
     data class Transaction(
         val id: String,
         val request: TransactionRequest,
         val profile: Profile,
-    )
-
-    data class Profile(
-        val name: String,
-        val label: String,
-        val urlPrefix: String,
-        val clientId: String,
-        val verifier: OidcSiopVerifier,
-    )
-
-    private val knownProfiles: List<Profile> = listOf(
-        "AT-GV-EGIZ-CUSTOMVERIFIER".let { clientId ->
-            Profile(
-                name = "HAIP",
-                label = "HAIP (Potential)",
-                urlPrefix = "haip://",
-                clientId = clientId,
-                verifier = OidcSiopVerifier(
-                    verifier = VerifierAgent(clientId),
-                    keyMaterial = EphemeralKeyWithoutCert(),
-                    clientIdScheme = PreRegistered(clientId)
-                )
-            )
-        },
-        publicUrl.let { clientId ->
-            Profile(
-                name = "EUDI",
-                label = "EUDI",
-                urlPrefix = "eudi-openid4vp://",
-                clientId = clientId,
-                verifier = OidcSiopVerifier(
-                    verifier = VerifierAgent(clientId),
-                    keyMaterial = EphemeralKeyWithoutCert(),
-                    clientIdScheme = PreRegistered(clientId)
-                )
-            )
-        },
-        publicUrl.let { clientId ->
-            Profile(
-                name = "MDOC",
-                label = "ISO 18013-7",
-                urlPrefix = "mdoc-openid4vp://",
-                clientId = clientId,
-                verifier = OidcSiopVerifier(
-                    verifier = VerifierAgent(clientId),
-                    keyMaterial = EphemeralKeyWithoutCert(),
-                    clientIdScheme = PreRegistered(clientId)
-                )
-            )
-        }
     )
 
     @GetMapping("/api/items")
@@ -123,13 +69,13 @@ class ApiController(
     @ResponseBody
     fun transactionCreate(@RequestBody request: TransactionRequest): ResponseEntity<TransactionResponse> = runBlocking {
         Napier.i("/transaction/create called with $request")
-        val profiles = knownProfiles.map {
+        val profiles = profiles.knownProfiles.map {
             val transactionId = Uuid.random().toString()
             val transactionUrl = buildTransactionUrl(request, transactionId, it)
-            val qrCodeUrl = buildQrCodeUrl(it, transactionUrl)
+            val qrCodeUrl = buildQrCodeUrl(it, transactionUrl, it.urlPrefix)
             val qrCodeBytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
             val remoteWalletPrefix = "https://wallet.a-sit.at/remote/" + if (request.simple) "simple" else ""
-            val remoteWalletUrl = buildQrCodeUrl(it, transactionUrl)
+            val remoteWalletUrl = buildQrCodeUrl(it, transactionUrl, remoteWalletPrefix)
             TransactionProfile(it.name, it.label, it.urlPrefix, qrCodeBytes.toDataUrl(), qrCodeUrl, remoteWalletUrl)
         }
         val response = TransactionResponse(profiles)
@@ -143,23 +89,11 @@ class ApiController(
     @ResponseBody
     fun transactionGet(@PathVariable id: String): ResponseEntity<String> = runBlocking {
         Napier.i("/transaction/get/$id called")
-        val transactionRequest = transactions[id]
+        val transaction = transactions[id]
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
                 .also { Napier.w("/transaction/get/$id returns NOT_FOUND") }
-        val state = createSafeState()
-        val requestOptions = OidcSiopVerifier.RequestOptions(
-            state = state,
-            responseMode = OpenIdConstants.ResponseMode.DirectPost,
-            responseUrl = buildPostSuccessUrl(id),
-            credentials = transactionRequest.request.toRequestOptionsCredentials(), // TODO Attributes optional!
-        )
-        // TODO may not always be a requestObjectJws!
-        val requestObjectJws =
-            transactionRequest.profile.verifier.createAuthnRequestAsSignedRequestObject(requestOptions).getOrElse {
-                Napier.w("/transaction/get/$id error", it)
-                throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
-            }
-        val result = requestObjectJws.serialize()
+
+        val result = transaction.transactionGet(buildPostSuccessUrl(transaction.id))
             .also { Napier.i("/transaction/$id returns $it") }
         ResponseEntity.ok(result)
     }
@@ -192,8 +126,8 @@ class ApiController(
             .body(OpenId4VpSuccess(redirectUrlWithId))
     }
 
-    private fun buildQrCodeUrl(profile: Profile, requestUri: String) =
-        ServletUriComponentsBuilder.fromUriString(profile.urlPrefix)
+    private fun buildQrCodeUrl(profile: Profile, requestUri: String, urlPrefix: String) =
+        ServletUriComponentsBuilder.fromUriString(urlPrefix)
             .queryParam("request_uri", requestUri)
             .queryParam("client_id", profile.clientId)
             // TODO may be client_metadata ... or even nothing at all!
@@ -223,7 +157,7 @@ class ApiController(
     fun siopv2Metadata(@PathVariable("profilename") profileName: String): ResponseEntity<RelyingPartyMetadata> =
         runBlocking {
             Napier.i("/siopv2/metadata/$profileName called")
-            knownProfiles.firstOrNull { it.name == profileName }?.verifier?.let { verifier ->
+            profiles.getVerifierByName(profileName)?.let { verifier ->
                 ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(verifier.createSignedMetadata().getOrThrow().payload)
@@ -264,8 +198,6 @@ class ApiController(
                 throw RuntimeException("Only got id_token")
         }
     }
-
-    private fun createSafeState() = Random.nextBytes(32).encodeToString(Base64())
 
 }
 
