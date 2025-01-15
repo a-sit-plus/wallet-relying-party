@@ -20,7 +20,6 @@ const createBasicSetup = function (config) {
     })
     const error = ref({message: null})
     const reqResult = ref({
-        id: null,
         profiles: null,
     })
     const reqChanged = ref({
@@ -176,7 +175,6 @@ const createBasicSetup = function (config) {
                 const data = await response.json()
                 console.log(`generateQrCode: got ${data}`)
                 reqResult.value = {
-                    id: data.id,
                     profiles: data.profiles
                 }
                 error.value.message = null

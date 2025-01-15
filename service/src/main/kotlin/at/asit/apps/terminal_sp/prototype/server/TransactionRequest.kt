@@ -46,7 +46,6 @@ data class TransactionRequestCredential(
 
 @Serializable
 data class TransactionResponse(
-    val id: String,
     val profiles: Collection<TransactionProfile>,
 )
 
@@ -63,9 +62,3 @@ data class TransactionProfile(
         return "TransactionResponseQrCode(prefix='$prefix', png='${png.take(16)}...', url='$url', remoteWalletUrl='$remoteWalletUrl')"
     }
 }
-
-@Serializable
-data class Transaction(
-    val id: String,
-    val request: TransactionRequest,
-)

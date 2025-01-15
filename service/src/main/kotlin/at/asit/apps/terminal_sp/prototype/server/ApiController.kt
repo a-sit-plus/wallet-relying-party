@@ -35,38 +35,67 @@ class ApiController(
     private val publicUrl: String,
     private val transactionStore: TransactionStore,
 ) {
-    private val clientId = "AT-GV-EGIZ-CUSTOMVERIFIER"
     private val transactions: MutableMap<String, Transaction> = HashMap()
-    private val verifierKeyMaterial = EphemeralKeyWithoutCert()
-    private val verifier: VerifierAgent = VerifierAgent(clientId)
     private val customerSuccessUrl by lazy {
         ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
             .pathSegment("customer-success.html")
             .toUriString()
     }
-    private val metadataUrl by lazy {
-        ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
-            .pathSegment("siopv2", "metadata")
-            .toUriString()
-    }
-    private val verifierProtocol: OidcSiopVerifier by lazy { runBlocking { newVerifier() } }
+
+    data class Transaction(
+        val id: String,
+        val request: TransactionRequest,
+        val profile: Profile,
+    )
 
     data class Profile(
         val name: String,
         val label: String,
         val urlPrefix: String,
+        val clientId: String,
+        val verifier: OidcSiopVerifier,
     )
 
-    private val knownProfiles = listOf(
-        Profile("HAIP", "HAIP", "haip://"),
-        Profile("EUDI", "EUDI", "eudi-openid4vp://"),
-        Profile("MDOC", "ISO 18013-7", "mdoc-openid4vp://")
-    )
-
-    private suspend fun newVerifier(): OidcSiopVerifier = OidcSiopVerifier(
-        verifier = verifier,
-        keyMaterial = verifierKeyMaterial,
-        clientIdScheme = PreRegistered(clientId)
+    private val knownProfiles: List<Profile> = listOf(
+        "AT-GV-EGIZ-CUSTOMVERIFIER".let { clientId ->
+            Profile(
+                name = "HAIP",
+                label = "HAIP (Potential)",
+                urlPrefix = "haip://",
+                clientId = clientId,
+                verifier = OidcSiopVerifier(
+                    verifier = VerifierAgent(clientId),
+                    keyMaterial = EphemeralKeyWithoutCert(),
+                    clientIdScheme = PreRegistered(clientId)
+                )
+            )
+        },
+        publicUrl.let { clientId ->
+            Profile(
+                name = "EUDI",
+                label = "EUDI",
+                urlPrefix = "eudi-openid4vp://",
+                clientId = clientId,
+                verifier = OidcSiopVerifier(
+                    verifier = VerifierAgent(clientId),
+                    keyMaterial = EphemeralKeyWithoutCert(),
+                    clientIdScheme = PreRegistered(clientId)
+                )
+            )
+        },
+        publicUrl.let { clientId ->
+            Profile(
+                name = "MDOC",
+                label = "ISO 18013-7",
+                urlPrefix = "mdoc-openid4vp://",
+                clientId = clientId,
+                verifier = OidcSiopVerifier(
+                    verifier = VerifierAgent(clientId),
+                    keyMaterial = EphemeralKeyWithoutCert(),
+                    clientIdScheme = PreRegistered(clientId)
+                )
+            )
+        }
     )
 
     @GetMapping("/api/items")
@@ -94,16 +123,16 @@ class ApiController(
     @ResponseBody
     fun transactionCreate(@RequestBody request: TransactionRequest): ResponseEntity<TransactionResponse> = runBlocking {
         Napier.i("/transaction/create called with $request")
-        val transactionId = Uuid.random().toString()
-        val transactionUrl = buildTransactionUrl(request, transactionId)
         val profiles = knownProfiles.map {
-            val qrCodeUrl = buildQrCodeUrl(transactionUrl, it.urlPrefix)
+            val transactionId = Uuid.random().toString()
+            val transactionUrl = buildTransactionUrl(request, transactionId, it)
+            val qrCodeUrl = buildQrCodeUrl(it, transactionUrl)
             val qrCodeBytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
             val remoteWalletPrefix = "https://wallet.a-sit.at/remote/" + if (request.simple) "simple" else ""
-            val remoteWalletUrl = buildQrCodeUrl(transactionUrl, remoteWalletPrefix)
+            val remoteWalletUrl = buildQrCodeUrl(it, transactionUrl)
             TransactionProfile(it.name, it.label, it.urlPrefix, qrCodeBytes.toDataUrl(), qrCodeUrl, remoteWalletUrl)
         }
-        val response = TransactionResponse(transactionId, profiles)
+        val response = TransactionResponse(profiles)
         Napier.i("/transaction/create returns $response")
         ResponseEntity.ok().body(response)
     }
@@ -124,10 +153,12 @@ class ApiController(
             responseUrl = buildPostSuccessUrl(id),
             credentials = transactionRequest.request.toRequestOptionsCredentials(), // TODO Attributes optional!
         )
-        val requestObjectJws = verifierProtocol.createAuthnRequestAsSignedRequestObject(requestOptions).getOrElse {
-            Napier.w("/transaction/get/$id error", it)
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
-        }
+        // TODO may not always be a requestObjectJws!
+        val requestObjectJws =
+            transactionRequest.profile.verifier.createAuthnRequestAsSignedRequestObject(requestOptions).getOrElse {
+                Napier.w("/transaction/get/$id error", it)
+                throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
+            }
         val result = requestObjectJws.serialize()
             .also { Napier.i("/transaction/$id returns $it") }
         ResponseEntity.ok(result)
@@ -143,12 +174,13 @@ class ApiController(
         @RequestBody requestBody: String,
     ): ResponseEntity<OpenId4VpSuccess> = runBlocking {
         Napier.i("/transaction/result/$id called with $requestBody")
-        if (transactions.remove(id) == null) {
+        val transaction = transactions.remove(id)
+        if (transaction == null) {
             Napier.w("/transaction/result/$id returns NOT_FOUND")
             throw ResponseStatusException(HttpStatus.NOT_FOUND)
         }
         val params: AuthenticationResponseParameters = requestBody.decodeFromPostBody()
-        val user = validateSiopResponse(params)
+        val user = validateSiopResponse(params, transaction.profile.verifier)
         Napier.i("Storing user for transaction $id: $user")
         transactionStore.put(id, user)
         val redirectUrlWithId = ServletUriComponentsBuilder
@@ -160,19 +192,25 @@ class ApiController(
             .body(OpenId4VpSuccess(redirectUrlWithId))
     }
 
-    private fun buildQrCodeUrl(requestUri: String, urlPrefix: String) =
-        ServletUriComponentsBuilder.fromUriString(urlPrefix)
+    private fun buildQrCodeUrl(profile: Profile, requestUri: String) =
+        ServletUriComponentsBuilder.fromUriString(profile.urlPrefix)
             .queryParam("request_uri", requestUri)
-            .queryParam("client_id", clientId)
-            .queryParam("client_metadata_uri", metadataUrl)
+            .queryParam("client_id", profile.clientId)
+            // TODO may be client_metadata ... or even nothing at all!
+            .queryParam(
+                "client_metadata_uri", ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
+                    .pathSegment("siopv2", "metadata", profile.name)
+                    .toUriString()
+            )
             .toUriString()
 
-    private fun buildTransactionUrl(request: TransactionRequest, transactionId: String) = runBlocking {
-        transactions[transactionId] = Transaction(transactionId, request)
-        ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
-            .pathSegment("transaction", "get", transactionId)
-            .toUriString()
-    }
+    private fun buildTransactionUrl(request: TransactionRequest, transactionId: String, profile: Profile) =
+        runBlocking {
+            transactions[transactionId] = Transaction(transactionId, request, profile)
+            ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
+                .pathSegment("transaction", "get", transactionId)
+                .toUriString()
+        }
 
     private fun buildPostSuccessUrl(transactionId: String) = runBlocking {
         ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
@@ -180,21 +218,24 @@ class ApiController(
             .toUriString()
     }
 
-    /**
-     * Returns signed metadata.
-     */
     @ResponseBody
-    @GetMapping("/siopv2/metadata")
-    fun siopv2Metadata(): ResponseEntity<RelyingPartyMetadata> = runBlocking {
-        Napier.i("/siopv2/metadata called")
-        ResponseEntity.ok()
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(verifierProtocol.createSignedMetadata().getOrThrow().payload)
-    }
+    @GetMapping("/siopv2/metadata/{profilename}")
+    fun siopv2Metadata(@PathVariable("profilename") profileName: String): ResponseEntity<RelyingPartyMetadata> =
+        runBlocking {
+            Napier.i("/siopv2/metadata/$profileName called")
+            knownProfiles.firstOrNull { it.name == profileName }?.verifier?.let { verifier ->
+                ResponseEntity.ok()
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(verifier.createSignedMetadata().getOrThrow().payload)
+            } ?: ResponseEntity.notFound().build()
+        }
 
-    private suspend fun validateSiopResponse(params: AuthenticationResponseParameters): Siop2User {
+    private suspend fun validateSiopResponse(
+        params: AuthenticationResponseParameters,
+        verifier: OidcSiopVerifier,
+    ): Siop2User {
         Napier.i("validateSiopResponse with $params")
-        return when (val result = verifierProtocol.validateAuthnResponse(params)) {
+        return when (val result = verifier.validateAuthnResponse(params)) {
             is OidcSiopVerifier.AuthnResponseResult.Success ->
                 with(result.vp.toSiop2User()) {
                     if (this == null) {
