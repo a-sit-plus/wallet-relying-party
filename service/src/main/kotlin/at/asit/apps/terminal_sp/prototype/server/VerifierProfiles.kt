@@ -1,8 +1,17 @@
 package at.asit.apps.terminal_sp.prototype.server
 
+
 import at.asit.apps.terminal_sp.prototype.server.ApiController.Transaction
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
+import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
+import at.asitplus.signum.indispensable.asn1.Asn1Primitive
+import at.asitplus.signum.indispensable.asn1.Asn1String
+import at.asitplus.signum.indispensable.asn1.KnownOIDs
+import at.asitplus.signum.indispensable.asn1.encoding.Asn1
+import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
+import at.asitplus.signum.indispensable.pki.X509CertificateExtension
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
@@ -11,6 +20,8 @@ import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import io.ktor.http.*
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.coroutines.runBlocking
+import org.springframework.web.util.UriComponentsBuilder
 import kotlin.random.Random
 
 class VerifierProfiles(private val publicUrl: String) {
@@ -91,15 +102,34 @@ class VerifierProfiles(private val publicUrl: String) {
             ).getOrThrow().serialize()
         },
         object : Profile {
+            private val extensions = listOf(
+                X509CertificateExtension(
+                    KnownOIDs.subjectAltName_2_5_29_17,
+                critical = false,
+                Asn1EncapsulatingOctetString(
+                    listOf(
+                    Asn1.Sequence {
+                        +Asn1Primitive(
+                            SubjectAltNameImplicitTags.dNSName,
+                            Asn1String.UTF8(publicUrl.getDnsName()).encodeToTlv().content
+                        )
+                    }
+                ))))
+            private val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
             override val name = "MDOC"
             override val label = "ISO 18013-7"
             override val urlPrefix = "mdoc-openid4vp://"
             override val clientId = publicUrl
-            override val verifier = OidcSiopVerifier(
-                verifier = VerifierAgent(clientId),
-                keyMaterial = EphemeralKeyWithoutCert(),
-                clientIdScheme = PreRegistered(clientId),
-            )
+            override val verifier = runBlocking {
+                OidcSiopVerifier(
+                    verifier = VerifierAgent(clientId),
+                    keyMaterial = verifierKeyMaterial,
+                    clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(
+                        listOf(verifierKeyMaterial.getCertificate()!!),
+                        publicUrl.getDnsName()
+                    )
+                )
+            }
             override val clientMetadataUrl = URLBuilder(publicUrl).apply {
                 appendPathSegments("siopv2", "metadata", "MDOC")
             }.buildString()
@@ -121,7 +151,6 @@ class VerifierProfiles(private val publicUrl: String) {
             ): String = verifier.createAuthnRequestAsSignedRequestObject(
                 OidcSiopVerifier.RequestOptions(
                     state = state,
-                    // TODO Also consider this on verifying the result?
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = responseUrl,
                     credentials = requestOptionsCredentials,
@@ -141,6 +170,8 @@ suspend fun Transaction.transactionGet(responseUrl: String): String {
     val requestOptionsCredentials = request.toRequestOptionsCredentials()
     return profile.transactionGet(responseUrl, state, requestOptionsCredentials)
 }
+
+private fun String.getDnsName() = UriComponentsBuilder.fromUriString(this).build().host ?: "wallet.a-sit.at"
 
 interface Profile {
     val name: String
