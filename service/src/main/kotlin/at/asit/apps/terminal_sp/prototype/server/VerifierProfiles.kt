@@ -1,18 +1,19 @@
 package at.asit.apps.terminal_sp.prototype.server
 
 import at.asit.apps.terminal_sp.prototype.server.ApiController.Transaction
+import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.ClientIdScheme.PreRegistered
+import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import io.github.aakira.napier.Napier
+import io.ktor.http.*
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import org.springframework.http.HttpStatus
-import org.springframework.web.bind.annotation.*
 import org.springframework.web.server.ResponseStatusException
-import java.util.*
 import kotlin.random.Random
 
 class VerifierProfiles(private val publicUrl: String) {
@@ -28,7 +29,20 @@ class VerifierProfiles(private val publicUrl: String) {
                     verifier = VerifierAgent(clientId),
                     keyMaterial = EphemeralKeyWithoutCert(),
                     clientIdScheme = PreRegistered(clientId)
-                )
+                ),
+                clientMetadataUrl = URLBuilder(publicUrl).apply {
+                    appendPathSegments("siopv2", "metadata", "HAIP")
+                }.buildString(),
+                buildQrCodeUrl = { requestUrl, urlPrefix ->
+                    with(URLBuilder(urlPrefix)) {
+                        AuthenticationRequestParameters(
+                            clientId = clientId,
+                            requestUri = requestUrl,
+                        ).encodeToParameters()
+                            .forEach { parameters.append(it.key, it.value) }
+                        buildString()
+                    }
+                }
             )
         },
         publicUrl.let { clientId ->
@@ -41,7 +55,20 @@ class VerifierProfiles(private val publicUrl: String) {
                     verifier = VerifierAgent(clientId),
                     keyMaterial = EphemeralKeyWithoutCert(),
                     clientIdScheme = PreRegistered(clientId)
-                )
+                ),
+                clientMetadataUrl = URLBuilder(publicUrl).apply {
+                    appendPathSegments("siopv2", "metadata", "EUDI")
+                }.buildString(),
+                buildQrCodeUrl = { requestUrl, urlPrefix ->
+                    with(URLBuilder(urlPrefix)) {
+                        AuthenticationRequestParameters(
+                            clientId = clientId,
+                            requestUri = requestUrl,
+                        ).encodeToParameters()
+                            .forEach { parameters.append(it.key, it.value) }
+                        buildString()
+                    }
+                }
             )
         },
         publicUrl.let { clientId ->
@@ -54,7 +81,20 @@ class VerifierProfiles(private val publicUrl: String) {
                     verifier = VerifierAgent(clientId),
                     keyMaterial = EphemeralKeyWithoutCert(),
                     clientIdScheme = PreRegistered(clientId),
-                )
+                ),
+                clientMetadataUrl = URLBuilder(publicUrl).apply {
+                    appendPathSegments("siopv2", "metadata", "MDOC")
+                }.buildString(),
+                buildQrCodeUrl = { requestUrl, urlPrefix ->
+                    with(URLBuilder(urlPrefix)) {
+                        AuthenticationRequestParameters(
+                            clientId = clientId,
+                            requestUri = requestUrl,
+                        ).encodeToParameters()
+                            .forEach { parameters.append(it.key, it.value) }
+                        buildString()
+                    }
+                }
             )
         }
     )
@@ -91,4 +131,6 @@ data class Profile(
     val urlPrefix: String,
     val clientId: String,
     val verifier: OidcSiopVerifier,
+    val clientMetadataUrl: String,
+    val buildQrCodeUrl: (requestUrl: String, urlPrefix: String) -> String,
 )

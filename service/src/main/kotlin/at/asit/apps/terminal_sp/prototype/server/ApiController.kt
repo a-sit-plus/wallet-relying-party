@@ -72,10 +72,10 @@ class ApiController(
         val profiles = profiles.knownProfiles.map {
             val transactionId = Uuid.random().toString()
             val transactionUrl = buildTransactionUrl(request, transactionId, it)
-            val qrCodeUrl = buildQrCodeUrl(it, transactionUrl, it.urlPrefix)
+            val qrCodeUrl = it.buildQrCodeUrl(transactionUrl, it.urlPrefix)
             val qrCodeBytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
             val remoteWalletPrefix = "https://wallet.a-sit.at/remote/" + if (request.simple) "simple" else ""
-            val remoteWalletUrl = buildQrCodeUrl(it, transactionUrl, remoteWalletPrefix)
+            val remoteWalletUrl = it.buildQrCodeUrl(transactionUrl, remoteWalletPrefix)
             TransactionProfile(it.name, it.label, it.urlPrefix, qrCodeBytes.toDataUrl(), qrCodeUrl, remoteWalletUrl)
         }
         val response = TransactionResponse(profiles)
@@ -125,18 +125,6 @@ class ApiController(
             .contentType(MediaType.APPLICATION_JSON)
             .body(OpenId4VpSuccess(redirectUrlWithId))
     }
-
-    private fun buildQrCodeUrl(profile: Profile, requestUri: String, urlPrefix: String) =
-        ServletUriComponentsBuilder.fromUriString(urlPrefix)
-            .queryParam("request_uri", requestUri)
-            .queryParam("client_id", profile.clientId)
-            // TODO may be client_metadata ... or even nothing at all!
-            .queryParam(
-                "client_metadata_uri", ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
-                    .pathSegment("siopv2", "metadata", profile.name)
-                    .toUriString()
-            )
-            .toUriString()
 
     private fun buildTransactionUrl(request: TransactionRequest, transactionId: String, profile: Profile) =
         runBlocking {
