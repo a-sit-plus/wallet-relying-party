@@ -20,7 +20,7 @@ data class TransactionRequest(
             ?: EuPidScheme,
         representation = CredentialRepresentation.entries.firstOrNull { it.name == representation }
             ?: CredentialRepresentation.SD_JWT,
-        requestedAttributes = attributes?.ifEmpty { null }?.toList(),
+        requestedOptionalAttributes = attributes?.ifEmpty { null }?.toList(),
     )
 
     fun toRequestOptionsCredentials() = credentials?.let { credentials.map { it.toRequestOptionsCredential() }.toSet() }
@@ -39,7 +39,7 @@ data class TransactionRequestCredential(
             ?: EuPidScheme,
         representation = CredentialRepresentation.entries.firstOrNull { it.name == representation }
             ?: CredentialRepresentation.SD_JWT,
-        requestedAttributes = attributes?.ifEmpty { null }?.toList(),
+        requestedOptionalAttributes = attributes?.ifEmpty { null }?.toList(),
     )
 }
 

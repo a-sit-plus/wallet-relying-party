@@ -93,9 +93,14 @@ class ApiController(
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
                 .also { Napier.w("/transaction/get/$id returns NOT_FOUND") }
 
-        val result = transaction.transactionGet(buildPostSuccessUrl(transaction.id))
-            .also { Napier.i("/transaction/$id returns $it") }
-        ResponseEntity.ok(result)
+        try {
+            val result = transaction.transactionGet(buildPostSuccessUrl(transaction.id))
+                .also { Napier.i("/transaction/$id returns $it") }
+            ResponseEntity.ok(result)
+        } catch (e: Exception) {
+            Napier.w("/transaction/get/$id error", e)
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, e.localizedMessage)
+        }
     }
 
     /**
@@ -140,6 +145,7 @@ class ApiController(
             .toUriString()
     }
 
+    // TODO Maybe that's not needed at all, if nobody's using the client_metadata_uri
     @ResponseBody
     @GetMapping("/siopv2/metadata/{profilename}")
     fun siopv2Metadata(@PathVariable("profilename") profileName: String): ResponseEntity<RelyingPartyMetadata> =
