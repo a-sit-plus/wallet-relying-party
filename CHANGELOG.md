@@ -1,18 +1,21 @@
 # Changelog
 
+Version 5.2.3:
+- Update to VC-K 5.2.3
+
 Version 5.2.1:
- - Update to vc-k 5.2.1
+ - Update to VC-K 5.2.1
 
 Version 5.2.0:
- - Update to vc-k 5.2.0
+ - Update to VC-K 5.2.0
  - Remove URL prefix from request details
  - Allow selecting URL prefix when displaying QR Code
 
 Version 5.1.0:
- - Update to vc-k 5.1.0
+ - Update to VC-K 5.1.0
 
 Version 5.0.3:
- - Update to vc-k 5.0.1
+ - Update to VC-K 5.0.1
  - Update UI to allow for combined presentation of two or more credentials
 
 Version 5.0.2:

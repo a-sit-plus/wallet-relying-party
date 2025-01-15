@@ -11,7 +11,7 @@ plugins {
 }
 
 group = "at.asitplus"
-version = "5.2.1-SNAPSHOT"
+version = "5.2.3-SNAPSHOT"
 
 kotlin {
     jvmToolchain(17)
@@ -29,13 +29,13 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 
     implementation(napier())
-    implementation("at.asitplus.wallet:vck-openid:5.2.1-SNAPSHOT")
-    implementation("at.asitplus.wallet:idacredential:3.9.1")
-    implementation("at.asitplus.wallet:eupidcredential:2.2.1")
-    implementation("at.asitplus.wallet:mobiledrivinglicence:1.1.1")
-    implementation("at.asitplus.wallet:powerofrepresentation:1.1.0")
-    implementation("at.asitplus.wallet:certificateofresidence:2.1.0")
-    implementation("at.asitplus.wallet:eprescription:1.1.0")
+    implementation("at.asitplus.wallet:vck-openid:5.2.3-SNAPSHOT")
+    implementation("at.asitplus.wallet:idacredential:3.9.2")
+    implementation("at.asitplus.wallet:eupidcredential:2.2.3")
+    implementation("at.asitplus.wallet:mobiledrivinglicence:1.1.4")
+    implementation("at.asitplus.wallet:powerofrepresentation:1.1.1")
+    implementation("at.asitplus.wallet:certificateofresidence:2.1.1")
+    implementation("at.asitplus.wallet:eprescription:1.1.1")
 
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")

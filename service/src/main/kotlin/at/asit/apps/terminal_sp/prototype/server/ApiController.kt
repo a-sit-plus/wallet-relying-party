@@ -6,6 +6,7 @@ import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
+import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.ClientIdScheme.PreRegistered
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.ClientIdScheme.RedirectUri
 import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
 import io.github.aakira.napier.Napier
@@ -35,7 +36,7 @@ class ApiController(
     private val publicUrl: String,
     private val transactionStore: TransactionStore,
 ) {
-    private val clientId = publicUrl
+    private val clientId = "AT-GV-EGIZ-CUSTOMVERIFIER"
     private val transactions: MutableMap<String, Transaction> = HashMap()
     private val verifierKeyMaterial = EphemeralKeyWithoutCert()
     private val verifier: VerifierAgent = VerifierAgent(clientId)
@@ -59,7 +60,7 @@ class ApiController(
     private suspend fun newVerifier(): OidcSiopVerifier = OidcSiopVerifier(
         verifier = verifier,
         keyMaterial = verifierKeyMaterial,
-        clientIdScheme = RedirectUri(clientId)
+        clientIdScheme = PreRegistered(clientId)
     )
 
     @GetMapping("/api/items")
