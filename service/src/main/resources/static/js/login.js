@@ -193,15 +193,17 @@ const createBasicSetup = function (config) {
 
     async function loadResult() {
         try {
-            if (reqResult.value == null || reqResult.value.id == null)
+            if (reqResult.value == null || reqResult.value.profiles == null)
                 return;
-            console.log('loadResult for ' + reqResult.value.id);
-            let response = await fetch(URLs.resultUrl + reqResult.value.id);
-            if (response.ok) {
-                const data = await response.json();
-                console.log('loadResult got: ', data);
-                // navigate to success page
-                window.location.href = URLs.successPageUrl + reqResult.value.id
+            for (const item of reqResult.value.profiles) {
+                console.log('loadResult for ' + item.id);
+                let response = await fetch(URLs.resultUrl + item.id);
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('loadResult got: ', data);
+                    // navigate to success page
+                    window.location.href = URLs.successPageUrl + item.id
+                }
             }
         } catch (error) {
             console.log('error: ', error)
