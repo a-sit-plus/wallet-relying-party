@@ -37,10 +37,6 @@ class VerifierProfiles(private val publicUrl: String) {
                 keyMaterial = EphemeralKeyWithoutCert(),
                 clientIdScheme = PreRegistered(clientId)
             )
-            override val clientMetadataUrl = URLBuilder(publicUrl).apply {
-                appendPathSegments("siopv2", "metadata", "HAIP")
-            }.buildString()
-
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String =
                 with(URLBuilder(urlPrefix)) {
                     AuthenticationRequestParameters(
@@ -74,10 +70,6 @@ class VerifierProfiles(private val publicUrl: String) {
                 keyMaterial = EphemeralKeyWithoutCert(),
                 clientIdScheme = PreRegistered(clientId)
             )
-            override val clientMetadataUrl = URLBuilder(publicUrl).apply {
-                appendPathSegments("siopv2", "metadata", "EUDI")
-            }.buildString()
-
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String =
                 with(URLBuilder(urlPrefix)) {
                     AuthenticationRequestParameters(
@@ -130,10 +122,6 @@ class VerifierProfiles(private val publicUrl: String) {
                     )
                 )
             }
-            override val clientMetadataUrl = URLBuilder(publicUrl).apply {
-                appendPathSegments("siopv2", "metadata", "MDOC")
-            }.buildString()
-
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String =
                 with(URLBuilder(urlPrefix)) {
                     AuthenticationRequestParameters(
@@ -179,7 +167,6 @@ interface Profile {
     val urlPrefix: String
     val clientId: String
     val verifier: OidcSiopVerifier
-    val clientMetadataUrl: String
     fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String
     suspend fun transactionGet(
         responseUrl: String,
