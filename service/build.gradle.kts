@@ -30,7 +30,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 
     implementation(napier())
-    implementation("at.asitplus.wallet:vck-openid:5.2.3-SNAPSHOT")
+    implementation("at.asitplus.wallet:vck-openid:5.2.3")
     implementation("at.asitplus.wallet:idacredential:3.9.2")
     implementation("at.asitplus.wallet:eupidcredential:2.2.3")
     implementation("at.asitplus.wallet:mobiledrivinglicence:1.1.4")

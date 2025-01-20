@@ -21,6 +21,7 @@ import io.ktor.http.*
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.runBlocking
+import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import org.springframework.web.util.UriComponentsBuilder
 import kotlin.random.Random
 
@@ -37,15 +38,16 @@ class VerifierProfiles(private val publicUrl: String) {
                 keyMaterial = EphemeralKeyWithoutCert(),
                 clientIdScheme = PreRegistered(clientId)
             )
-            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String =
-                with(URLBuilder(urlPrefix)) {
+
+            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
+                .fromUriString(urlPrefix).apply {
                     AuthenticationRequestParameters(
                         clientId = clientId,
                         requestUri = requestUrl,
                     ).encodeToParameters()
-                        .forEach { parameters.append(it.key, it.value) }
-                    buildString()
+                        .forEach { queryParam(it.key, it.value) }
                 }
+                .toUriString()
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -70,15 +72,16 @@ class VerifierProfiles(private val publicUrl: String) {
                 keyMaterial = EphemeralKeyWithoutCert(),
                 clientIdScheme = PreRegistered(clientId)
             )
-            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String =
-                with(URLBuilder(urlPrefix)) {
+
+            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
+                .fromUriString(urlPrefix).apply {
                     AuthenticationRequestParameters(
                         clientId = clientId,
                         requestUri = requestUrl,
                     ).encodeToParameters()
-                        .forEach { parameters.append(it.key, it.value) }
-                    buildString()
+                        .forEach { queryParam(it.key, it.value) }
                 }
+                .toUriString()
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -97,16 +100,16 @@ class VerifierProfiles(private val publicUrl: String) {
             private val extensions = listOf(
                 X509CertificateExtension(
                     KnownOIDs.subjectAltName_2_5_29_17,
-                critical = false,
-                Asn1EncapsulatingOctetString(
-                    listOf(
-                    Asn1.Sequence {
-                        +Asn1Primitive(
-                            SubjectAltNameImplicitTags.dNSName,
-                            Asn1String.UTF8(publicUrl.getDnsName()).encodeToTlv().content
-                        )
-                    }
-                ))))
+                    critical = false,
+                    Asn1EncapsulatingOctetString(
+                        listOf(
+                            Asn1.Sequence {
+                                +Asn1Primitive(
+                                    SubjectAltNameImplicitTags.dNSName,
+                                    Asn1String.UTF8(publicUrl.getDnsName()).encodeToTlv().content
+                                )
+                            }
+                        ))))
             private val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
             override val name = "MDOC"
             override val label = "ISO 18013-7"
@@ -122,15 +125,16 @@ class VerifierProfiles(private val publicUrl: String) {
                     )
                 )
             }
-            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String =
-                with(URLBuilder(urlPrefix)) {
+
+            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
+                .fromUriString(urlPrefix).apply {
                     AuthenticationRequestParameters(
                         clientId = clientId,
                         requestUri = requestUrl,
                     ).encodeToParameters()
-                        .forEach { parameters.append(it.key, it.value) }
-                    buildString()
+                        .forEach { queryParam(it.key, it.value) }
                 }
+                .toUriString()
 
             override suspend fun transactionGet(
                 responseUrl: String,
