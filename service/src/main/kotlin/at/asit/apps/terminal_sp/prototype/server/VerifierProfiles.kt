@@ -3,29 +3,60 @@ package at.asit.apps.terminal_sp.prototype.server
 
 import at.asit.apps.terminal_sp.prototype.server.ApiController.Transaction
 import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
 import at.asitplus.signum.indispensable.asn1.Asn1Primitive
 import at.asitplus.signum.indispensable.asn1.Asn1String
 import at.asitplus.signum.indispensable.asn1.KnownOIDs
 import at.asitplus.signum.indispensable.asn1.encoding.Asn1
+import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JsonWebKeySet
+import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.Validator
 import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
 import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.ClientIdScheme.PreRegistered
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
+import io.ktor.client.HttpClient
+import io.ktor.client.call.body
+import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
+import io.ktor.client.request.get
 import io.ktor.http.*
+import io.ktor.serialization.kotlinx.json.json
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import org.springframework.web.util.UriComponentsBuilder
 import kotlin.random.Random
 
 class VerifierProfiles(private val publicUrl: String) {
+
+    private val httpClient = HttpClient() {
+        install(ContentNegotiation) {
+            json(joseCompliantSerializer)
+        }
+    }
+
+    private fun buildPotentialKeyLookup(jwsSigned: JwsSigned<*>): Set<JsonWebKey>? =
+        (jwsSigned.payload as? JsonObject)?.get("iss")?.jsonPrimitive?.content?.let { iss ->
+            runBlocking {
+                httpClient.get(buildVcIssuerUrl(iss)).body<JwtVcIssuerMetadata>().jsonWebKeySet?.keys?.toSet()
+            }
+        }
+
+    private fun buildVcIssuerUrl(iss: String): Url = URLBuilder(urlString = iss).apply {
+        path(".well-known", "jwt-vc-issuer", *(pathSegments.toTypedArray()))
+    }.build()
 
     val knownProfiles: List<Profile> = listOf(
         object : Profile {
@@ -34,9 +65,12 @@ class VerifierProfiles(private val publicUrl: String) {
             override val urlPrefix = "haip://"
             override val clientId = "AT-GV-EGIZ-CUSTOMVERIFIER"
             override val verifier = OidcSiopVerifier(
-                verifier = VerifierAgent(clientId),
+                verifier = VerifierAgent(
+                    clientId,
+                    validator = potentialValidator()
+                ),
                 keyMaterial = EphemeralKeyWithoutCert(),
-                clientIdScheme = PreRegistered(clientId)
+                clientIdScheme = PreRegistered(clientId),
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
@@ -151,6 +185,11 @@ class VerifierProfiles(private val publicUrl: String) {
             ).getOrThrow().serialize()
         }
     )
+
+    fun potentialValidator(): Validator =
+        Validator(verifierJwsService = DefaultVerifierJwsService(publicKeyLookup = { jwsSigned ->
+            buildPotentialKeyLookup(jwsSigned)
+        }))
 
     fun getVerifierByName(profileName: String): OidcSiopVerifier? =
         knownProfiles.firstOrNull { it.name == profileName }?.verifier
