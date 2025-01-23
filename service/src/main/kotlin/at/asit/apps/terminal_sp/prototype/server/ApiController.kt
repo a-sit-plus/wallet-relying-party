@@ -1,9 +1,8 @@
 package at.asit.apps.terminal_sp.prototype.server
 
-import at.asitplus.openid.AuthenticationResponseParameters
 import at.asitplus.openid.RelyingPartyMetadata
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
-import at.asitplus.wallet.lib.oidvci.decodeFromPostBody
+import at.asitplus.wallet.lib.openid.AuthnResponseResult
+import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -118,8 +117,7 @@ class ApiController(
             Napier.w("/transaction/result/$id returns NOT_FOUND")
             throw ResponseStatusException(HttpStatus.NOT_FOUND)
         }
-        val params: AuthenticationResponseParameters = requestBody.decodeFromPostBody()
-        val user = validateSiopResponse(params, transaction.profile.verifier)
+        val user = validateSiopResponse(requestBody, transaction.profile.verifier)
         Napier.i("Storing user for transaction $id: $user")
         transactionStore.put(id, user)
         val redirectUrlWithId = ServletUriComponentsBuilder
@@ -159,38 +157,35 @@ class ApiController(
         }
 
     private suspend fun validateSiopResponse(
-        params: AuthenticationResponseParameters,
-        verifier: OidcSiopVerifier,
-    ): Siop2User {
-        Napier.i("validateSiopResponse with $params")
-        return when (val result = verifier.validateAuthnResponse(params)) {
-            is OidcSiopVerifier.AuthnResponseResult.Success ->
-                with(result.vp.toSiop2User()) {
-                    if (this == null) {
-                        Napier.w("Cannot parse from VP: ${result.vp}")
-                        throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot parse from VP")
-                    }
-                    this
+        requestBody: String,
+        verifier: OpenId4VpVerifier,
+    ): Siop2User = when (val result = verifier.validateAuthnResponse(requestBody)) {
+        is AuthnResponseResult.Success ->
+            with(result.vp.toSiop2User()) {
+                if (this == null) {
+                    Napier.w("Cannot parse from VP: ${result.vp}")
+                    throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot parse from VP")
                 }
+                this
+            }
 
-            is OidcSiopVerifier.AuthnResponseResult.SuccessSdJwt ->
-                result.toApiItemCredential().toSiop2User()
+        is AuthnResponseResult.SuccessSdJwt ->
+            result.toApiItemCredential().toSiop2User()
 
-            is OidcSiopVerifier.AuthnResponseResult.SuccessIso ->
-                result.toApiItemCredentials().toSiop2User()
+        is AuthnResponseResult.SuccessIso ->
+            result.toApiItemCredentials().toSiop2User()
 
-            is OidcSiopVerifier.AuthnResponseResult.Error ->
-                throw RuntimeException(result.reason)
+        is AuthnResponseResult.Error ->
+            throw RuntimeException(result.reason)
 
-            is OidcSiopVerifier.AuthnResponseResult.ValidationError ->
-                throw RuntimeException("Validation failed for field: ${result.field}")
+        is AuthnResponseResult.ValidationError ->
+            throw RuntimeException("Validation failed for field: ${result.field}")
 
-            is OidcSiopVerifier.AuthnResponseResult.VerifiablePresentationValidationResults ->
-                result.toApiItemCredentials().toSiop2User()
+        is AuthnResponseResult.VerifiablePresentationValidationResults ->
+            result.toApiItemCredentials().toSiop2User()
 
-            is OidcSiopVerifier.AuthnResponseResult.IdToken ->
-                throw RuntimeException("Only got id_token")
-        }
+        is AuthnResponseResult.IdToken ->
+            throw RuntimeException("Only got id_token")
     }
 
 }

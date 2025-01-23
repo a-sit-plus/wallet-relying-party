@@ -3,7 +3,7 @@ package at.asit.apps.terminal_sp.prototype.server
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
+import at.asitplus.wallet.lib.openid.RequestOptionsCredential
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -14,13 +14,13 @@ data class TransactionRequest(
     val attributes: Collection<String>? = null,
     val credentials: List<TransactionRequestCredential>? = null,
 ) {
-    fun toRequestOptionsCredential() = OidcSiopVerifier.RequestOptionsCredential(
+    fun toRequestOptionsCredential() = RequestOptionsCredential(
         credentialScheme = credentialType
             ?.let { AttributeIndex.resolveCredential(it)?.first }
             ?: EuPidScheme,
         representation = CredentialRepresentation.entries.firstOrNull { it.name == representation }
             ?: CredentialRepresentation.SD_JWT,
-        requestedOptionalAttributes = attributes?.ifEmpty { null }?.toList(),
+        requestedOptionalAttributes = attributes?.ifEmpty { null }?.toSet(),
     )
 
     fun toRequestOptionsCredentials() = credentials?.let { credentials.map { it.toRequestOptionsCredential() }.toSet() }
@@ -33,13 +33,13 @@ data class TransactionRequestCredential(
     val representation: String? = null,
     val attributes: List<String>? = null,
 ) {
-    fun toRequestOptionsCredential() = OidcSiopVerifier.RequestOptionsCredential(
+    fun toRequestOptionsCredential() = RequestOptionsCredential(
         credentialScheme = credentialType
             ?.let { AttributeIndex.resolveCredential(it)?.first }
             ?: EuPidScheme,
         representation = CredentialRepresentation.entries.firstOrNull { it.name == representation }
             ?: CredentialRepresentation.SD_JWT,
-        requestedOptionalAttributes = attributes?.ifEmpty { null }?.toList(),
+        requestedOptionalAttributes = attributes?.ifEmpty { null }?.toSet(),
     )
 }
 

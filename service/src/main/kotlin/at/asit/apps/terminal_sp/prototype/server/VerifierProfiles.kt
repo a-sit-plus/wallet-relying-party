@@ -11,7 +11,6 @@ import at.asitplus.signum.indispensable.asn1.Asn1String
 import at.asitplus.signum.indispensable.asn1.KnownOIDs
 import at.asitplus.signum.indispensable.asn1.encoding.Asn1
 import at.asitplus.signum.indispensable.josef.JsonWebKey
-import at.asitplus.signum.indispensable.josef.JsonWebKeySet
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
@@ -21,15 +20,18 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.Validator
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.ClientIdScheme.PreRegistered
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import io.ktor.client.HttpClient
-import io.ktor.client.call.body
-import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
-import io.ktor.client.request.get
+import at.asitplus.wallet.lib.openid.ClientIdScheme
+import at.asitplus.wallet.lib.openid.ClientIdScheme.PreRegistered
+import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
+import at.asitplus.wallet.lib.openid.RequestOptions
+import at.asitplus.wallet.lib.openid.RequestOptionsCredential
+import io.ktor.client.*
+import io.ktor.client.call.*
+import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.request.*
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.json
+import io.ktor.serialization.kotlinx.json.*
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.runBlocking
@@ -64,7 +66,7 @@ class VerifierProfiles(private val publicUrl: String) {
             override val label = "HAIP (Potential)"
             override val urlPrefix = "haip://"
             override val clientId = "AT-GV-EGIZ-CUSTOMVERIFIER"
-            override val verifier = OidcSiopVerifier(
+            override val verifier = OpenId4VpVerifier(
                 verifier = VerifierAgent(
                     clientId,
                     validator = potentialValidator()
@@ -86,9 +88,9 @@ class VerifierProfiles(private val publicUrl: String) {
             override suspend fun transactionGet(
                 responseUrl: String,
                 state: String,
-                requestOptionsCredentials: Set<OidcSiopVerifier.RequestOptionsCredential>,
+                requestOptionsCredentials: Set<RequestOptionsCredential>,
             ): String = verifier.createAuthnRequestAsSignedRequestObject(
-                OidcSiopVerifier.RequestOptions(
+                RequestOptions(
                     state = state,
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = responseUrl,
@@ -101,7 +103,7 @@ class VerifierProfiles(private val publicUrl: String) {
             override val label = "EUDI"
             override val urlPrefix = "eudi-openid4vp://"
             override val clientId = publicUrl
-            override val verifier = OidcSiopVerifier(
+            override val verifier = OpenId4VpVerifier(
                 verifier = VerifierAgent(clientId),
                 keyMaterial = EphemeralKeyWithoutCert(),
                 clientIdScheme = PreRegistered(clientId)
@@ -120,9 +122,9 @@ class VerifierProfiles(private val publicUrl: String) {
             override suspend fun transactionGet(
                 responseUrl: String,
                 state: String,
-                requestOptionsCredentials: Set<OidcSiopVerifier.RequestOptionsCredential>,
+                requestOptionsCredentials: Set<RequestOptionsCredential>,
             ): String = verifier.createAuthnRequestAsSignedRequestObject(
-                OidcSiopVerifier.RequestOptions(
+                RequestOptions(
                     state = state,
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = responseUrl,
@@ -150,10 +152,10 @@ class VerifierProfiles(private val publicUrl: String) {
             override val urlPrefix = "mdoc-openid4vp://"
             override val clientId = publicUrl
             override val verifier = runBlocking {
-                OidcSiopVerifier(
+                OpenId4VpVerifier(
                     verifier = VerifierAgent(clientId),
                     keyMaterial = verifierKeyMaterial,
-                    clientIdScheme = OidcSiopVerifier.ClientIdScheme.CertificateSanDns(
+                    clientIdScheme = ClientIdScheme.CertificateSanDns(
                         listOf(verifierKeyMaterial.getCertificate()!!),
                         publicUrl.getDnsName()
                     )
@@ -173,9 +175,9 @@ class VerifierProfiles(private val publicUrl: String) {
             override suspend fun transactionGet(
                 responseUrl: String,
                 state: String,
-                requestOptionsCredentials: Set<OidcSiopVerifier.RequestOptionsCredential>,
+                requestOptionsCredentials: Set<RequestOptionsCredential>,
             ): String = verifier.createAuthnRequestAsSignedRequestObject(
-                OidcSiopVerifier.RequestOptions(
+                RequestOptions(
                     state = state,
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = responseUrl,
@@ -191,10 +193,9 @@ class VerifierProfiles(private val publicUrl: String) {
             buildPotentialKeyLookup(jwsSigned)
         }))
 
-    fun getVerifierByName(profileName: String): OidcSiopVerifier? =
+    fun getVerifierByName(profileName: String): OpenId4VpVerifier? =
         knownProfiles.firstOrNull { it.name == profileName }?.verifier
 }
-
 
 suspend fun Transaction.transactionGet(responseUrl: String): String {
     val state = Random.nextBytes(32).encodeToString(Base64())
@@ -209,11 +210,11 @@ interface Profile {
     val label: String
     val urlPrefix: String
     val clientId: String
-    val verifier: OidcSiopVerifier
+    val verifier: OpenId4VpVerifier
     fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String
     suspend fun transactionGet(
         responseUrl: String,
         state: String,
-        requestOptionsCredentials: Set<OidcSiopVerifier.RequestOptionsCredential>,
+        requestOptionsCredentials: Set<RequestOptionsCredential>,
     ): String
 }

@@ -7,7 +7,7 @@ import at.asitplus.wallet.idaustria.IdAustriaCredential
 import at.asitplus.wallet.idaustria.IdAustriaScheme
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
-import at.asitplus.wallet.lib.oidc.OidcSiopVerifier.AuthnResponseResult.*
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.*
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
