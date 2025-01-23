@@ -1,7 +1,10 @@
 # Changelog
 
+Version 5.3.0:
+ - Update to VC-K 5.3.0
+
 Version 5.2.3:
-- Update to VC-K 5.2.3
+ - Update to VC-K 5.2.3
 
 Version 5.2.1:
  - Update to VC-K 5.2.1
