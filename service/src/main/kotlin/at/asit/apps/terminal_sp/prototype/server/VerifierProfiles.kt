@@ -43,7 +43,7 @@ import kotlin.random.Random
 
 class VerifierProfiles(private val publicUrl: String) {
 
-    private val httpClient = HttpClient() {
+    private val httpClient = HttpClient {
         install(ContentNegotiation) {
             json(joseCompliantSerializer)
         }
@@ -66,13 +66,14 @@ class VerifierProfiles(private val publicUrl: String) {
             override val label = "HAIP (Potential)"
             override val urlPrefix = "haip://"
             override val clientId = "AT-GV-EGIZ-CUSTOMVERIFIER"
+            private val clientIdScheme = PreRegistered(clientId, publicUrl)
             override val verifier = OpenId4VpVerifier(
                 verifier = VerifierAgent(
-                    clientId,
+                    identifier = clientIdScheme.clientId,
                     validator = potentialValidator()
                 ),
                 keyMaterial = EphemeralKeyWithoutCert(),
-                clientIdScheme = PreRegistered(clientId),
+                clientIdScheme = clientIdScheme,
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
@@ -103,10 +104,10 @@ class VerifierProfiles(private val publicUrl: String) {
             override val label = "EUDI"
             override val urlPrefix = "eudi-openid4vp://"
             override val clientId = publicUrl
+            val clientIdScheme = ClientIdScheme.RedirectUri(clientId)
             override val verifier = OpenId4VpVerifier(
-                verifier = VerifierAgent(clientId),
                 keyMaterial = EphemeralKeyWithoutCert(),
-                clientIdScheme = PreRegistered(clientId)
+                clientIdScheme = clientIdScheme
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
@@ -153,11 +154,11 @@ class VerifierProfiles(private val publicUrl: String) {
             override val clientId = publicUrl
             override val verifier = runBlocking {
                 OpenId4VpVerifier(
-                    verifier = VerifierAgent(clientId),
                     keyMaterial = verifierKeyMaterial,
                     clientIdScheme = ClientIdScheme.CertificateSanDns(
                         listOf(verifierKeyMaterial.getCertificate()!!),
-                        publicUrl.getDnsName()
+                        publicUrl.getDnsName(),
+                        publicUrl
                     )
                 )
             }

@@ -5,8 +5,8 @@ import at.asitplus.wallet.lib.Initializer.initOpenIdModule
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.oidc.OidcSiopWallet
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
+import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import com.benasher44.uuid.uuid4
 import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.aakira.napier.Napier
@@ -80,10 +80,10 @@ class ProcessTest {
                 )
             ).getOrThrow().toStoreCredentialInput()
         )
-        val wallet = OidcSiopWallet(
+        val wallet = OpenId4VpHolder(
             holder = holder,
-            remoteResourceRetriever = { url ->
-                mockMvc.get(url).andReturn().response.contentAsString
+            remoteResourceRetriever = { data ->
+                mockMvc.get(data.url).andReturn().response.contentAsString
             })
         val firstProfile = transactionResponse.profiles.first()
         val authenticationResponseResult = wallet.createAuthnResponse(firstProfile.remoteWalletUrl).getOrThrow()

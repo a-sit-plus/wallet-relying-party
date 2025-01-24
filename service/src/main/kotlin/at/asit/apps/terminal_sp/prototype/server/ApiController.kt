@@ -152,7 +152,7 @@ class ApiController(
             profiles.getVerifierByName(profileName)?.let { verifier ->
                 ResponseEntity.ok()
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(verifier.createSignedMetadata().getOrThrow().payload)
+                    .body(verifier.metadata)
             } ?: ResponseEntity.notFound().build()
         }
 
