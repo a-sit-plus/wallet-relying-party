@@ -10,8 +10,9 @@ plugins {
     kotlin("plugin.serialization")
 }
 
-group = "at.asitplus"
-version = "5.3.0"
+val artifactVersion: String by extra
+group = "at.asitplus.wallet"
+version = artifactVersion
 
 kotlin {
     jvmToolchain(17)
