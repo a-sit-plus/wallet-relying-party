@@ -1,15 +1,19 @@
 package at.asit.apps.terminal_sp.prototype.server
 
+import at.asitplus.openid.JwtVcIssuerMetadata
+import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import jakarta.servlet.http.HttpServletRequest
 import kotlinx.coroutines.runBlocking
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
+import org.springframework.http.MediaType.APPLICATION_JSON_VALUE
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.AuthenticatedPrincipal
 import org.springframework.stereotype.Controller
@@ -75,7 +79,15 @@ class ApiController(
             val qrCodeBytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
             val remoteWalletPrefix = "https://wallet.a-sit.at/remote/" + if (request.simple) "simple" else ""
             val remoteWalletUrl = it.buildQrCodeUrl(transactionUrl, remoteWalletPrefix)
-            TransactionProfile(transactionId,it.name, it.label, it.urlPrefix, qrCodeBytes.toDataUrl(), qrCodeUrl, remoteWalletUrl)
+            TransactionProfile(
+                transactionId,
+                it.name,
+                it.label,
+                it.urlPrefix,
+                qrCodeBytes.toDataUrl(),
+                qrCodeUrl,
+                remoteWalletUrl
+            )
         }
         val response = TransactionResponse(profiles)
         Napier.i("/transaction/create returns $response")
@@ -155,6 +167,24 @@ class ApiController(
                     .body(verifier.metadata)
             } ?: ResponseEntity.notFound().build()
         }
+
+    @GetMapping(
+        value = [
+            OpenIdConstants.PATH_WELL_KNOWN_JWT_VC_ISSUER_METADATA,
+            OpenIdConstants.PATH_WELL_KNOWN_JWT_VC_ISSUER_METADATA + "/{id}",
+            OpenIdConstants.PATH_WELL_KNOWN_JAR_ISSUER,
+            OpenIdConstants.PATH_WELL_KNOWN_JAR_ISSUER + "/{id}"
+        ],
+        produces = [APPLICATION_JSON_VALUE]
+    )
+    fun jwtVcMetadata(
+        @PathVariable("id") verifierId: String?,
+        request: HttpServletRequest,
+    ): ResponseEntity<JwtVcIssuerMetadata> {
+        val metadata = profiles.getVerifierByName(verifierId ?: "HAIP")?.jarMetadata
+        Napier.i("${request.requestURI} returns $metadata")
+        return ResponseEntity.ok(metadata)
+    }
 
     private suspend fun validateSiopResponse(
         requestBody: String,

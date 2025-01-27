@@ -66,7 +66,7 @@ class VerifierProfiles(private val publicUrl: String) {
             override val label = "HAIP (Potential)"
             override val urlPrefix = "haip://"
             override val clientId = "AT-GV-EGIZ-CUSTOMVERIFIER"
-            private val clientIdScheme = PreRegistered(clientId, publicUrl)
+            private val clientIdScheme = PreRegistered(clientId, publicUrl, publicUrl)
             override val verifier = OpenId4VpVerifier(
                 verifier = VerifierAgent(
                     identifier = clientIdScheme.clientId,
