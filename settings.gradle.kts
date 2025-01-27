@@ -19,11 +19,10 @@ dependencyResolutionManagement {
         mavenCentral()
         maven("https://s01.oss.sonatype.org/content/repositories/snapshots/")
         maven("https://oss.sonatype.org/content/repositories/snapshots/")
-        maven("https://s01.oss.sonatype.org/content/repositories/atasitplus-1279/")
     }
     versionCatalogs {
         create("vclib") {
-            from("at.asitplus.wallet:vck-openid-versionCatalog:5.3.0-alpha")
+            from("at.asitplus.wallet:vck-openid-versionCatalog:5.3.0")
         }
     }
 }
