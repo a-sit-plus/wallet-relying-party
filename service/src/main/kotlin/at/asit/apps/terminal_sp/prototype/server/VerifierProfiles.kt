@@ -66,7 +66,7 @@ class VerifierProfiles(private val publicUrl: String) {
             override val label = "HAIP (Potential)"
             override val urlPrefix = "haip://"
             override val clientId = "AT-GV-EGIZ-CUSTOMVERIFIER"
-            private val clientIdScheme = PreRegistered(clientId, publicUrl)
+            private val clientIdScheme = PreRegistered(clientId, publicUrl, publicUrl)
             override val verifier = OpenId4VpVerifier(
                 verifier = VerifierAgent(
                     identifier = clientIdScheme.clientId,
@@ -196,6 +196,12 @@ class VerifierProfiles(private val publicUrl: String) {
 
     fun getVerifierByName(profileName: String): OpenId4VpVerifier? =
         knownProfiles.firstOrNull { it.name == profileName }?.verifier
+
+    fun getJarMetadataByName(profileName: String): JwtVcIssuerMetadata? {
+        val profile = (knownProfiles.firstOrNull { it.name == profileName }
+            ?: knownProfiles.firstOrNull { it.name == "HAIP" })
+        return profile?.verifier?.jarMetadata
+    }
 }
 
 suspend fun Transaction.transactionGet(responseUrl: String): String {

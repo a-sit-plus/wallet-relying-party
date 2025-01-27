@@ -169,19 +169,26 @@ class ApiController(
         }
 
     @GetMapping(
-        value = [
-            OpenIdConstants.PATH_WELL_KNOWN_JWT_VC_ISSUER_METADATA,
-            OpenIdConstants.PATH_WELL_KNOWN_JWT_VC_ISSUER_METADATA + "/{id}",
-            OpenIdConstants.PATH_WELL_KNOWN_JAR_ISSUER,
-            OpenIdConstants.PATH_WELL_KNOWN_JAR_ISSUER + "/{id}"
-        ],
+        value = [OpenIdConstants.PATH_WELL_KNOWN_JAR_ISSUER, ],
         produces = [APPLICATION_JSON_VALUE]
     )
-    fun jwtVcMetadata(
+    fun jarMetadata(
+        request: HttpServletRequest,
+    ): ResponseEntity<JwtVcIssuerMetadata> {
+        val metadata = profiles.getJarMetadataByName("HAIP")
+        Napier.i("${request.requestURI} returns $metadata")
+        return ResponseEntity.ok(metadata)
+    }
+
+    @GetMapping(
+        value = ["${OpenIdConstants.PATH_WELL_KNOWN_JAR_ISSUER}/{id}"],
+        produces = [APPLICATION_JSON_VALUE]
+    )
+    fun jarMetadataNamed(
         @PathVariable("id") verifierId: String?,
         request: HttpServletRequest,
     ): ResponseEntity<JwtVcIssuerMetadata> {
-        val metadata = profiles.getVerifierByName(verifierId ?: "HAIP")?.jarMetadata
+        val metadata = profiles.getJarMetadataByName(verifierId ?: "HAIP")
         Napier.i("${request.requestURI} returns $metadata")
         return ResponseEntity.ok(metadata)
     }
