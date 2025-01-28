@@ -29,6 +29,7 @@ dependencies {
     implementation("de.codecentric:spring-boot-admin-client:3.2.3")
     implementation(ktor("http"))
     implementation(ktor("client-cio"))
+    implementation(ktor("client-logging"))
     implementation(ktor("client-content-negotiation"))
     implementation(ktor("serialization-kotlinx-json"))
     testImplementation("org.springframework.boot:spring-boot-starter-test")

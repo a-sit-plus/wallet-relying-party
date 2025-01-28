@@ -26,9 +26,13 @@ import at.asitplus.wallet.lib.openid.ClientIdScheme.PreRegistered
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.RequestOptions
 import at.asitplus.wallet.lib.openid.RequestOptionsCredential
+import io.github.aakira.napier.Napier
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.contentnegotiation.*
+import io.ktor.client.plugins.logging.LogLevel
+import io.ktor.client.plugins.logging.Logger
+import io.ktor.client.plugins.logging.Logging
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
@@ -47,12 +51,22 @@ class VerifierProfiles(private val publicUrl: String) {
         install(ContentNegotiation) {
             json(joseCompliantSerializer)
         }
+        install(Logging) {
+            logger = object: Logger {
+                override fun log(message: String) {
+                    Napier.i(message = message, tag = "at.asitplus.http")
+                }
+            }
+            level = LogLevel.ALL
+        }
     }
 
     private fun buildPotentialKeyLookup(jwsSigned: JwsSigned<*>): Set<JsonWebKey>? =
         (jwsSigned.payload as? JsonObject)?.get("iss")?.jsonPrimitive?.content?.let { iss ->
             runBlocking {
-                httpClient.get(buildVcIssuerUrl(iss)).body<JwtVcIssuerMetadata>().jsonWebKeySet?.keys?.toSet()
+                val url = buildVcIssuerUrl(iss)
+                Napier.i("Resolving Key for $iss from $url")
+                httpClient.get(url).body<JwtVcIssuerMetadata>().jsonWebKeySet?.keys?.toSet()
             }
         }
 
