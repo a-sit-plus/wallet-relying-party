@@ -52,6 +52,7 @@ export default { "schemeTypes": [
         { "label": "family_name", "value": "family_name", "isSelected": true },
         { "label": "given_name", "value": "given_name", "isSelected": true },
         { "label": "birth_date", "value": "birth_date", "isSelected": true },
+        { "label": "portrait", "value": "portrait" },
         { "label": "age_over_18", "value": "age_over_18", "isSelected": true },
         { "label": "age_in_years", "value": "age_in_years" },
         { "label": "age_birth_year", "value": "age_birth_year" },
@@ -76,7 +77,8 @@ export default { "schemeTypes": [
         { "label": "document_number", "value": "document_number" },
         { "label": "administrative_number", "value": "administrative_number" },
         { "label": "issuing_country", "value": "issuing_country", "isSelected": true },
-        { "label": "issuing_jurisdiction", "value": "issuing_jurisdiction" }
+        { "label": "issuing_jurisdiction", "value": "issuing_jurisdiction" },
+        { "label": "personal_administrative_number", "value": "personal_administrative_number" }
       ]
     },
     { "label": "IDA Credential", "value": "at.gv.id-austria.2023.1",
@@ -263,6 +265,7 @@ export default { "schemeTypes": [
             { "label": "given_name", "value": "given_name", "isSelected": true },
             { "label": "birth_date", "value": "birth_date", "isSelected": true },
             { "label": "age_over_18", "value": "age_over_18", "isSelected": true },
+            { "label": "portrait", "value": "portrait" },
             { "label": "age_in_years", "value": "age_in_years" },
             { "label": "age_birth_year", "value": "age_birth_year" },
             { "label": "family_name_birth", "value": "family_name_birth" },
@@ -286,7 +289,8 @@ export default { "schemeTypes": [
             { "label": "document_number", "value": "document_number" },
             { "label": "administrative_number", "value": "administrative_number" },
             { "label": "issuing_country", "value": "issuing_country", "isSelected": true },
-            { "label": "issuing_jurisdiction", "value": "issuing_jurisdiction" }
+            { "label": "issuing_jurisdiction", "value": "issuing_jurisdiction" },
+            { "label": "personal_administrative_number", "value": "personal_administrative_number" }
           ]
         }
       ]
