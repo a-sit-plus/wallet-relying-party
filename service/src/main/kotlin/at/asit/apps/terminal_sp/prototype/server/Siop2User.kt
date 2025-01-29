@@ -3,8 +3,6 @@ package at.asit.apps.terminal_sp.prototype.server
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.idaustria.IdAustriaCredential
-import at.asitplus.wallet.idaustria.IdAustriaScheme
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.*
@@ -54,15 +52,13 @@ fun ApiItemCredential.toSiop2User() = Siop2User(
     )
 )
 
-private fun ApiItemCredential.getPortrait() = getClaim(IdAustriaScheme.Attributes.PORTRAIT)
-    ?: getClaim(MobileDrivingLicenceDataElements.PORTRAIT)
+private fun ApiItemCredential.getPortrait() = getClaim(MobileDrivingLicenceDataElements.PORTRAIT)
+    ?: getClaim(EuPidScheme.Attributes.PORTRAIT)
 
 private fun ApiItemCredential.getFamilyName() = getClaim(EuPidScheme.Attributes.FAMILY_NAME)
-    ?: getClaim(IdAustriaScheme.Attributes.LASTNAME)
     ?: getClaim(MobileDrivingLicenceDataElements.FAMILY_NAME)
 
 private fun ApiItemCredential.getGivenName() = getClaim(EuPidScheme.Attributes.GIVEN_NAME)
-    ?: getClaim(IdAustriaScheme.Attributes.FIRSTNAME)
     ?: getClaim(MobileDrivingLicenceDataElements.GIVEN_NAME)
 
 fun ApiItemCredential.getClaim(claim: String) = this.allFields.entries.firstOrNull { it.key == claim }?.value
@@ -79,31 +75,15 @@ fun VerifiablePresentationValidationResults.toApiItemCredentials() = validationR
     }
 }.filterNotNull()
 
-fun VerifiablePresentationParsed.toApiItemCredential() =
-    verifiableCredentials
-        .map { it.vc.credentialSubject }
-        .filterIsInstance<IdAustriaCredential>()
-        .firstOrNull()?.toApiItemCredential()
-        ?: verifiableCredentials
-            .map { it.vc.credentialSubject }
-            .filterIsInstance<EuPidCredential>()
-            .firstOrNull()?.toApiItemCredential()
+fun VerifiablePresentationParsed.toApiItemCredential() = verifiableCredentials
+    .map { it.vc.credentialSubject }
+    .filterIsInstance<EuPidCredential>()
+    .firstOrNull()?.toApiItemCredential()
 
-fun VerifiablePresentationParsed.toSiop2User() =
-    verifiableCredentials
-        .map { it.vc.credentialSubject }
-        .filterIsInstance<IdAustriaCredential>()
-        .firstOrNull()?.toApiItemCredential()?.toSiop2User()
-        ?: verifiableCredentials
-            .map { it.vc.credentialSubject }
-            .filterIsInstance<EuPidCredential>()
-            .firstOrNull()?.toApiItemCredential()?.toSiop2User()
-
-private fun IdAustriaCredential.toApiItemCredential() =
-    ApiItemCredential(
-        jwtCredential = kotlin.runCatching { vckJsonSerializer.encodeToJsonElement(this) }.getOrNull(),
-        credentialType = IdAustriaScheme.vcType,
-    )
+fun VerifiablePresentationParsed.toSiop2User() = verifiableCredentials
+    .map { it.vc.credentialSubject }
+    .filterIsInstance<EuPidCredential>()
+    .firstOrNull()?.toApiItemCredential()?.toSiop2User()
 
 private fun EuPidCredential.toApiItemCredential() =
     ApiItemCredential(

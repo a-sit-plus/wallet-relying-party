@@ -1,12 +1,14 @@
 export default { "schemeTypes": [
-    { "label": "e-Prescription", "value": "eu.europa.ehealth.eprescription.1",
+    { "label": "e-Prescription",
+      "value": "eu.europa.ehealth.eprescription.1",
       "attributes": [
         { "label": "one_time_token", "value": "one_time_token", "isSelected": true },
         { "label": "coutry_code", "value": "country_code", "isSelected": true },
         { "label": "valid_until", "value": "valid_until", "isSelected": true }
       ]
     },
-    { "label": "mDL", "value": "org.iso.18013.5.1.mDL",
+    { "label": "mDL",
+      "value": "org.iso.18013.5.1.mDL",
       "attributes": [
         { "label": "family_name", "value": "family_name", "isSelected": true },
         { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -47,7 +49,8 @@ export default { "schemeTypes": [
         { "label": "signature_usual_mark", "value": "signature_usual_mark" }
       ]
     },
-    { "label": "PID", "value": "urn:eu.europa.ec.eudi:pid:1",
+    { "label": "PID",
+      "value": "urn:eu.europa.ec.eudi:pid:1",
       "attributes": [
         { "label": "family_name", "value": "family_name", "isSelected": true },
         { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -79,34 +82,6 @@ export default { "schemeTypes": [
         { "label": "issuing_country", "value": "issuing_country", "isSelected": true },
         { "label": "issuing_jurisdiction", "value": "issuing_jurisdiction" },
         { "label": "personal_administrative_number", "value": "personal_administrative_number" }
-      ]
-    },
-    { "label": "IDA Credential", "value": "at.gv.id-austria.2023.1",
-      "attributes": [
-        { "label": "bpk", "value": "bpk", "isSelected": true },
-        { "label": "firstname", "value": "firstname", "isSelected": true },
-        { "label": "lastname", "value": "lastname", "isSelected": true },
-        { "label": "date-of-birth", "value": "date-of-birth", "isSelected": true },
-        { "label": "portrait", "value": "portrait", "isSelected": true },
-        { "label": "main-address", "value": "main-address", "isSelected": true },
-        { "label": "age-over-14", "value": "age-over-14" },
-        { "label": "age-over-16", "value": "age-over-16" },
-        { "label": "age-over-18", "value": "age-over-18", "isSelected": true },
-        { "label": "age-over-21", "value": "age-over-21" }
-      ]
-    },
-    { "label": "IDA Credential (ISO)", "value": "at.gv.id-austria.2023.iso",
-      "attributes": [
-        { "label": "bpk", "value": "bpk", "isSelected": true },
-        { "label": "firstname", "value": "firstname", "isSelected": true },
-        { "label": "lastname", "value": "lastname", "isSelected": true },
-        { "label": "date-of-birth", "value": "date-of-birth", "isSelected": true },
-        { "label": "portrait", "value": "portrait", "isSelected": true },
-        { "label": "main-address", "value": "main-address", "isSelected": true },
-        { "label": "age-over-14", "value": "age-over-14" },
-        { "label": "age-over-16", "value": "age-over-16" },
-        { "label": "age-over-18", "value": "age-over-18" },
-        { "label": "age-over-21", "value": "age-over-21" }
       ]
     },
     { "label": "Power of Representation (PoR)", "value": "eu.europa.ec.eudi.por.1",
@@ -179,11 +154,12 @@ export default { "schemeTypes": [
       "simple": false,
       "credentials": [
         {
-          "schemeType": "at.gv.id-austria.2023.1",
+          "schemeType": "urn:eu.europa.ec.eudi:pid:1",
           "representation": "SD_JWT",
           "attributes": [
-            { "label": "firstname", "value": "firstname", "isSelected": true },
-            { "label": "lastname", "value": "lastname", "isSelected": true },
+            { "label": "family_name", "value": "family_name", "isSelected": true },
+            { "label": "given_name", "value": "given_name", "isSelected": true },
+            { "label": "birth_date", "value": "birth_date", "isSelected": true },
             { "label": "portrait", "value": "portrait", "isSelected": true }
           ]
         }
@@ -193,13 +169,14 @@ export default { "schemeTypes": [
       "simple": false,
       "credentials": [
         {
-          "schemeType": "at.gv.id-austria.2023.1",
+          "schemeType": "urn:eu.europa.ec.eudi:pid:1",
           "representation": "SD_JWT",
           "attributes": [
-            { "label": "age-over-14", "value": "age-over-14", "isSelected": true },
-            { "label": "age-over-16", "value": "age-over-16", "isSelected": true },
-            { "label": "age-over-18", "value": "age-over-18", "isSelected": true },
-            { "label": "age-over-21", "value": "age-over-21", "isSelected": true }
+            { "label": "age_over_12", "value": "age_over_12", "isSelected": true },
+            { "label": "age_over_14", "value": "age_over_14", "isSelected": true },
+            { "label": "age_over_16", "value": "age_over_16", "isSelected": true },
+            { "label": "age_over_18", "value": "age_over_18", "isSelected": true },
+            { "label": "age_over_21", "value": "age_over_21", "isSelected": true }
           ]
         }
       ]
@@ -264,7 +241,11 @@ export default { "schemeTypes": [
             { "label": "family_name", "value": "family_name", "isSelected": true },
             { "label": "given_name", "value": "given_name", "isSelected": true },
             { "label": "birth_date", "value": "birth_date", "isSelected": true },
+            { "label": "age_over_12", "value": "age_over_12" },
+            { "label": "age_over_14", "value": "age_over_14" },
+            { "label": "age_over_16", "value": "age_over_16" },
             { "label": "age_over_18", "value": "age_over_18", "isSelected": true },
+            { "label": "age_over_21", "value": "age_over_21" },
             { "label": "portrait", "value": "portrait" },
             { "label": "age_in_years", "value": "age_in_years" },
             { "label": "age_birth_year", "value": "age_birth_year" },
@@ -324,6 +305,7 @@ export default { "schemeTypes": [
             { "label": "portrait_capture_date", "value": "portrait_capture_date" },
             { "label": "age_in_years", "value": "age_in_years" },
             { "label": "age_birth_year", "value": "age_birth_year" },
+            { "label": "age_over_12", "value": "age_over_12" },
             { "label": "age_over_14", "value": "age_over_14" },
             { "label": "age_over_16", "value": "age_over_16" },
             { "label": "age_over_18", "value": "age_over_18" },
