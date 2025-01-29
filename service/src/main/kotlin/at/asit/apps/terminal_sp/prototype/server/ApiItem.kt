@@ -3,6 +3,7 @@ package at.asit.apps.terminal_sp.prototype.server
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 
 @Serializable
 data class ApiItem(
@@ -17,8 +18,7 @@ data class ApiItem(
 @Serializable
 data class ApiItemCredential(
     val jwtCredential: JsonElement? = null,
-    // TODO Make this a JSONObject?
-    val allFields: Map<String, String> = mapOf(),
+    val allFields: JsonObject? = null,
     val credentialType: String? = null,
 )
 

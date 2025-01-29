@@ -4,6 +4,7 @@ import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.*
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
@@ -12,7 +13,11 @@ import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
 import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.security.core.AuthenticatedPrincipal
@@ -61,7 +66,12 @@ private fun ApiItemCredential.getFamilyName() = getClaim(EuPidScheme.Attributes.
 private fun ApiItemCredential.getGivenName() = getClaim(EuPidScheme.Attributes.GIVEN_NAME)
     ?: getClaim(MobileDrivingLicenceDataElements.GIVEN_NAME)
 
-fun ApiItemCredential.getClaim(claim: String) = this.allFields.entries.firstOrNull { it.key == claim }?.value
+fun ApiItemCredential.getClaim(claim: String) = this.allFields?.entries?.firstOrNull { it.key == claim }?.value?.let {
+    when (it) {
+        is JsonPrimitive -> it.content
+        else -> it.toString()
+    }
+}
 
 fun VerifiablePresentationValidationResults.toApiItemCredentials() = validationResults.flatMap {
     when (it) {
@@ -93,15 +103,17 @@ private fun EuPidCredential.toApiItemCredential() =
 
 fun SuccessSdJwt.toApiItemCredential() =
     ApiItemCredential(
-        allFields = disclosures
-            .filter { it.claimName != null && it.claimValue is JsonPrimitive }
-            .associate { it.claimName!! to it.claimValue.jsonPrimitive.content },
+        allFields = reconstructed,
         credentialType = verifiableCredentialSdJwt.verifiableCredentialType,
     )
 
 fun SuccessIso.toApiItemCredentials() = documents.map { doc ->
     ApiItemCredential(
-        allFields = doc.validItems.associate { it.elementIdentifier to it.elementValueToString() },
+        allFields = buildJsonObject {
+            doc.validItems.forEach {
+                put(it.elementIdentifier, it.elementValue.toJsonElement())
+            }
+        },
         credentialType = doc.mso.docType,
     )
 }
