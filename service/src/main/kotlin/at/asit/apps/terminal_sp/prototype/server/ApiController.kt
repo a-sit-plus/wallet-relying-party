@@ -129,7 +129,7 @@ class ApiController(
             Napier.w("/transaction/result/$id returns NOT_FOUND")
             throw ResponseStatusException(HttpStatus.NOT_FOUND)
         }
-        val user = validateSiopResponse(requestBody, transaction.profile.verifier)
+        val user = validateSiopResponse(requestBody, transaction.profile.openIdVerifier)
         Napier.i("Storing user for transaction $id: $user")
         transactionStore.put(id, user)
         val redirectUrlWithId = ServletUriComponentsBuilder
