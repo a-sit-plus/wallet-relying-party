@@ -52,7 +52,7 @@ class VerifierProfiles(private val publicUrl: String) {
             json(joseCompliantSerializer)
         }
         install(Logging) {
-            logger = object: Logger {
+            logger = object : Logger {
                 override fun log(message: String) {
                     Napier.i(message = message, tag = "at.asitplus.http")
                 }
@@ -79,8 +79,7 @@ class VerifierProfiles(private val publicUrl: String) {
             override val name = "HAIP"
             override val label = "HAIP (Potential)"
             override val urlPrefix = "haip://"
-            override val clientId = "AT-GV-EGIZ-CUSTOMVERIFIER"
-            private val clientIdScheme = PreRegistered(clientId, publicUrl, publicUrl)
+            override val clientIdScheme = PreRegistered("AT-GV-EGIZ-CUSTOMVERIFIER", publicUrl, publicUrl)
             override val openIdVerifier = OpenId4VpVerifier(
                 verifier = VerifierAgent(
                     identifier = clientIdScheme.clientId,
@@ -93,7 +92,7 @@ class VerifierProfiles(private val publicUrl: String) {
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
                 .fromUriString(urlPrefix).apply {
                     AuthenticationRequestParameters(
-                        clientId = clientId,
+                        clientId = clientIdScheme.clientId,
                         requestUri = requestUrl,
                     ).encodeToParameters()
                         .forEach { queryParam(it.key, it.value) }
@@ -117,8 +116,7 @@ class VerifierProfiles(private val publicUrl: String) {
             override val name = "EUDI"
             override val label = "EUDI"
             override val urlPrefix = "eudi-openid4vp://"
-            override val clientId = publicUrl
-            val clientIdScheme = ClientIdScheme.RedirectUri(clientId)
+            override val clientIdScheme = ClientIdScheme.RedirectUri(publicUrl)
             override val openIdVerifier = OpenId4VpVerifier(
                 keyMaterial = EphemeralKeyWithoutCert(),
                 clientIdScheme = clientIdScheme
@@ -127,7 +125,7 @@ class VerifierProfiles(private val publicUrl: String) {
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
                 .fromUriString(urlPrefix).apply {
                     AuthenticationRequestParameters(
-                        clientId = clientId,
+                        clientId = clientIdScheme.clientId,
                         requestUri = requestUrl,
                     ).encodeToParameters()
                         .forEach { queryParam(it.key, it.value) }
@@ -165,22 +163,23 @@ class VerifierProfiles(private val publicUrl: String) {
             override val name = "MDOC"
             override val label = "ISO 18013-7"
             override val urlPrefix = "mdoc-openid4vp://"
-            override val clientId = publicUrl
-            override val openIdVerifier = runBlocking {
-                OpenId4VpVerifier(
-                    keyMaterial = verifierKeyMaterial,
-                    clientIdScheme = ClientIdScheme.CertificateSanDns(
-                        listOf(verifierKeyMaterial.getCertificate()!!),
-                        publicUrl.getDnsName(),
-                        publicUrl
-                    )
+            override val clientIdScheme = runBlocking {
+                ClientIdScheme.CertificateSanDns(
+                    listOf(verifierKeyMaterial.getCertificate()!!),
+                    publicUrl.getDnsName(),
+                    publicUrl
                 )
             }
+
+            override val openIdVerifier = OpenId4VpVerifier(
+                keyMaterial = verifierKeyMaterial,
+                clientIdScheme = clientIdScheme
+            )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
                 .fromUriString(urlPrefix).apply {
                     AuthenticationRequestParameters(
-                        clientId = clientId,
+                        clientId = clientIdScheme.clientId,
                         requestUri = requestUrl,
                     ).encodeToParameters()
                         .forEach { queryParam(it.key, it.value) }
@@ -230,7 +229,7 @@ interface Profile {
     val name: String
     val label: String
     val urlPrefix: String
-    val clientId: String
+    val clientIdScheme: ClientIdScheme
     val openIdVerifier: OpenId4VpVerifier
     fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String
     suspend fun transactionGet(
