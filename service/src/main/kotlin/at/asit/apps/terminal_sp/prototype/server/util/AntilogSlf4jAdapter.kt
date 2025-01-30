@@ -4,22 +4,42 @@ import io.github.aakira.napier.Antilog
 import io.github.aakira.napier.LogLevel
 import io.github.aakira.napier.Napier
 import org.slf4j.LoggerFactory
+import org.slf4j.MDC
 import java.util.regex.Pattern
 
 /**
  * Enables logging from Napier (used in our KMM libs) to SLF4J (used by Spring Boot)
  */
-class AntilogSlf4jAdapter : Antilog() {
+object AntilogSlf4jAdapter : Antilog() {
+
+    val lastTransactions = ArrayDeque<String>()
+    val transactionLogs: MutableMap<String, MutableList<String>> = mutableMapOf()
 
     override fun performLog(priority: LogLevel, tag: String?, throwable: Throwable?, message: String?) {
+        if (message == null)
+            return
         val logger = LoggerFactory.getLogger(tag ?: extractTagFromStackTrace())
         when (priority) {
-            LogLevel.VERBOSE -> logger.trace(message, throwable)
-            LogLevel.DEBUG -> logger.debug(message, throwable)
-            LogLevel.INFO -> logger.info(message, throwable)
-            LogLevel.WARNING -> logger.warn(message, throwable)
-            LogLevel.ERROR -> logger.error(message, throwable)
-            LogLevel.ASSERT -> logger.error(message, throwable)
+            LogLevel.VERBOSE -> logger.trace(message.prefixWithRequestId(), throwable)
+            LogLevel.DEBUG -> logger.debug(message.prefixWithRequestId(), throwable)
+            LogLevel.INFO -> logger.info(message.prefixWithRequestId(), throwable)
+            LogLevel.WARNING -> logger.warn(message.prefixWithRequestId(), throwable)
+            LogLevel.ERROR -> logger.error(message.prefixWithRequestId(), throwable)
+            LogLevel.ASSERT -> logger.error(message.prefixWithRequestId(), throwable)
+        }
+        storeInTransactionLogs(message)
+    }
+
+    private fun storeInTransactionLogs(message: String) {
+        MDC.get(MDC_REQUEST_ID)?.let {
+            if (!lastTransactions.contains(it)) {
+                lastTransactions.addLast(it)
+            }
+            if (lastTransactions.size > 30) {
+                lastTransactions.removeFirst().apply { transactionLogs.remove(it) }
+                return
+            }
+            transactionLogs.getOrPut(it) { mutableListOf() }.add(message)
         }
     }
 
@@ -47,5 +67,9 @@ class AntilogSlf4jAdapter : Antilog() {
         return callingMethod?.let { removeAnonymousClasses(it.className) } ?: "at.asitplus.wallet.lib"
     }
 
-
 }
+
+private fun String.prefixWithRequestId(): String =
+    MDC.get(MDC_REQUEST_ID)?.let { "[$it] $this" } ?: this
+
+const val MDC_REQUEST_ID = "requestid"

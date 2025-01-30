@@ -45,7 +45,7 @@ class ProcessTest {
         fun beforeAll() {
             initOpenIdModule()
             Napier.takeLogarithm()
-            Napier.base(AntilogSlf4jAdapter())
+            Napier.base(AntilogSlf4jAdapter)
         }
     }
 

@@ -1,5 +1,7 @@
 package at.asit.apps.terminal_sp.prototype.server
 
+import at.asit.apps.terminal_sp.prototype.server.util.AntilogSlf4jAdapter
+import at.asit.apps.terminal_sp.prototype.server.util.MDC_REQUEST_ID
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
@@ -10,6 +12,7 @@ import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.coroutines.runBlocking
+import org.slf4j.MDC
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -100,6 +103,7 @@ class ApiController(
     @ResponseBody
     fun transactionGet(@PathVariable id: String): ResponseEntity<String> = runBlocking {
         Napier.i("/transaction/get/$id called")
+        MDC.put(MDC_REQUEST_ID, id)
         val transaction = transactions[id]
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
                 .also { Napier.w("/transaction/get/$id returns NOT_FOUND") }
@@ -114,6 +118,15 @@ class ApiController(
         }
     }
 
+    @GetMapping("/logs/{id}", produces = [APPLICATION_JSON_VALUE])
+    @ResponseBody
+    fun transactionLogs(@PathVariable id: String): ResponseEntity<Collection<String>> = runBlocking {
+        MDC.put(MDC_REQUEST_ID, id)
+        val logs = AntilogSlf4jAdapter.transactionLogs[id]?.ifEmpty { null }
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
+        ResponseEntity.ok(logs)
+    }
+
     /**
      * Expects SIOPv2 authn response as request body,
      * called from Wallet App upon answering authn request from [transactionGet].
@@ -123,6 +136,7 @@ class ApiController(
         @PathVariable id: String,
         @RequestBody requestBody: String,
     ): ResponseEntity<OpenId4VpSuccess> = runBlocking {
+        MDC.put(MDC_REQUEST_ID, id)
         Napier.i("/transaction/result/$id called with $requestBody")
         val transaction = transactions.remove(id)
         if (transaction == null) {
@@ -169,7 +183,7 @@ class ApiController(
         }
 
     @GetMapping(
-        value = [OpenIdConstants.PATH_WELL_KNOWN_JAR_ISSUER, ],
+        value = [OpenIdConstants.PATH_WELL_KNOWN_JAR_ISSUER],
         produces = [APPLICATION_JSON_VALUE]
     )
     fun jarMetadata(

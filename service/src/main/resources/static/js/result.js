@@ -5,6 +5,7 @@ const createBasicSetup = function() {
 
   const config = {
     singleUrl: 'api/single/',
+    logUrl: 'logs/',
     itemsUrl: 'api/items',
     removeUrl: 'api/remove',
     timeUpdateRate: 1000,
@@ -82,7 +83,16 @@ const createBasicSetup = function() {
       console.log('updateItemById')
       let response = await fetch(config.singleUrl + id)
       const item = await response.json()
-      console.log('item: ', item)
+      console.log('authentication: ', item)
+      let logResponse = await fetch(config.logUrl + id);
+      if (logResponse.ok) {
+        try {
+          const data = await logResponse.json();
+          data.forEach(it => console.log(it))
+        } catch (error) {
+          // do nothing
+        }
+      }
       updateItems([item])
       updateTime()
     } catch (error) {

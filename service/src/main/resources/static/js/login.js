@@ -7,6 +7,7 @@ const STATIC_DEV = false
 const URLs = {
     transactionUrl: STATIC_DEV ? 'api/transaction-create' : 'transaction/create',
     resultUrl: 'api/single/',
+    logUrl: 'logs/',
     successPageUrl: 'customer-success.html?id=',
 }
 
@@ -203,6 +204,15 @@ const createBasicSetup = function (config) {
                     console.log('loadResult got: ', data);
                     // navigate to success page
                     window.location.href = URLs.successPageUrl + item.id
+                }
+                let logResponse = await fetch(URLs.logUrl + item.id);
+                if (logResponse.ok) {
+                    try {
+                        const data = await logResponse.json();
+                        data.forEach(it => console.log(it))
+                    } catch (error) {
+                        // do nothing
+                    }
                 }
             }
         } catch (error) {
