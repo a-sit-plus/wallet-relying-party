@@ -8,6 +8,9 @@
           integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+            crossorigin="anonymous"></script>
 
     <script type="importmap">
         {
@@ -57,51 +60,51 @@
 </head>
 <body id="app">
 
-    <header-comp></header-comp>
+<header-comp></header-comp>
 
-    <div class="container px-4 py-5 position-relative">
-        <title-comp title="Custom Request" icon="bi-card-checklist">
-            <p>
-                Specify all aspects of the authentication request.
-            </p>
-        </title-comp>
+<div class="container px-4 py-5 position-relative">
+    <title-comp title="Custom Request" icon="bi-card-checklist">
+        <p>
+            Specify all aspects of the authentication request.
+        </p>
+    </title-comp>
 
-        <div class="row mb-3">
-            <ul class="nav nav-tabs">
-                <li v-for="item in config.profiles"
-                    :key="item.label"
-                    class="nav-item">
-                    <a :class="'nav-link'+ (item.label == reqSelection.profileLabel ? ' active' : '')" href="#"
-                       @click="updateProfile(item)">{{ item.label }}</a>
-                </li>
-            </ul>
-            <div class="bg-white border rounded py-3">
-                <request-details-comp
-                  :request="reqSelection" :config="config"
-                  @update-scheme-type="updateSchemeType"
-                  @update-representation="updateRepresentation"
-                  @update-attribute="updateAttribute"
-                  @add-credential="addCredential"
-                  @remove-credential="removeCredential"
-                  @generate-qr-code="generateQrCode"
-                  ></request-details-comp>
-            </div>
+    <div class="row mb-3">
+        <ul class="nav nav-tabs">
+            <li v-for="item in config.profiles"
+                :key="item.label"
+                class="nav-item">
+                <a :class="'nav-link'+ (item.label == reqSelection.profileLabel ? ' active' : '')" href="#"
+                   @click="updateProfile(item)">{{ item.label }}</a>
+            </li>
+        </ul>
+        <div class="bg-white border rounded py-3">
+            <request-details-comp
+                    :request="reqSelection" :config="config"
+                    @update-scheme-type="updateSchemeType"
+                    @update-representation="updateRepresentation"
+                    @update-attribute="updateAttribute"
+                    @add-credential="addCredential"
+                    @remove-credential="removeCredential"
+                    @generate-qr-code="generateQrCode"
+            ></request-details-comp>
         </div>
-
-        <error-alert-comp :error="error"></error-alert-comp>
-
-        <success-alert-comp :result="reqResult"></success-alert-comp>
-
-        <div v-if="reqResult != null && reqResult.qrCodeSrc != null" class="row alert alert-success mb-3" role="alert">
-            <p>Request has been generated successfully!</p>
-        </div>
-
-        <login-options-comp
-          :result="reqResult"
-          :changed="reqChanged"
-          :error="error"
-          @generate-qr-code="generateQrCode"></login-options-comp>
     </div>
+
+    <error-alert-comp :error="error"></error-alert-comp>
+
+    <success-alert-comp :result="reqResult"></success-alert-comp>
+
+    <div v-if="reqResult != null && reqResult.qrCodeSrc != null" class="row alert alert-success mb-3" role="alert">
+        <p>Request has been generated successfully!</p>
+    </div>
+
+    <login-options-comp
+            :result="reqResult"
+            :changed="reqChanged"
+            :error="error"
+            @generate-qr-code="generateQrCode"></login-options-comp>
+</div>
 
 </body>
 </html>

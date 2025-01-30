@@ -39,25 +39,25 @@
     </script>
 </head>
 <body id="app">
-    <header-comp></header-comp>
+<header-comp></header-comp>
 
-    <div class="container my-5">
-        <div class="row alert alert-success" role="alert">
-            <h1>Authentication successful!</h1>
-            <p>The authentication process has been completed successfully.</p>
-        </div>
-        <div class="row">
-            <h1>Transmitted Data</h1>
-            <p>The following data has been transmitted to the service provider:</p>
+<div class="container my-5">
+    <div class="row alert alert-success" role="alert">
+        <h1>Authentication successful!</h1>
+        <p>The authentication process has been completed successfully.</p>
+    </div>
+    <div class="row">
+        <h1>Transmitted Data</h1>
+        <p>The following data has been transmitted to the service provider:</p>
 
-            <div class="container">
-              <login-results-comp
-                :login-list="loginList"
-                @toggle-details="toggleDetails"
-                @seen="seen"
-                ></login-results-comp>
-            </div>
+        <div class="container">
+            <login-results-comp
+                    :login-list="loginList"
+                    @toggle-details="toggleDetails"
+                    @seen="seen"
+            ></login-results-comp>
         </div>
     </div>
+</div>
 </body>
 </html>

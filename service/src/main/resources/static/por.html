@@ -64,35 +64,35 @@
 </head>
 <body id="app">
 
-    <header-comp></header-comp>
+<header-comp></header-comp>
 
-    <div class="container px-4 py-5 position-relative">
-        <title-comp title="eGovernment & Power of Representation" icon="bi-bank2">
-            <p>
-                Login for a legal entity based on a power of representation.
-            </p>
-        </title-comp>
+<div class="container px-4 py-5 position-relative">
+    <title-comp title="eGovernment & Power of Representation" icon="bi-bank2">
+        <p>
+            Login for a legal entity based on a power of representation.
+        </p>
+    </title-comp>
 
-        <error-alert-comp :error="error"></error-alert-comp>
+    <error-alert-comp :error="error"></error-alert-comp>
 
-        <login-options-comp
-          :result="reqResult"
-          :changed="reqChanged"
-          :error="error"
-          @generate-qr-code="generateQrCode"></login-options-comp>
+    <login-options-comp
+            :result="reqResult"
+            :changed="reqChanged"
+            :error="error"
+            @generate-qr-code="generateQrCode"></login-options-comp>
 
-        <accordion-comp title="Request Details">
-            <request-details-comp
-              :request="reqSelection" :config="config"
-              @update-scheme-type="updateSchemeType"
-              @update-representation="updateRepresentation"
-              @update-attribute="updateAttribute"
-              @add-credential="addCredential"
-              @remove-credential="removeCredential"
-              @generate-qr-code="generateQrCode"
-              ></request-details-comp>
-        </accordion-comp>
-    </div>
+    <accordion-comp title="Request Details">
+        <request-details-comp
+                :request="reqSelection" :config="config"
+                @update-scheme-type="updateSchemeType"
+                @update-representation="updateRepresentation"
+                @update-attribute="updateAttribute"
+                @add-credential="addCredential"
+                @remove-credential="removeCredential"
+                @generate-qr-code="generateQrCode"
+        ></request-details-comp>
+    </accordion-comp>
+</div>
 
 </body>
 </html>

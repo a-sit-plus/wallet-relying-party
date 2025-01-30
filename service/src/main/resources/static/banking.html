@@ -8,7 +8,9 @@
           integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js" integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+            crossorigin="anonymous"></script>
 
     <script type="importmap">
         {
@@ -38,24 +40,25 @@
         import config from "main-config"
 
         config.profiles = [
-          { "label": "PID Mandatory",
-            "credentials": [
-              {
-                "schemeType": "urn:eu.europa.ec.eudi:pid:1",
-                "representation": "SD_JWT",
-                "attributes": [
-                  { "label": "family_name", "value": "family_name", "isSelected": true },
-                  { "label": "given_name", "value": "given_name", "isSelected": true },
-                  { "label": "birth_date", "value": "birth_date", "isSelected": true },
-                  { "label": "resident_address", "value": "resident_address", "isSelected": true },
-                  { "label": "gender", "value": "gender", "isSelected": true },
-                  { "label": "issuance_date", "value": "issuance_date", "isSelected": true },
-                  { "label": "expiry_date", "value": "expiry_date", "isSelected": true },
-                  { "label": "issuing_country", "value": "issuing_country", "isSelected": true }
+            {
+                "label": "PID Mandatory",
+                "credentials": [
+                    {
+                        "schemeType": "urn:eu.europa.ec.eudi:pid:1",
+                        "representation": "SD_JWT",
+                        "attributes": [
+                            {"label": "family_name", "value": "family_name", "isSelected": true},
+                            {"label": "given_name", "value": "given_name", "isSelected": true},
+                            {"label": "birth_date", "value": "birth_date", "isSelected": true},
+                            {"label": "resident_address", "value": "resident_address", "isSelected": true},
+                            {"label": "gender", "value": "gender", "isSelected": true},
+                            {"label": "issuance_date", "value": "issuance_date", "isSelected": true},
+                            {"label": "expiry_date", "value": "expiry_date", "isSelected": true},
+                            {"label": "issuing_country", "value": "issuing_country", "isSelected": true}
+                        ]
+                    }
                 ]
-              }
-            ]
-          }
+            }
         ];
 
         createApp({
@@ -80,35 +83,35 @@
 </head>
 <body id="app">
 
-    <header-comp></header-comp>
+<header-comp></header-comp>
 
-    <div class="container px-4 py-5 position-relative">
-        <title-comp title="Banking" icon="bi-bank">
-            <p>
-                Authenticate with wallet credentials to open a bank account.
-            </p>
-        </title-comp>
+<div class="container px-4 py-5 position-relative">
+    <title-comp title="Banking" icon="bi-bank">
+        <p>
+            Authenticate with wallet credentials to open a bank account.
+        </p>
+    </title-comp>
 
-        <error-alert-comp :error="error"></error-alert-comp>
+    <error-alert-comp :error="error"></error-alert-comp>
 
-        <login-options-comp
-          :result="reqResult"
-          :changed="reqChanged"
-          :error="error"
-          @generate-qr-code="generateQrCode"></login-options-comp>
+    <login-options-comp
+            :result="reqResult"
+            :changed="reqChanged"
+            :error="error"
+            @generate-qr-code="generateQrCode"></login-options-comp>
 
-        <accordion-comp title="Request Details">
-            <request-details-comp
-              :request="reqSelection" :config="config"
-              @update-scheme-type="updateSchemeType"
-              @update-representation="updateRepresentation"
-              @update-attribute="updateAttribute"
-              @add-credential="addCredential"
-              @remove-credential="removeCredential"
-              @generate-qr-code="generateQrCode"
-              ></request-details-comp>
-        </accordion-comp>
-    </div>
+    <accordion-comp title="Request Details">
+        <request-details-comp
+                :request="reqSelection" :config="config"
+                @update-scheme-type="updateSchemeType"
+                @update-representation="updateRepresentation"
+                @update-attribute="updateAttribute"
+                @add-credential="addCredential"
+                @remove-credential="removeCredential"
+                @generate-qr-code="generateQrCode"
+        ></request-details-comp>
+    </accordion-comp>
+</div>
 
 </body>
 </html>
