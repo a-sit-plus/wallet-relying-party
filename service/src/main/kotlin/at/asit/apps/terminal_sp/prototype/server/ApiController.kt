@@ -12,6 +12,7 @@ import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.coroutines.runBlocking
+import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpStatus
@@ -36,6 +37,7 @@ class ApiController(
     private val publicUrl: String,
     private val transactionStore: TransactionStore,
 ) {
+    private val statisticLogger = LoggerFactory.getLogger("statistic")
     private val transactions: MutableMap<String, Transaction> = HashMap()
     private val customerSuccessUrl by lazy {
         ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
@@ -103,6 +105,7 @@ class ApiController(
     @ResponseBody
     fun transactionGet(@PathVariable id: String): ResponseEntity<String> = runBlocking {
         Napier.i("/transaction/get/$id called")
+        statisticLogger.info("$id get")
         MDC.put(MDC_REQUEST_ID, id)
         val transaction = transactions[id]
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
@@ -143,7 +146,13 @@ class ApiController(
             Napier.w("/transaction/result/$id returns NOT_FOUND")
             throw ResponseStatusException(HttpStatus.NOT_FOUND)
         }
-        val user = validateSiopResponse(requestBody, transaction.profile.openIdVerifier)
+        val user = try {
+            validateSiopResponse(requestBody, transaction.profile.openIdVerifier)
+        } catch (e: Exception) {
+            statisticLogger.error("$id error", e)
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, e.localizedMessage, e)
+        }
+        statisticLogger.info("$id success $user")
         Napier.i("Storing user for transaction $id: $user")
         transactionStore.put(id, user)
         val redirectUrlWithId = ServletUriComponentsBuilder
