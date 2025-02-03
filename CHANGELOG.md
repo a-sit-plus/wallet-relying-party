@@ -1,5 +1,9 @@
 # Changelog
 
+Version 5.3.2:
+ - Update to VC-K 5.3.2
+ - Fixes ISO value digests
+
 Version 5.3.1:
 - Update to VC-K 5.3.1
 - Provide `jar-issuer` metadata file, set public HTTPS URL as `iss` for signed authorization requests
