@@ -5,6 +5,7 @@ import at.asit.apps.terminal_sp.prototype.server.util.MDC_REQUEST_ID
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata
+import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import io.github.aakira.napier.Napier
@@ -101,7 +102,7 @@ class ApiController(
 
     private fun ByteArray.toDataUrl(): String = "data:image/png;base64," + encodeToString(Base64())
 
-    @GetMapping("/transaction/get/{id}")
+    @GetMapping("/transaction/get/{id}", produces = ["application/" + JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST])
     @ResponseBody
     fun transactionGet(@PathVariable id: String): ResponseEntity<String> = runBlocking {
         Napier.i("/transaction/get/$id called")
@@ -114,7 +115,9 @@ class ApiController(
         try {
             val result = transaction.transactionGet(buildPostSuccessUrl(transaction.id))
                 .also { Napier.i("/transaction/$id returns $it") }
-            ResponseEntity.ok(result)
+            ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/" + JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST))
+                .body<String>(result)
         } catch (e: Exception) {
             Napier.w("/transaction/get/$id error", e)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, e.localizedMessage)

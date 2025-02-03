@@ -113,12 +113,40 @@ class VerifierProfiles(private val publicUrl: String) {
             ).getOrThrow().serialize()
         },
         object : Profile {
+            private val extensions = listOf(
+                X509CertificateExtension(
+                    KnownOIDs.subjectAltName_2_5_29_17,
+                    critical = false,
+                    Asn1EncapsulatingOctetString(
+                        listOf(
+                            Asn1.Sequence {
+                                +Asn1Primitive(
+                                    SubjectAltNameImplicitTags.dNSName,
+                                    Asn1String.UTF8(publicUrl.getDnsName()).encodeToTlv().content
+                                )
+                                +Asn1Primitive(
+                                    SubjectAltNameImplicitTags.dNSName,
+                                    Asn1String.UTF8(OpenIdConstants.ClientIdScheme.X509SanDns.stringRepresentation + ":" + publicUrl.getDnsName())
+                                        .encodeToTlv().content
+                                )
+                            }
+                        ))))
+            private val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(
+                extensions = extensions,
+                lifetimeInSeconds = 60 * 60 * 24 * 60
+            )
             override val name = "EUDI"
-            override val label = "EUDI"
-            override val urlPrefix = "eudi-openid4vp://"
-            override val clientIdScheme = ClientIdScheme.RedirectUri(publicUrl)
+            override val label = "HAIP (x509_san_dns)"
+            override val urlPrefix = "haip://"
+            override val clientIdScheme = runBlocking {
+                ClientIdScheme.CertificateSanDns(
+                    listOf(verifierKeyMaterial.getCertificate()!!),
+                    publicUrl.getDnsName(),
+                    publicUrl
+                )
+            }
             override val openIdVerifier = OpenId4VpVerifier(
-                keyMaterial = EphemeralKeyWithoutCert(),
+                keyMaterial = verifierKeyMaterial,
                 clientIdScheme = clientIdScheme
             )
 
@@ -157,9 +185,17 @@ class VerifierProfiles(private val publicUrl: String) {
                                     SubjectAltNameImplicitTags.dNSName,
                                     Asn1String.UTF8(publicUrl.getDnsName()).encodeToTlv().content
                                 )
+                                +Asn1Primitive(
+                                    SubjectAltNameImplicitTags.dNSName,
+                                    Asn1String.UTF8(OpenIdConstants.ClientIdScheme.X509SanDns.stringRepresentation + ":" + publicUrl.getDnsName())
+                                        .encodeToTlv().content
+                                )
                             }
                         ))))
-            private val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(extensions = extensions)
+            private val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(
+                extensions = extensions,
+                lifetimeInSeconds = 60 * 60 * 24 * 60
+            )
             override val name = "MDOC"
             override val label = "ISO 18013-7"
             override val urlPrefix = "mdoc-openid4vp://"
