@@ -102,7 +102,7 @@ class ApiController(
 
     private fun ByteArray.toDataUrl(): String = "data:image/png;base64," + encodeToString(Base64())
 
-    @GetMapping("/transaction/get/{id}", produces = ["application/" + JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST])
+    @GetMapping("/transaction/get/{id}")
     @ResponseBody
     fun transactionGet(@PathVariable id: String): ResponseEntity<String> = runBlocking {
         Napier.i("/transaction/get/$id called")

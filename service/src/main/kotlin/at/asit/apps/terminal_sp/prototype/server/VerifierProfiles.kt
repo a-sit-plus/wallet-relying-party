@@ -17,6 +17,7 @@ import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.KeyStoreMaterial
 import at.asitplus.wallet.lib.agent.Validator
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
@@ -43,6 +44,8 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import org.springframework.web.util.UriComponentsBuilder
+import java.io.File
+import java.security.KeyStore
 import kotlin.random.Random
 
 class VerifierProfiles(private val publicUrl: String) {
@@ -113,27 +116,13 @@ class VerifierProfiles(private val publicUrl: String) {
             ).getOrThrow().serialize()
         },
         object : Profile {
-            private val extensions = listOf(
-                X509CertificateExtension(
-                    KnownOIDs.subjectAltName_2_5_29_17,
-                    critical = false,
-                    Asn1EncapsulatingOctetString(
-                        listOf(
-                            Asn1.Sequence {
-                                +Asn1Primitive(
-                                    SubjectAltNameImplicitTags.dNSName,
-                                    Asn1String.UTF8(publicUrl.getDnsName()).encodeToTlv().content
-                                )
-                                +Asn1Primitive(
-                                    SubjectAltNameImplicitTags.dNSName,
-                                    Asn1String.UTF8(OpenIdConstants.ClientIdScheme.X509SanDns.stringRepresentation + ":" + publicUrl.getDnsName())
-                                        .encodeToTlv().content
-                                )
-                            }
-                        ))))
-            private val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(
-                extensions = extensions,
-                lifetimeInSeconds = 60 * 60 * 24 * 60
+            private val verifierKeyMaterial = KeyStoreMaterial(
+                keyStore = KeyStore.getInstance("PKCS12").apply {
+                    load(File("verifier.p12").inputStream(), "changeit".toCharArray())
+                },
+                keyAlias = "verifier",
+                privateKeyPassword = "changeit".toCharArray(),
+                certAlias = "verifier",
             )
             override val name = "EUDI"
             override val label = "HAIP (x509_san_dns)"
@@ -174,27 +163,13 @@ class VerifierProfiles(private val publicUrl: String) {
             ).getOrThrow().serialize()
         },
         object : Profile {
-            private val extensions = listOf(
-                X509CertificateExtension(
-                    KnownOIDs.subjectAltName_2_5_29_17,
-                    critical = false,
-                    Asn1EncapsulatingOctetString(
-                        listOf(
-                            Asn1.Sequence {
-                                +Asn1Primitive(
-                                    SubjectAltNameImplicitTags.dNSName,
-                                    Asn1String.UTF8(publicUrl.getDnsName()).encodeToTlv().content
-                                )
-                                +Asn1Primitive(
-                                    SubjectAltNameImplicitTags.dNSName,
-                                    Asn1String.UTF8(OpenIdConstants.ClientIdScheme.X509SanDns.stringRepresentation + ":" + publicUrl.getDnsName())
-                                        .encodeToTlv().content
-                                )
-                            }
-                        ))))
-            private val verifierKeyMaterial = EphemeralKeyWithSelfSignedCert(
-                extensions = extensions,
-                lifetimeInSeconds = 60 * 60 * 24 * 60
+            private val verifierKeyMaterial = KeyStoreMaterial(
+                keyStore = KeyStore.getInstance("PKCS12").apply {
+                    load(File("verifier.p12").inputStream(),"changeit".toCharArray())
+                },
+                keyAlias = "verifier",
+                privateKeyPassword = "changeit".toCharArray(),
+                certAlias = "verifier",
             )
             override val name = "MDOC"
             override val label = "ISO 18013-7"
