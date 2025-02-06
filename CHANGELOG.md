@@ -1,5 +1,9 @@
 # Changelog
 
+Version 5.3.3:
+ - Update to VC-K 5.3.3
+ - Fixes ISO 18013-7 implementation
+
 Version 5.3.2:
  - Update to VC-K 5.3.2
  - Fixes ISO value digests
