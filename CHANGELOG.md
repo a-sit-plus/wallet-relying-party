@@ -1,5 +1,8 @@
 # Changelog
 
+Version 5.4.0:
+ - Update to VC-K 5.4.0
+
 Version 5.3.3:
  - Update to VC-K 5.3.3
  - Fixes ISO 18013-7 implementation

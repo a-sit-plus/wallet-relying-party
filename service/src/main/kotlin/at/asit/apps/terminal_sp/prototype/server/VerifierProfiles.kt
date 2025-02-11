@@ -5,17 +5,9 @@ import at.asit.apps.terminal_sp.prototype.server.ApiController.Transaction
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
-import at.asitplus.signum.indispensable.asn1.Asn1Primitive
-import at.asitplus.signum.indispensable.asn1.Asn1String
-import at.asitplus.signum.indispensable.asn1.KnownOIDs
-import at.asitplus.signum.indispensable.asn1.encoding.Asn1
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
-import at.asitplus.signum.indispensable.pki.X509CertificateExtension
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyStoreMaterial
 import at.asitplus.wallet.lib.agent.Validator
@@ -25,15 +17,13 @@ import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.ClientIdScheme.PreRegistered
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
-import at.asitplus.wallet.lib.openid.RequestOptions
+import at.asitplus.wallet.lib.openid.OpenIdRequestOptions
 import at.asitplus.wallet.lib.openid.RequestOptionsCredential
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
 import io.ktor.client.call.*
 import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.logging.LogLevel
-import io.ktor.client.plugins.logging.Logger
-import io.ktor.client.plugins.logging.Logging
+import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
@@ -107,7 +97,7 @@ class VerifierProfiles(private val publicUrl: String) {
                 state: String,
                 requestOptionsCredentials: Set<RequestOptionsCredential>,
             ): String = openIdVerifier.createAuthnRequestAsSignedRequestObject(
-                RequestOptions(
+                OpenIdRequestOptions(
                     state = state,
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = responseUrl,
@@ -154,7 +144,7 @@ class VerifierProfiles(private val publicUrl: String) {
                 state: String,
                 requestOptionsCredentials: Set<RequestOptionsCredential>,
             ): String = openIdVerifier.createAuthnRequestAsSignedRequestObject(
-                RequestOptions(
+                OpenIdRequestOptions(
                     state = state,
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = responseUrl,
@@ -202,7 +192,7 @@ class VerifierProfiles(private val publicUrl: String) {
                 state: String,
                 requestOptionsCredentials: Set<RequestOptionsCredential>,
             ): String = openIdVerifier.createAuthnRequestAsSignedRequestObject(
-                RequestOptions(
+                OpenIdRequestOptions(
                     state = state,
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = responseUrl,

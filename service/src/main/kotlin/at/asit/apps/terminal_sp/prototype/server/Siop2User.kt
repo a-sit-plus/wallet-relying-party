@@ -1,11 +1,13 @@
 package at.asit.apps.terminal_sp.prototype.server
 
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.data.*
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.iso.IssuerSignedItem
+import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.*
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import io.matthewnelson.encoding.base64.Base64
@@ -73,19 +75,38 @@ fun ApiItemCredential.getClaim(claim: String) = this.allFields?.entries?.firstOr
     }
 }
 
-fun VerifiablePresentationValidationResults.toApiItemCredentials() = validationResults.flatMap {
-    when (it) {
-        is Error -> listOf()
-        is IdToken -> listOf()
-        is Success -> listOf(it.vp.toApiItemCredential())
-        is SuccessIso -> it.toApiItemCredentials()
-        is SuccessSdJwt -> listOf(it.toApiItemCredential())
-        is ValidationError -> listOf()
-        is VerifiablePresentationValidationResults -> listOf()
-    }
-}.filterNotNull()
+fun VerifiablePresentationValidationResults.toApiItemCredentials(): List<ApiItemCredential> =
+    validationResults.flatMap {
+        when (it) {
+            is Error -> listOf()
+            is IdToken -> listOf()
+            is Success -> listOf(it.vp.toApiItemCredential())
+            is SuccessIso -> it.toApiItemCredentials()
+            is SuccessSdJwt -> listOf(it.toApiItemCredential())
+            is ValidationError -> listOf()
+            is VerifiablePresentationValidationResults -> it.toApiItemCredentials()
+            is VerifiableDCQLPresentationValidationResults -> it.validationResults.toApiItemCredentials()
+        }
+    }.filterNotNull()
 
-fun VerifiablePresentationParsed.toApiItemCredential() = verifiableCredentials
+fun Map<DCQLCredentialQueryIdentifier, AuthnResponseResult>.toApiItemCredentials(): List<ApiItemCredential> =
+    values.flatMap {
+        when (it) {
+            is Error -> listOf()
+            is IdToken -> listOf()
+            is Success -> listOfNotNull(it.vp.toApiItemCredential())
+            is SuccessIso -> it.toApiItemCredentials()
+            is SuccessSdJwt -> listOfNotNull(it.toApiItemCredential())
+            is ValidationError -> listOf()
+            is VerifiableDCQLPresentationValidationResults -> it.validationResults.toApiItemCredentials()
+            is VerifiablePresentationValidationResults -> listOfNotNull(it.toApiItemCredentials())
+        }
+    }.filterIsInstance<ApiItemCredential>()
+
+fun Map<DCQLCredentialQueryIdentifier, AuthnResponseResult>.toSiop2User(): Siop2User? =
+    this.toApiItemCredentials().toSiop2User()
+
+fun VerifiablePresentationParsed.toApiItemCredential(): ApiItemCredential? = verifiableCredentials
     .map { it.vc.credentialSubject }
     .filterIsInstance<EuPidCredential>()
     .firstOrNull()?.toApiItemCredential()
@@ -101,13 +122,13 @@ private fun EuPidCredential.toApiItemCredential() =
         credentialType = EuPidScheme.vcType,
     )
 
-fun SuccessSdJwt.toApiItemCredential() =
+fun SuccessSdJwt.toApiItemCredential(): ApiItemCredential =
     ApiItemCredential(
         allFields = reconstructed,
         credentialType = verifiableCredentialSdJwt.verifiableCredentialType,
     )
 
-fun SuccessIso.toApiItemCredentials() = documents.map { doc ->
+fun SuccessIso.toApiItemCredentials(): List<ApiItemCredential> = documents.map { doc ->
     ApiItemCredential(
         allFields = buildJsonObject {
             doc.validItems.forEach {

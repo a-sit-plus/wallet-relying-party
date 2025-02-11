@@ -155,6 +155,9 @@ class ApiController(
             statisticLogger.error("$id error", e)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, e.localizedMessage, e)
         }
+        if (user == null) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot parse from VP")
+        }
         statisticLogger.info("$id success $user")
         Napier.i("Storing user for transaction $id: $user")
         transactionStore.put(id, user)
@@ -222,33 +225,15 @@ class ApiController(
     private suspend fun validateSiopResponse(
         requestBody: String,
         verifier: OpenId4VpVerifier,
-    ): Siop2User = when (val result = verifier.validateAuthnResponse(requestBody)) {
-        is AuthnResponseResult.Success ->
-            with(result.vp.toSiop2User()) {
-                if (this == null) {
-                    Napier.w("Cannot parse from VP: ${result.vp}")
-                    throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot parse from VP")
-                }
-                this
-            }
-
-        is AuthnResponseResult.SuccessSdJwt ->
-            result.toApiItemCredential().toSiop2User()
-
-        is AuthnResponseResult.SuccessIso ->
-            result.toApiItemCredentials().toSiop2User()
-
-        is AuthnResponseResult.Error ->
-            throw RuntimeException(result.reason)
-
-        is AuthnResponseResult.ValidationError ->
-            throw RuntimeException("Validation failed for field: ${result.field}")
-
-        is AuthnResponseResult.VerifiablePresentationValidationResults ->
-            result.toApiItemCredentials().toSiop2User()
-
-        is AuthnResponseResult.IdToken ->
-            throw RuntimeException("Only got id_token")
+    ): Siop2User? = when (val result = verifier.validateAuthnResponse(requestBody)) {
+        is AuthnResponseResult.VerifiableDCQLPresentationValidationResults -> result.validationResults.toSiop2User()
+        is AuthnResponseResult.Success -> result.vp.toSiop2User()
+        is AuthnResponseResult.SuccessSdJwt -> result.toApiItemCredential().toSiop2User()
+        is AuthnResponseResult.SuccessIso -> result.toApiItemCredentials().toSiop2User()
+        is AuthnResponseResult.Error -> throw RuntimeException(result.reason, result.cause)
+        is AuthnResponseResult.ValidationError -> throw RuntimeException("Failed: ${result.field}", result.cause)
+        is AuthnResponseResult.VerifiablePresentationValidationResults -> result.toApiItemCredentials().toSiop2User()
+        is AuthnResponseResult.IdToken -> throw RuntimeException("Only got id_token")
     }
 
 }
