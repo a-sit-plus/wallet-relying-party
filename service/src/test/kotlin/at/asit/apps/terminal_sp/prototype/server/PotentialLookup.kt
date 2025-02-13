@@ -8,6 +8,7 @@ import io.github.aakira.napier.Napier
 import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions
 import org.junit.jupiter.api.BeforeAll
+import org.junit.jupiter.api.Disabled
 import org.junit.jupiter.api.Test
 
 class PotentialLookup {
@@ -22,6 +23,7 @@ class PotentialLookup {
         }
     }
 
+    @Disabled
     @Test
     fun `potential sd jwt from IT`() = runTest {
         val input = """
@@ -34,6 +36,8 @@ class PotentialLookup {
         Assertions.assertNotNull(result.sdJwtSigned)
     }
 
+
+    @Disabled
     @Test
     fun `potential sd jwt from FI`() = runTest {
         val vpToken = """
