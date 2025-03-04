@@ -17,6 +17,7 @@ const createBasicSetup = function (config) {
 
     const reqSelection = ref({
         simple: false,
+        presentationMechanismIdentifier: "presentation_definition",
         credentials: [],
     })
     const error = ref({message: null})
@@ -65,6 +66,7 @@ const createBasicSetup = function (config) {
             simple: profile.simple,
             credentials: credentials,
             profileLabel: profile.label,
+            presentationMechanismIdentifier: "presentation_definition",
         }
         console.log('updateProfile result', reqSelection.value)
 
@@ -76,6 +78,12 @@ const createBasicSetup = function (config) {
         credential.schemeType = schemeType
         credential.attributes = schemeType.attributes
         credential.sd = schemeType.sd
+        compareRequestChanged()
+    }
+
+    async function updatePresentationMechanismIdentifier(presentationMechanismIdentifier) {
+        console.log('updatePresentationMechanismIdentifier', presentationMechanismIdentifier)
+        reqSelection.value.presentationMechanismIdentifier = presentationMechanismIdentifier
         compareRequestChanged()
     }
 
@@ -149,6 +157,7 @@ const createBasicSetup = function (config) {
         })
         const request = {
             simple: reqSelection.value.simple,
+            presentationMechanismIdentifier: reqSelection.value.presentationMechanismIdentifier,
             credentials: credentials,
         }
 
@@ -264,6 +273,7 @@ const createBasicSetup = function (config) {
         updateProfile,
         updateSchemeType,
         updateRepresentation,
+        updatePresentationMechanismIdentifier,
         addCredential,
         removeCredential,
         updateAttribute,

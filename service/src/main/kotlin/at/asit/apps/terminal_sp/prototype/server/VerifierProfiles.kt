@@ -18,6 +18,8 @@ import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.ClientIdScheme.PreRegistered
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.OpenIdRequestOptions
+import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
+import at.asitplus.wallet.lib.openid.RequestOptions
 import at.asitplus.wallet.lib.openid.RequestOptionsCredential
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
@@ -96,12 +98,14 @@ class VerifierProfiles(private val publicUrl: String) {
                 responseUrl: String,
                 state: String,
                 requestOptionsCredentials: Set<RequestOptionsCredential>,
+                presentationMechanism: PresentationMechanismEnum,
             ): String = openIdVerifier.createAuthnRequestAsSignedRequestObject(
                 OpenIdRequestOptions(
                     state = state,
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = responseUrl,
                     credentials = requestOptionsCredentials,
+                    presentationMechanism = presentationMechanism,
                 )
             ).getOrThrow().serialize()
         },
@@ -143,19 +147,21 @@ class VerifierProfiles(private val publicUrl: String) {
                 responseUrl: String,
                 state: String,
                 requestOptionsCredentials: Set<RequestOptionsCredential>,
+                presentationMechanism: PresentationMechanismEnum,
             ): String = openIdVerifier.createAuthnRequestAsSignedRequestObject(
                 OpenIdRequestOptions(
                     state = state,
                     responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = responseUrl,
                     credentials = requestOptionsCredentials,
+                    presentationMechanism = presentationMechanism,
                 )
             ).getOrThrow().serialize()
         },
         object : Profile {
             private val verifierKeyMaterial = KeyStoreMaterial(
                 keyStore = KeyStore.getInstance("PKCS12").apply {
-                    load(File("verifier.p12").inputStream(),"changeit".toCharArray())
+                    load(File("verifier.p12").inputStream(), "changeit".toCharArray())
                 },
                 keyAlias = "verifier",
                 privateKeyPassword = "changeit".toCharArray(),
@@ -191,13 +197,15 @@ class VerifierProfiles(private val publicUrl: String) {
                 responseUrl: String,
                 state: String,
                 requestOptionsCredentials: Set<RequestOptionsCredential>,
+                presentationMechanism: PresentationMechanismEnum,
             ): String = openIdVerifier.createAuthnRequestAsSignedRequestObject(
                 OpenIdRequestOptions(
                     state = state,
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = responseUrl,
                     credentials = requestOptionsCredentials,
-                    encryption = true
+                    encryption = true,
+                    presentationMechanism = presentationMechanism,
                 )
             ).getOrThrow().serialize()
         }
@@ -218,10 +226,17 @@ class VerifierProfiles(private val publicUrl: String) {
     }
 }
 
-suspend fun Transaction.transactionGet(responseUrl: String): String {
+suspend fun Transaction.transactionGet(
+    responseUrl: String,
+): String {
     val state = Random.nextBytes(32).encodeToString(Base64())
     val requestOptionsCredentials = request.toRequestOptionsCredentials()
-    return profile.transactionGet(responseUrl, state, requestOptionsCredentials)
+    return profile.transactionGet(
+        responseUrl,
+        state,
+        requestOptionsCredentials,
+        presentationMechanism = request.presentationMechanism,
+    )
 }
 
 private fun String.getDnsName() = UriComponentsBuilder.fromUriString(this).build().host ?: "wallet.a-sit.at"
@@ -237,5 +252,6 @@ interface Profile {
         responseUrl: String,
         state: String,
         requestOptionsCredentials: Set<RequestOptionsCredential>,
+        presentationMechanism: PresentationMechanismEnum,
     ): String
 }

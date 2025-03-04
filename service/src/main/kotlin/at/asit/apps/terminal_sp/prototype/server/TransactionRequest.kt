@@ -1,15 +1,15 @@
 package at.asit.apps.terminal_sp.prototype.server
 
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.healthid.HealthID
 import at.asitplus.wallet.healthid.HealthIdScheme
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
+import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import at.asitplus.wallet.lib.openid.RequestOptionsCredential
-import at.asitplus.wallet.por.PowerOfRepresentation
 import at.asitplus.wallet.por.PowerOfRepresentationScheme
 import at.asitplus.wallet.taxid.TaxIdScheme
+import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -17,6 +17,9 @@ data class TransactionRequest(
     val credentialType: String? = null,
     val representation: String? = null,
     val simple: Boolean = false,
+    @SerialName("presentationMechanismIdentifier")
+    @Serializable(with = PresentationMechanismEnumSerializer::class)
+    val presentationMechanism: PresentationMechanismEnum,
     val attributes: Collection<String>? = null,
     val credentials: List<TransactionRequestCredential>? = null,
 ) {

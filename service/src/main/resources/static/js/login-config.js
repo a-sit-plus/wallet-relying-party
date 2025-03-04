@@ -191,6 +191,10 @@ export default { "schemeTypes": [
       ]
     }
   ],
+  "presentationMechanisms": [
+    { "label": "Presentation Exchange", "value": "presentation_definition" },
+    { "label": "DCQL", "value": "dcql_query" }
+  ],
   "representation": [
     { "label": "SD-JWT", "value": "SD_JWT" },
     { "label": "ISO mDoc", "value": "ISO_MDOC" }
