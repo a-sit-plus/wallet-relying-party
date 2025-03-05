@@ -2,6 +2,7 @@
 
 Version 5.4.0:
  - Update to VC-K 5.4.0
+ - Update to EU PID 3.0.0, conforming to ARF 1.5.0
 
 Version 5.3.3:
  - Update to VC-K 5.3.3
