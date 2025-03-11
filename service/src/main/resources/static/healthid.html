@@ -43,7 +43,7 @@
             setup: function () {
                 let app = createBasicSetup(config);
                 const selectedProfile = config.profiles.find(function (profile) {
-                    return profile.label == "E-Prescription";
+                    return profile.label == "HealthID";
                 });
                 app.updateProfile(selectedProfile);
                 app.generateQrCode();
@@ -67,7 +67,7 @@
 <header-comp></header-comp>
 
 <div class="container px-4 py-5 position-relative">
-    <title-comp title="healthID" icon="bi-capsule-pill">
+    <title-comp title="HealthID" icon="bi-capsule-pill">
         <p>
             Present a Health ID associated with the wallet holder to the service provider.
         </p>

@@ -1,10 +1,20 @@
 export default { "schemeTypes": [
-    { "label": "e-Prescription",
-      "value": "eu.europa.ehealth.healthid.1",
+    { "label": "HealthID",
+      "value": "eu.europa.ec.eudi:hiid:1",
       "attributes": [
+        { "label": "health_insurance_id", "value": "health_insurance_id" },
+        { "label": "patient_id", "value": "patient_id" },
+        { "label": "tax_number", "value": "tax_number" },
         { "label": "one_time_token", "value": "one_time_token", "isSelected": true },
-        { "label": "coutry_code", "value": "country_code", "isSelected": true },
-        { "label": "valid_until", "value": "valid_until", "isSelected": true }
+        { "label": "wallet_e_prescription_code", "value": "wallet_e_prescription_code" },
+        { "label": "affiliation_country", "value": "affiliation_country" },
+        { "label": "issue_date", "value": "issue_date", "isSelected": true },
+        { "label": "expiry_date", "value": "expiry_date", "isSelected": true },
+        { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true },
+        { "label": "document_number", "value": "document_number" },
+        { "label": "administrative_number", "value": "administrative_number" },
+        { "label": "issuing_country", "value": "issuing_country", "isSelected": true },
+        { "label": "issuing_jurisdiction", "value": "issuing_jurisdiction" }
       ]
     },
     { "label": "mDL",
@@ -168,16 +178,19 @@ export default { "schemeTypes": [
         }
       ]
     },
-    { "label": "E-Prescription",
+    { "label": "HealthID",
       "simple": false,
       "credentials": [
         {
-          "schemeType": "eu.europa.ehealth.healthid.1",
+          "schemeType": "eu.europa.ec.eudi:hiid:1",
           "representation": "SD_JWT",
           "attributes": [
             { "label": "one_time_token", "value": "one_time_token", "isSelected": true },
-            { "label": "coutry_code", "value": "country_code", "isSelected": true },
-            { "label": "valid_until", "value": "valid_until", "isSelected": true }
+            { "label": "affiliation_country", "value": "affiliation_country" },
+            { "label": "issue_date", "value": "issue_date", "isSelected": true },
+            { "label": "expiry_date", "value": "expiry_date", "isSelected": true },
+            { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true },
+            { "label": "issuing_country", "value": "issuing_country", "isSelected": true },
           ]
         }
       ]
