@@ -41,7 +41,7 @@ dependencies {
     implementation("at.asitplus.wallet:mobiledrivinglicence:1.1.4")
     implementation("at.asitplus.wallet:powerofrepresentation:1.1.1")
     implementation("at.asitplus.wallet:certificateofresidence:2.1.1")
-    implementation("at.asitplus.wallet:eprescription:1.1.1")
+    implementation("at.asitplus.wallet:healthid:2.0.0")
     implementation("at.asitplus.wallet:company-registration:1.0.1")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")

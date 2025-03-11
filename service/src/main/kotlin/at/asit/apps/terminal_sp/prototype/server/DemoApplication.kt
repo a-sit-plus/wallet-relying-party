@@ -17,7 +17,7 @@ fun main(args: Array<String>) {
 	at.asitplus.wallet.mdl.Initializer.initWithVCK()
 	at.asitplus.wallet.cor.Initializer.initWithVCK()
 	at.asitplus.wallet.por.Initializer.initWithVCK()
-	at.asitplus.wallet.eprescription.Initializer.initWithVCK()
+	at.asitplus.wallet.healthid.Initializer.initWithVCK()
 	at.asitplus.wallet.companyregistration.Initializer.initWithVCK()
 	runApplication<DemoApplication>(*args)
 }

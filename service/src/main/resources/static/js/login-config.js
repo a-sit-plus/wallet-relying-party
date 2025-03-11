@@ -1,6 +1,6 @@
 export default { "schemeTypes": [
     { "label": "e-Prescription",
-      "value": "eu.europa.ehealth.eprescription.1",
+      "value": "eu.europa.ehealth.healthid.1",
       "attributes": [
         { "label": "one_time_token", "value": "one_time_token", "isSelected": true },
         { "label": "coutry_code", "value": "country_code", "isSelected": true },
@@ -172,7 +172,7 @@ export default { "schemeTypes": [
       "simple": false,
       "credentials": [
         {
-          "schemeType": "eu.europa.ehealth.eprescription.1",
+          "schemeType": "eu.europa.ehealth.healthid.1",
           "representation": "SD_JWT",
           "attributes": [
             { "label": "one_time_token", "value": "one_time_token", "isSelected": true },
