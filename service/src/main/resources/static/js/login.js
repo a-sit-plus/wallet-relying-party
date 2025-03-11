@@ -56,6 +56,7 @@ const createBasicSetup = function (config) {
             credentials.push({
                 schemeType: schemeType,
                 representation: representation,
+                sd: credential.sd,
                 attributes: attrs
             })
         }
@@ -74,6 +75,7 @@ const createBasicSetup = function (config) {
         console.log('updateSchemeType', schemeType)
         credential.schemeType = schemeType
         credential.attributes = schemeType.attributes
+        credential.sd = schemeType.sd
         compareRequestChanged()
     }
 
@@ -94,6 +96,7 @@ const createBasicSetup = function (config) {
         reqSelection.value.credentials.push({
             "schemeType": null,
             "representation": null,
+            "sd": null,
             "attributes": []
         })
         compareRequestChanged()
@@ -141,6 +144,7 @@ const createBasicSetup = function (config) {
             return {
                 credentialType: credential.schemeType.value,
                 representation: credential.representation.value,
+                sd: credential.sd,
                 attributes: credential.attributes.filter(x => x.isSelected).map(x => x.value),
             }
         })

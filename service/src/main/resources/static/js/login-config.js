@@ -1,6 +1,7 @@
 export default { "schemeTypes": [
     { "label": "HealthID",
       "value": "urn:eu.europa.ec.eudi:hiid:1",
+      "sd": false,
       "attributes": [
         { "label": "health_insurance_id", "value": "health_insurance_id" },
         { "label": "patient_id", "value": "patient_id" },
@@ -19,6 +20,7 @@ export default { "schemeTypes": [
     },
     { "label": "mDL",
       "value": "org.iso.18013.5.1.mDL",
+      "sd": true,
       "attributes": [
         { "label": "family_name", "value": "family_name", "isSelected": true },
         { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -61,6 +63,7 @@ export default { "schemeTypes": [
     },
     { "label": "PID",
       "value": "urn:eu.europa.ec.eudi:pid:1",
+      "sd": true,
       "attributes": [
         { "label": "family_name", "value": "family_name", "isSelected": true },
         { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -100,6 +103,7 @@ export default { "schemeTypes": [
     },
     { "label": "Power of Representation (PoR)",
       "value": "eu.europa.ec.eudi.por.1",
+      "sd": false,
       "attributes": [
         { "label": "legal_person_identifier", "value": "legal_person_identifier", "isSelected": true },
         { "label": "legal_name", "value": "legal_name", "isSelected": true },
@@ -118,6 +122,7 @@ export default { "schemeTypes": [
     },
     { "label": "Certificate of Residence (CoR)",
       "value": "eu.europa.ec.eudi.cor.1",
+      "sd": true,
       "attributes": [
         { "label": "family_name", "value": "family_name", "isSelected": true },
         { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -147,6 +152,7 @@ export default { "schemeTypes": [
     },
     { "label": "Company Registration (CRA)",
       "value": "eu.europa.ec.eudi.cr.1",
+      "sd": true,
       "attributes": [
         { "label": "company_name", "value": "company_name", "isSelected": true },
         { "label": "company_type", "value": "company_type", "isSelected": true },
@@ -195,6 +201,7 @@ export default { "schemeTypes": [
         {
           "schemeType": null,
           "representation": null,
+          "sd": null,
           "attributes": []
         }
       ]
@@ -205,6 +212,7 @@ export default { "schemeTypes": [
         {
           "schemeType": "urn:eu.europa.ec.eudi:hiid:1",
           "representation": "SD_JWT",
+          "sd": false,
           "attributes": [
             { "label": "one_time_token", "value": "one_time_token", "isSelected": true },
             { "label": "affiliation_country", "value": "affiliation_country" },
@@ -222,6 +230,7 @@ export default { "schemeTypes": [
         {
           "schemeType": "org.iso.18013.5.1.mDL",
           "representation": "ISO_MDOC",
+          "sd": true,
           "attributes": [
             { "label": "family_name", "value": "family_name", "isSelected": true },
             { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -244,6 +253,7 @@ export default { "schemeTypes": [
         {
           "schemeType": "urn:eu.europa.ec.eudi:pid:1",
           "representation": "SD_JWT",
+          "sd": true,
           "attributes": [
             { "label": "family_name", "value": "family_name", "isSelected": true },
             { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -262,6 +272,7 @@ export default { "schemeTypes": [
         {
           "schemeType": "eu.europa.ec.eudi.por.1",
           "representation": "SD_JWT",
+          "sd": false,
           "attributes": [
             { "label": "legal_person_identifier", "value": "legal_person_identifier", "isSelected": true },
             { "label": "legal_name", "value": "legal_name", "isSelected": true },
@@ -281,6 +292,7 @@ export default { "schemeTypes": [
         {
           "schemeType": "eu.europa.ec.eudi.cor.1",
           "representation": "SD_JWT",
+          "sd": true,
           "attributes": [
             { "label": "family_name", "value": "family_name", "isSelected": true },
             { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -300,6 +312,7 @@ export default { "schemeTypes": [
         {
           "schemeType": "eu.europa.ec.eudi.cr.1",
           "representation": "SD_JWT",
+          "sd": true,
           "attributes": [
             { "label": "company_name", "value": "company_name", "isSelected": true },
             { "label": "company_type", "value": "company_type", "isSelected": true },
@@ -318,6 +331,7 @@ export default { "schemeTypes": [
         {
           "schemeType": "urn:eu.europa.ec.eudi:pid:1",
           "representation": "SD_JWT",
+          "sd": true,
           "attributes": [
             { "label": "family_name", "value": "family_name", "isSelected": true },
             { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -331,6 +345,7 @@ export default { "schemeTypes": [
         {
           "schemeType": "eu.europa.ec.eudi.por.1",
           "representation": "SD_JWT",
+          "sd": false,
           "attributes": [
             { "label": "legal_person_identifier", "value": "legal_person_identifier", "isSelected": true },
             { "label": "legal_name", "value": "legal_name", "isSelected": true },

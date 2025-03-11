@@ -31,6 +31,7 @@ data class TransactionRequest(
 data class TransactionRequestCredential(
     val credentialType: String? = null,
     val representation: String? = null,
+    val sd: Boolean? = null,
     val attributes: List<String>? = null,
 ) {
     fun toRequestOptionsCredential() = RequestOptionsCredential(
@@ -39,7 +40,8 @@ data class TransactionRequestCredential(
             ?: EuPidScheme,
         representation = CredentialRepresentation.entries.firstOrNull { it.name == representation }
             ?: CredentialRepresentation.SD_JWT,
-        requestedOptionalAttributes = attributes?.ifEmpty { null }?.toSet(),
+        // if credential is not selectively disclosable, do not request any attributes
+        requestedOptionalAttributes = if (sd == false) null else attributes?.ifEmpty { null }?.toSet(),
     )
 }
 
