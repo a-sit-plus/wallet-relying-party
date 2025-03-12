@@ -43,6 +43,8 @@ dependencies {
     implementation("at.asitplus.wallet:certificateofresidence:2.1.1")
     implementation("at.asitplus.wallet:healthid:2.0.0")
     implementation("at.asitplus.wallet:company-registration:1.0.1")
+    implementation("at.asitplus.wallet:taxid:1.0.1")
+
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")

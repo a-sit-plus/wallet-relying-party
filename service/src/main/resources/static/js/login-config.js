@@ -161,6 +161,27 @@ export default { "schemeTypes": [
         { "label": "postal_address", "value": "postal_address" },
         { "label": "branch", "value": "branch" }
       ]
+    },
+    { "label": "Tax Identified (TAX ID)",
+      "value": "Tax Number",
+      "attributes": [
+        { "label": "tax_number", "value": "tax_number", "isSelected": true },
+        { "label": "affiliation_country", "value": "affiliation_country", "isSelected": true },
+        { "label": "registered_family_name", "value": "registered_family_name", "isSelected": true },
+        { "label": "registered_given_name", "value": "registered_given_name", "isSelected": true },
+        { "label": "resident_address", "value": "resident_address", "isSelected": true },
+        { "label": "birth_date", "value": "birth_date", "isSelected": true },
+        { "label": "issuance_date", "value": "issuance_date", "isSelected": true },
+        { "label": "expiry_date", "value": "expiry_date", "isSelected": true },
+        { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true },
+        { "label": "issuing_country", "value": "issuing_country", "isSelected": true },
+        { "label": "administrative_number", "value": "administrative_number" },
+        { "label": "church_tax_ID", "value": "church_tax_ID" },
+        { "label": "iban", "value": "iban" },
+        { "label": "pid_id", "value": "pid_id" },
+        { "label": "document_number", "value": "document_number" },
+        { "label": "issuing_jurisdiction", "value": "issuing_jurisdiction" },
+      ]
     }
   ],
   "representation": [
