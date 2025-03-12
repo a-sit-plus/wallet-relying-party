@@ -71,8 +71,8 @@ export default {
             <legend class="col-form-label col-sm-4 pt-0 fw-bold">Attributes</legend>
             <div class="col-sm-8">
                 <p v-if="credential.attributes.length == 0">Please select a Credential Type.</p>
-                <p v-if="credential.sd == false">For this credential, attributes can not be selectively disclosed.</p>
-                <div v-for="item in credential.attributes"
+                <div v-if="credential.sd == true" 
+                     v-for="item in credential.attributes"
                      :key="credential.schemeType + '-' + item.value"
                      class="form-check">
                     <input class="attributes form-check-input"
@@ -85,6 +85,12 @@ export default {
                     <label class="form-check-label" for="attributes1">
                         {{ item.label }}
                     </label>
+                </div>
+                <div v-if="credential.sd == false" >
+                    <p>For this credential, attributes can not be selectively disclosed.</p>
+                    <ul class="list-group list-group-flush">
+                        <li class="list-group-item" v-for="item in credential.attributes">{{ item.label }}</li>
+                    </ul>
                 </div>
             </div>
         </fieldset>
