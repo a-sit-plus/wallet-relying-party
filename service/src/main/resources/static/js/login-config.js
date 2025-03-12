@@ -212,14 +212,13 @@ export default { "schemeTypes": [
         {
           "schemeType": "urn:eu.europa.ec.eudi:hiid:1",
           "representation": "SD_JWT",
-          "sd": false,
           "attributes": [
-            { "label": "one_time_token", "value": "one_time_token", "isSelected": true },
+            { "label": "one_time_token", "value": "one_time_token" },
             { "label": "affiliation_country", "value": "affiliation_country" },
-            { "label": "issue_date", "value": "issue_date", "isSelected": true },
-            { "label": "expiry_date", "value": "expiry_date", "isSelected": true },
-            { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true },
-            { "label": "issuing_country", "value": "issuing_country", "isSelected": true },
+            { "label": "issue_date", "value": "issue_date" },
+            { "label": "expiry_date", "value": "expiry_date" },
+            { "label": "issuing_authority", "value": "issuing_authority" },
+            { "label": "issuing_country", "value": "issuing_country" },
           ]
         }
       ]
@@ -230,7 +229,6 @@ export default { "schemeTypes": [
         {
           "schemeType": "org.iso.18013.5.1.mDL",
           "representation": "ISO_MDOC",
-          "sd": true,
           "attributes": [
             { "label": "family_name", "value": "family_name", "isSelected": true },
             { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -253,7 +251,6 @@ export default { "schemeTypes": [
         {
           "schemeType": "urn:eu.europa.ec.eudi:pid:1",
           "representation": "SD_JWT",
-          "sd": true,
           "attributes": [
             { "label": "family_name", "value": "family_name", "isSelected": true },
             { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -272,16 +269,15 @@ export default { "schemeTypes": [
         {
           "schemeType": "eu.europa.ec.eudi.por.1",
           "representation": "SD_JWT",
-          "sd": false,
           "attributes": [
-            { "label": "legal_person_identifier", "value": "legal_person_identifier", "isSelected": true },
-            { "label": "legal_name", "value": "legal_name", "isSelected": true },
-            { "label": "full_powers", "value": "full_powers", "isSelected": true },
-            { "label": "effective_from_date", "value": "effective_from_date", "isSelected": true },
-            { "label": "issuance_date", "value": "issuance_date", "isSelected": true },
-            { "label": "expiry_date", "value": "expiry_date", "isSelected": true },
-            { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true },
-            { "label": "issuing_country", "value": "issuing_country", "isSelected": true },
+            { "label": "legal_person_identifier", "value": "legal_person_identifier" },
+            { "label": "legal_name", "value": "legal_name" },
+            { "label": "full_powers", "value": "full_powers" },
+            { "label": "effective_from_date", "value": "effective_from_date" },
+            { "label": "issuance_date", "value": "issuance_date" },
+            { "label": "expiry_date", "value": "expiry_date" },
+            { "label": "issuing_authority", "value": "issuing_authority" },
+            { "label": "issuing_country", "value": "issuing_country" },
           ]
         }
       ]
@@ -292,7 +288,6 @@ export default { "schemeTypes": [
         {
           "schemeType": "eu.europa.ec.eudi.cor.1",
           "representation": "SD_JWT",
-          "sd": true,
           "attributes": [
             { "label": "family_name", "value": "family_name", "isSelected": true },
             { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -312,7 +307,6 @@ export default { "schemeTypes": [
         {
           "schemeType": "eu.europa.ec.eudi.cr.1",
           "representation": "SD_JWT",
-          "sd": true,
           "attributes": [
             { "label": "company_name", "value": "company_name", "isSelected": true },
             { "label": "company_type", "value": "company_type", "isSelected": true },
@@ -331,7 +325,6 @@ export default { "schemeTypes": [
         {
           "schemeType": "urn:eu.europa.ec.eudi:pid:1",
           "representation": "SD_JWT",
-          "sd": true,
           "attributes": [
             { "label": "family_name", "value": "family_name", "isSelected": true },
             { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -345,16 +338,15 @@ export default { "schemeTypes": [
         {
           "schemeType": "eu.europa.ec.eudi.por.1",
           "representation": "SD_JWT",
-          "sd": false,
           "attributes": [
-            { "label": "legal_person_identifier", "value": "legal_person_identifier", "isSelected": true },
-            { "label": "legal_name", "value": "legal_name", "isSelected": true },
-            { "label": "full_powers", "value": "full_powers", "isSelected": true },
-            { "label": "effective_from_date", "value": "effective_from_date", "isSelected": true },
-            { "label": "issuance_date", "value": "issuance_date", "isSelected": true },
-            { "label": "expiry_date", "value": "expiry_date", "isSelected": true },
-            { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true },
-            { "label": "issuing_country", "value": "issuing_country", "isSelected": true }
+            { "label": "legal_person_identifier", "value": "legal_person_identifier" },
+            { "label": "legal_name", "value": "legal_name" },
+            { "label": "full_powers", "value": "full_powers" },
+            { "label": "effective_from_date", "value": "effective_from_date" },
+            { "label": "issuance_date", "value": "issuance_date" },
+            { "label": "expiry_date", "value": "expiry_date" },
+            { "label": "issuing_authority", "value": "issuing_authority" },
+            { "label": "issuing_country", "value": "issuing_country" }
           ]
         }
       ]
