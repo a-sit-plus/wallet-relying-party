@@ -1,6 +1,6 @@
 export default { "schemeTypes": [
     { "label": "HealthID",
-      "value": "eu.europa.ec.eudi:hiid:1",
+      "value": "urn:eu.europa.ec.eudi:hiid:1",
       "attributes": [
         { "label": "health_insurance_id", "value": "health_insurance_id" },
         { "label": "patient_id", "value": "patient_id" },
@@ -203,7 +203,7 @@ export default { "schemeTypes": [
       "simple": false,
       "credentials": [
         {
-          "schemeType": "eu.europa.ec.eudi:hiid:1",
+          "schemeType": "urn:eu.europa.ec.eudi:hiid:1",
           "representation": "SD_JWT",
           "attributes": [
             { "label": "one_time_token", "value": "one_time_token", "isSelected": true },
