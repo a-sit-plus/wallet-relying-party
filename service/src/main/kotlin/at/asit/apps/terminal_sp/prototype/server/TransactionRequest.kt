@@ -1,9 +1,15 @@
 package at.asit.apps.terminal_sp.prototype.server
 
 import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.healthid.HealthID
+import at.asitplus.wallet.healthid.HealthIdScheme
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
+import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.openid.RequestOptionsCredential
+import at.asitplus.wallet.por.PowerOfRepresentation
+import at.asitplus.wallet.por.PowerOfRepresentationScheme
+import at.asitplus.wallet.taxid.TaxIdScheme
 import kotlinx.serialization.Serializable
 
 @Serializable
@@ -31,18 +37,26 @@ data class TransactionRequest(
 data class TransactionRequestCredential(
     val credentialType: String? = null,
     val representation: String? = null,
-    val sd: Boolean? = null,
     val attributes: List<String>? = null,
 ) {
-    fun toRequestOptionsCredential() = RequestOptionsCredential(
-        credentialScheme = credentialType
-            ?.let { AttributeIndex.resolveCredential(it)?.first }
-            ?: EuPidScheme,
-        representation = CredentialRepresentation.entries.firstOrNull { it.name == representation }
-            ?: CredentialRepresentation.SD_JWT,
-        // if credential is not selectively disclosable, do not request any attributes
-        requestedOptionalAttributes = if (sd == false) null else attributes?.ifEmpty { null }?.toSet(),
-    )
+    fun toRequestOptionsCredential() =
+        (credentialType?.let { AttributeIndex.resolveCredential(it)?.first } ?: EuPidScheme).let { scheme ->
+            RequestOptionsCredential(
+                credentialScheme = scheme,
+                representation = CredentialRepresentation.entries.firstOrNull { it.name == representation }
+                    ?: CredentialRepresentation.SD_JWT,
+                // if credential is not selectively disclosable, do not request any attributes
+                requestedOptionalAttributes = if (scheme.isSd() == false) null
+                    else attributes?.ifEmpty { null }?.toSet(),
+            )
+        }
+
+    private fun CredentialScheme.isSd(): Boolean = when (this){
+        is HealthIdScheme -> false
+        is TaxIdScheme -> false
+        is PowerOfRepresentationScheme -> false
+        else -> true
+    }
 }
 
 
@@ -59,7 +73,7 @@ data class TransactionProfile(
     val prefix: String,
     val png: String,
     val url: String,
-    val remoteWalletUrl: String
+    val remoteWalletUrl: String,
 ) {
     override fun toString(): String {
         return "TransactionResponseQrCode(id='$id', name='$name', label='$label', prefix='$prefix', png='${png.take(16)}...', url='$url', remoteWalletUrl='$remoteWalletUrl')"

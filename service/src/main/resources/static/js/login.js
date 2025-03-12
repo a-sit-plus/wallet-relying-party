@@ -144,7 +144,6 @@ const createBasicSetup = function (config) {
             return {
                 credentialType: credential.schemeType.value,
                 representation: credential.representation.value,
-                sd: credential.sd,
                 attributes: credential.attributes.filter(x => x.isSelected).map(x => x.value),
             }
         })
