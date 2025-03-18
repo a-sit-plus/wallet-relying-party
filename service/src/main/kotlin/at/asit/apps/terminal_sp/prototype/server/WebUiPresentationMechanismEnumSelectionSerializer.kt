@@ -5,7 +5,7 @@ import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.serializer
 
-object PresentationMechanismEnumSerializer : KSerializer<PresentationMechanismEnum> by TransformingSerializerTemplate<PresentationMechanismEnum, String>(
+object WebUiPresentationMechanismEnumSelectionSerializer : KSerializer<PresentationMechanismEnum> by TransformingSerializerTemplate<PresentationMechanismEnum, String>(
     parent = String.serializer(),
     encodeAs = {
         when (it) {

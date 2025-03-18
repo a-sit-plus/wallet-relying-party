@@ -18,7 +18,7 @@ data class TransactionRequest(
     val representation: String? = null,
     val simple: Boolean = false,
     @SerialName("presentationMechanismIdentifier")
-    @Serializable(with = PresentationMechanismEnumSerializer::class)
+    @Serializable(with = WebUiPresentationMechanismEnumSelectionSerializer::class)
     val presentationMechanism: PresentationMechanismEnum,
     val attributes: Collection<String>? = null,
     val credentials: List<TransactionRequestCredential>? = null,
