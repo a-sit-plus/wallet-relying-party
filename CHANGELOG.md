@@ -1,5 +1,8 @@
 # Changelog
 
+Version 5.4.4:
+ - tbd
+
 Version 5.4.3:
  - Disable attribute selection on some credential types, because they are not selectively discosable: PoR, HealthID
 
