@@ -1,5 +1,8 @@
 # Changelog
 
+Version 5.4.5:
+ - tbd
+
 Version 5.4.4:
  - Update Power of Representation credential to 1.2.0, fixing the `sdJwtType`
  - Update Company Registration credential to 1.1.0, fixing the `sdJwtType`
