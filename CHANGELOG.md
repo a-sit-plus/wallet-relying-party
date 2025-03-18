@@ -1,7 +1,8 @@
 # Changelog
 
 Version 5.4.4:
- - tbd
+ - Update Power of Representation credential to 1.2.0, fixing the `sdJwtType`
+ - Update Company Registration credential to 1.1.0, fixing the `sdJwtType`
 
 Version 5.4.3:
  - Disable attribute selection on some credential types, because they are not selectively discosable: PoR, HealthID

@@ -102,7 +102,7 @@ export default { "schemeTypes": [
       ]
     },
     { "label": "Power of Representation (PoR)",
-      "value": "eu.europa.ec.eudi.por.1",
+      "value": "urn:eu.europa.ec.eudi:por:1",
       "sd": false,
       "attributes": [
         { "label": "legal_person_identifier", "value": "legal_person_identifier" },
@@ -151,7 +151,7 @@ export default { "schemeTypes": [
       ]
     },
     { "label": "Company Registration (CRA)",
-      "value": "eu.europa.ec.eudi.cr.1",
+      "value": "urn:eu.europa.ec.eudi:cr:1",
       "sd": true,
       "attributes": [
         { "label": "company_name", "value": "company_name", "isSelected": true },
@@ -267,7 +267,7 @@ export default { "schemeTypes": [
       "simple": false,
       "credentials": [
         {
-          "schemeType": "eu.europa.ec.eudi.por.1",
+          "schemeType": "urn:eu.europa.ec.eudi:por:1",
           "representation": "SD_JWT",
           "attributes": [
             { "label": "legal_person_identifier", "value": "legal_person_identifier" },
@@ -305,7 +305,7 @@ export default { "schemeTypes": [
       "simple": false,
       "credentials": [
         {
-          "schemeType": "eu.europa.ec.eudi.cr.1",
+          "schemeType": "urn:eu.europa.ec.eudi:cr:1",
           "representation": "SD_JWT",
           "attributes": [
             { "label": "company_name", "value": "company_name", "isSelected": true },
@@ -336,7 +336,7 @@ export default { "schemeTypes": [
           ]
         },
         {
-          "schemeType": "eu.europa.ec.eudi.por.1",
+          "schemeType": "urn:eu.europa.ec.eudi:por:1",
           "representation": "SD_JWT",
           "attributes": [
             { "label": "legal_person_identifier", "value": "legal_person_identifier" },
