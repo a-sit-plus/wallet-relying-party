@@ -1,10 +1,12 @@
 # Changelog
 
+Version 5.4.3:
+ - Disable attribute selection on some credential types, because they are not selectively discosable: PoR, HealthID
+
 Version 5.4.0:
  - Update to VC-K 5.4.0
  - Update to EU PID 3.0.0, conforming to ARF 1.5.0
  - Update ePrescription to HealthID
- - Disable attribute selection on some credential types, because they are not selectively discosable: PoR, HealthID
 
 Version 5.3.3:
  - Update to VC-K 5.3.3
