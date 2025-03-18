@@ -234,7 +234,15 @@ suspend fun Transaction.transactionGet(
     return profile.transactionGet(
         responseUrl,
         state,
-        requestOptionsCredentials,
+        if(request.presentationMechanism == PresentationMechanismEnum.DCQL) {
+            requestOptionsCredentials.map {
+                // TODO: unsure how we handle optional attributes with DCQL
+                it.copy(
+                    requestedAttributes = it.requestedOptionalAttributes,
+                    requestedOptionalAttributes = null,
+                )
+            }.toSet()
+        } else requestOptionsCredentials,
         presentationMechanism = request.presentationMechanism,
     )
 }
