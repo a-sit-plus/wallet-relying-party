@@ -206,6 +206,7 @@ export default { "schemeTypes": [
         {
           "schemeType": null,
           "representation": null,
+          "sd": true,
           "attributes": []
         }
       ]
@@ -216,6 +217,7 @@ export default { "schemeTypes": [
         {
           "schemeType": "urn:eu.europa.ec.eudi:hiid:1",
           "representation": "SD_JWT",
+          "sd": false,
           "attributes": [
             { "label": "one_time_token", "value": "one_time_token" },
             { "label": "affiliation_country", "value": "affiliation_country" },
@@ -233,6 +235,7 @@ export default { "schemeTypes": [
         {
           "schemeType": "org.iso.18013.5.1.mDL",
           "representation": "ISO_MDOC",
+          "sd": true,
           "attributes": [
             { "label": "family_name", "value": "family_name", "isSelected": true },
             { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -255,6 +258,7 @@ export default { "schemeTypes": [
         {
           "schemeType": "urn:eu.europa.ec.eudi:pid:1",
           "representation": "SD_JWT",
+          "sd": true,
           "attributes": [
             { "label": "family_name", "value": "family_name", "isSelected": true },
             { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -273,6 +277,7 @@ export default { "schemeTypes": [
         {
           "schemeType": "urn:eu.europa.ec.eudi:por:1",
           "representation": "SD_JWT",
+          "sd": false,
           "attributes": [
             { "label": "legal_person_identifier", "value": "legal_person_identifier" },
             { "label": "legal_name", "value": "legal_name" },
@@ -292,6 +297,7 @@ export default { "schemeTypes": [
         {
           "schemeType": "eu.europa.ec.eudi.cor.1",
           "representation": "SD_JWT",
+          "sd": true,
           "attributes": [
             { "label": "family_name", "value": "family_name", "isSelected": true },
             { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -311,6 +317,7 @@ export default { "schemeTypes": [
         {
           "schemeType": "urn:eu.europa.ec.eudi:cr:1",
           "representation": "SD_JWT",
+          "sd": true,
           "attributes": [
             { "label": "company_name", "value": "company_name", "isSelected": true },
             { "label": "company_type", "value": "company_type", "isSelected": true },
@@ -329,6 +336,7 @@ export default { "schemeTypes": [
         {
           "schemeType": "urn:eu.europa.ec.eudi:pid:1",
           "representation": "SD_JWT",
+          "sd": true,
           "attributes": [
             { "label": "family_name", "value": "family_name", "isSelected": true },
             { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -342,6 +350,7 @@ export default { "schemeTypes": [
         {
           "schemeType": "urn:eu.europa.ec.eudi:por:1",
           "representation": "SD_JWT",
+          "sd": false,
           "attributes": [
             { "label": "legal_person_identifier", "value": "legal_person_identifier" },
             { "label": "legal_name", "value": "legal_name" },
