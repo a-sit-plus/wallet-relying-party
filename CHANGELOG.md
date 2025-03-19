@@ -1,7 +1,10 @@
 # Changelog
 
+Version 5.4.6:
+ - tbd
+
 Version 5.4.5:
-- Add support for selecting DCQL in the web interface
+ - Add support for selecting DCQL in the web interface
 
 Version 5.4.4:
  - Update Power of Representation credential to 1.2.0, fixing the `sdJwtType`
