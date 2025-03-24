@@ -9,6 +9,7 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import io.github.aakira.napier.Napier
+import io.ktor.client.request.request
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import jakarta.servlet.http.HttpServletRequest
@@ -16,6 +17,7 @@ import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 import org.springframework.beans.factory.annotation.Value
+import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.MediaType.APPLICATION_JSON_VALUE
@@ -74,7 +76,7 @@ class ApiController(
             ?: ResponseEntity.notFound().build()
 
     @OptIn(ExperimentalUuidApi::class)
-    @PostMapping("/transaction/create", produces = [MediaType.APPLICATION_JSON_VALUE])
+    @PostMapping("/transaction/create", produces = [APPLICATION_JSON_VALUE])
     @ResponseBody
     fun transactionCreate(@RequestBody request: TransactionRequest): ResponseEntity<TransactionResponse> = runBlocking {
         Napier.i("/transaction/create called with $request")
@@ -104,9 +106,12 @@ class ApiController(
 
     @GetMapping("/transaction/get/{id}")
     @ResponseBody
-    fun transactionGet(@PathVariable id: String): ResponseEntity<String> = runBlocking {
+    fun transactionGet(
+        @PathVariable id: String,
+        request: HttpServletRequest,
+    ): ResponseEntity<String> = runBlocking {
         Napier.i("/transaction/get/$id called")
-        statisticLogger.info("$id get")
+        statisticLogger.info("$id get (${request.getHeader(HttpHeaders.USER_AGENT)})")
         MDC.put(MDC_REQUEST_ID, id)
         val transaction = transactions[id]
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
@@ -141,6 +146,7 @@ class ApiController(
     fun transactionPost(
         @PathVariable id: String,
         @RequestBody requestBody: String,
+        request: HttpServletRequest,
     ): ResponseEntity<OpenId4VpSuccess> = runBlocking {
         MDC.put(MDC_REQUEST_ID, id)
         Napier.i("/transaction/result/$id called with $requestBody")
@@ -152,13 +158,14 @@ class ApiController(
         val user = try {
             validateSiopResponse(requestBody, transaction.profile.openIdVerifier)
         } catch (e: Exception) {
-            statisticLogger.error("$id error", e)
+            statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})", e)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, e.localizedMessage, e)
         }
         if (user == null) {
+            statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})")
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot parse from VP")
         }
-        statisticLogger.info("$id success $user")
+        statisticLogger.info("$id success $user (${request.getHeader(HttpHeaders.USER_AGENT)})")
         Napier.i("Storing user for transaction $id: $user")
         transactionStore.put(id, user)
         val redirectUrlWithId = ServletUriComponentsBuilder
