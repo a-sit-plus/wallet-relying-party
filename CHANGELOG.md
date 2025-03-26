@@ -1,5 +1,8 @@
 # Changelog
 
+Version 5.5.0:
+ - Update to VC-K 5.5.0
+
 Version 5.4.6:
  - tbd
 
