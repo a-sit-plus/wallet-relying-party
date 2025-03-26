@@ -1,6 +1,7 @@
 # Changelog
 
 Version 5.5.0:
+ - Update to Spring Boot 3.4.3
  - Update to VC-K 5.5.0
 
 Version 5.4.6:

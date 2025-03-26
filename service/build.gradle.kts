@@ -12,7 +12,7 @@ plugins {
     kotlin("plugin.spring")
     kotlin("plugin.jpa")
     kotlin("plugin.allopen")
-    id("org.springframework.boot") version "3.2.10"
+    id("org.springframework.boot") version "3.4.3"
     id("at.asitplus.gradle.conventions")
 }
 
