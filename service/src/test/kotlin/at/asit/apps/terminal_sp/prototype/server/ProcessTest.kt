@@ -5,6 +5,7 @@ import at.asitplus.wallet.lib.Initializer.initOpenIdModule
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
@@ -52,63 +53,71 @@ class ProcessTest {
     }
 
     @Test
-    fun `simple transaction roundtrip`() = runTest {
-        listOf(
-            PresentationMechanismEnum.PresentationExchange,
-            PresentationMechanismEnum.DCQL,
-        ).forEach { presentationMechanism ->
-            val givenName = uuid4().toString()
-            val transactionResult = mockMvc.post("/transaction/create") {
-                content = Json.encodeToString(
-                    TransactionRequest.serializer(),
-                    TransactionRequest(
-                        credentialType = AtomicAttribute2023.sdJwtType,
-                        representation = ConstantIndex.CredentialRepresentation.SD_JWT.name,
-                        attributes = listOf(AtomicAttribute2023.CLAIM_GIVEN_NAME),
-                        presentationMechanism = presentationMechanism,
+    fun `simple transaction roundtrip, presentation exchange`() = runTest {
+        runProcess(PresentationMechanismEnum.PresentationExchange)
+    }
+
+    @Test
+    fun `simple transaction roundtrip, DCQL`() = runTest {
+        runProcess(PresentationMechanismEnum.DCQL)
+    }
+
+    private suspend fun runProcess(presentationMechanism: PresentationMechanismEnum) {
+        val givenName = uuid4().toString()
+        val transactionResult = mockMvc.post("/transaction/create") {
+            content = Json.encodeToString(
+                TransactionRequest(
+                    presentationMechanism = presentationMechanism,
+                    credentials = listOf(
+                        TransactionRequestCredential(
+                            credentialType = AtomicAttribute2023.sdJwtType,
+                            representation = ConstantIndex.CredentialRepresentation.SD_JWT.name,
+                            attributes = listOf(AtomicAttribute2023.CLAIM_GIVEN_NAME),
+                        )
                     )
                 )
-                contentType = MediaType.APPLICATION_JSON
-                accept = MediaType.APPLICATION_JSON
-            }.andExpect {
-                status { isOk() }
-            }.andReturn()
-
-            val transactionResponse = Json.decodeFromString<TransactionResponse>(transactionResult.response.contentAsString)
-
-            val holderKey = EphemeralKeyWithoutCert()
-            val holder = HolderAgent(keyMaterial = holderKey)
-            holder.storeCredential(
-                IssuerAgent().issueCredential(
-                    CredentialToBeIssued.VcSd(
-                        claims = listOf(ClaimToBeIssued(AtomicAttribute2023.CLAIM_GIVEN_NAME, givenName)),
-                        expiration = Clock.System.now() + 1.minutes,
-                        scheme = AtomicAttribute2023,
-                        subjectPublicKey = holderKey.publicKey,
-                    )
-                ).getOrThrow().toStoreCredentialInput()
             )
-            val wallet = OpenId4VpHolder(
-                holder = holder,
-                remoteResourceRetriever = { data ->
-                    mockMvc.get(data.url).andReturn().response.contentAsString
-                })
-            val firstProfile = transactionResponse.profiles.first()
-            val authenticationResponseResult = wallet.createAuthnResponse(firstProfile.remoteWalletUrl).getOrThrow()
+            contentType = MediaType.APPLICATION_JSON
+            accept = MediaType.APPLICATION_JSON
+        }.andExpect {
+            status { isOk() }
+        }.andReturn()
 
-            authenticationResponseResult as AuthenticationResponseResult.Post
-            mockMvc.post(authenticationResponseResult.url) {
-                content = StringBuilder().apply {
-                    authenticationResponseResult.params.forEach { k, v -> append("&$k=$v") }
-                }
-                contentType = MediaType.APPLICATION_FORM_URLENCODED
-            }.andExpect {
-                status { isOk() }
+        val transactionResponse =
+            Json.decodeFromString<TransactionResponse>(transactionResult.response.contentAsString)
+
+        val holderKey = EphemeralKeyWithoutCert()
+        val holder = HolderAgent(keyMaterial = holderKey)
+        holder.storeCredential(
+            IssuerAgent().issueCredential(
+                CredentialToBeIssued.VcSd(
+                    claims = listOf(ClaimToBeIssued(AtomicAttribute2023.CLAIM_GIVEN_NAME, givenName)),
+                    expiration = Clock.System.now() + 1.minutes,
+                    scheme = AtomicAttribute2023,
+                    subjectPublicKey = holderKey.publicKey,
+                )
+            ).getOrThrow().toStoreCredentialInput()
+        )
+        val wallet = OpenId4VpHolder(
+            holder = holder,
+            remoteResourceRetriever = { data ->
+                mockMvc.get(data.url).andReturn().response.contentAsString
+            })
+        val firstProfile = transactionResponse.profiles.first()
+        val authenticationResponseResult = wallet.createAuthnResponse(firstProfile.remoteWalletUrl).getOrThrow()
+
+        authenticationResponseResult as AuthenticationResponseResult.Post
+        mockMvc.post(authenticationResponseResult.url) {
+            contentType = MediaType.APPLICATION_FORM_URLENCODED
+            authenticationResponseResult.params.forEach {
+                param(it.key, it.value)
             }
-
-            val user = transactionStore.getApiItem(firstProfile.id)
-            assertNotNull(user)
-            assertEquals(givenName, user!!.firstname)
+        }.andExpect {
+            status { isOk() }
         }
+
+        val user = transactionStore.getApiItem(firstProfile.id)
+        assertNotNull(user)
+        assertEquals(givenName, user!!.firstname)
     }
 }

@@ -19,8 +19,8 @@ import at.asitplus.wallet.lib.openid.ClientIdScheme.PreRegistered
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.OpenIdRequestOptions
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
-import at.asitplus.wallet.lib.openid.RequestOptions
 import at.asitplus.wallet.lib.openid.RequestOptionsCredential
+import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -29,8 +29,6 @@ import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
-import io.matthewnelson.encoding.base64.Base64
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
@@ -38,7 +36,6 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import org.springframework.web.util.UriComponentsBuilder
 import java.io.File
 import java.security.KeyStore
-import kotlin.random.Random
 
 class VerifierProfiles(private val publicUrl: String) {
 
@@ -229,12 +226,11 @@ class VerifierProfiles(private val publicUrl: String) {
 suspend fun Transaction.transactionGet(
     responseUrl: String,
 ): String {
-    val state = Random.nextBytes(32).encodeToString(Base64())
     val requestOptionsCredentials = request.toRequestOptionsCredentials()
     return profile.transactionGet(
         responseUrl,
-        state,
-        if(request.presentationMechanism == PresentationMechanismEnum.DCQL) {
+        uuid4().toString(),
+        if (request.presentationMechanism == PresentationMechanismEnum.DCQL) {
             requestOptionsCredentials.map {
                 // TODO: unsure how we handle optional attributes with DCQL
                 it.copy(

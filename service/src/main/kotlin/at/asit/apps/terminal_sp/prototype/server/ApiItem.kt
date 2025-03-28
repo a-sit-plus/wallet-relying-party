@@ -5,6 +5,7 @@ import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
+/** This is the response to the website, displayed there as "successful authentication", see `result.js`. */
 @Serializable
 data class ApiItem(
     val id: String,
