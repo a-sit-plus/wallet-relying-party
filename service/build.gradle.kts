@@ -42,8 +42,8 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 
     implementation(napier())
-    implementation("at.asitplus.wallet:vck:5.5.0-SNAPSHOT")
-    implementation("at.asitplus.wallet:vck-openid:5.5.0-SNAPSHOT")
+    implementation("at.asitplus.wallet:vck:5.5.0")
+    implementation("at.asitplus.wallet:vck-openid:5.5.0")
     implementation("at.asitplus.wallet:eupidcredential:3.0.0")
     implementation("at.asitplus.wallet:mobiledrivinglicence:1.1.4")
     implementation("at.asitplus.wallet:powerofrepresentation:1.2.0")
@@ -81,6 +81,4 @@ tasks.getByName<BootJar>("bootJar") {
 
 repositories {
     mavenCentral()
-    maven("https://s01.oss.sonatype.org/content/repositories/snapshots/")
-    maven("https://oss.sonatype.org/content/repositories/snapshots/")
 }
