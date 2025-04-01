@@ -1,5 +1,8 @@
 # Changelog
 
+Version 5.5.1:
+ - tbd
+
 Version 5.5.0:
  - Update to Spring Boot 3.4.3
  - Update to VC-K 5.5.0
