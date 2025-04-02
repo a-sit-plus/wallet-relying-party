@@ -68,10 +68,15 @@ class VerifierProfiles(private val publicUrl: String) {
 
     val knownProfiles: List<Profile> = listOf(
         object : Profile {
-            override val name = "HAIP"
-            override val label = "HAIP (Potential)"
+            override val name = "Potentialv1"
+            override val label = "Potential (pre-registered)"
             override val urlPrefix = "haip://"
-            override val clientIdScheme = PreRegistered("AT-GV-EGIZ-CUSTOMVERIFIER", publicUrl, publicUrl)
+            override val clientIdScheme = PreRegistered(
+                clientId = "AT-GV-EGIZ-CUSTOMVERIFIER",
+                redirectUri = publicUrl,
+                issuerUri = publicUrl,
+                useDeprecatedClientIdScheme = true,
+            )
             override val openIdVerifier = OpenId4VpVerifier(
                 verifier = VerifierAgent(
                     identifier = clientIdScheme.clientId,
@@ -99,13 +104,14 @@ class VerifierProfiles(private val publicUrl: String) {
             ): String = openIdVerifier.createAuthnRequestAsSignedRequestObject(
                 OpenIdRequestOptions(
                     state = state,
-                    responseMode = OpenIdConstants.ResponseMode.DirectPost,
+                    responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = responseUrl,
                     credentials = requestOptionsCredentials,
                     presentationMechanism = presentationMechanism,
                 )
             ).getOrThrow().serialize()
         },
+
         object : Profile {
             private val verifierKeyMaterial = KeyStoreMaterial(
                 keyStore = KeyStore.getInstance("PKCS12").apply {
@@ -115,8 +121,62 @@ class VerifierProfiles(private val publicUrl: String) {
                 privateKeyPassword = "changeit".toCharArray(),
                 certAlias = "verifier",
             )
-            override val name = "EUDI"
-            override val label = "HAIP (x509_san_dns)"
+            override val name = "Potentialv2"
+            override val label = "Potential (x509_san_dns)"
+            override val urlPrefix = "haip://"
+            override val clientIdScheme = runBlocking {
+                ClientIdScheme.CertificateSanDns(
+                    chain = listOf(verifierKeyMaterial.getCertificate()!!),
+                    clientIdDnsName = publicUrl.getDnsName(),
+                    redirectUri = publicUrl,
+                    useDeprecatedClientIdScheme = true,
+                )
+            }
+            val strippedClientId = clientIdScheme.clientId.removePrefix(clientIdScheme.scheme.prefix)
+            override val openIdVerifier = OpenId4VpVerifier(
+                keyMaterial = verifierKeyMaterial,
+                verifier = VerifierAgent(identifier = strippedClientId),
+                clientIdScheme = clientIdScheme,
+            )
+
+            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
+                .fromUriString(urlPrefix).apply {
+                    AuthenticationRequestParameters(
+                        clientId = strippedClientId,
+                        requestUri = requestUrl,
+                    ).encodeToParameters()
+                        .forEach { queryParam(it.key, it.value) }
+                }
+                .toUriString()
+
+            override suspend fun transactionGet(
+                responseUrl: String,
+                state: String,
+                requestOptionsCredentials: Set<RequestOptionsCredential>,
+                presentationMechanism: PresentationMechanismEnum,
+            ): String = openIdVerifier.createAuthnRequestAsSignedRequestObject(
+                OpenIdRequestOptions(
+                    state = state,
+                    responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
+                    responseUrl = responseUrl,
+                    credentials = requestOptionsCredentials,
+                    presentationMechanism = PresentationMechanismEnum.PresentationExchange,
+                )
+            ).getOrThrow().serialize()
+        },
+
+
+        object : Profile {
+            private val verifierKeyMaterial = KeyStoreMaterial(
+                keyStore = KeyStore.getInstance("PKCS12").apply {
+                    load(File("verifier.p12").inputStream(), "changeit".toCharArray())
+                },
+                keyAlias = "verifier",
+                privateKeyPassword = "changeit".toCharArray(),
+                certAlias = "verifier",
+            )
+            override val name = "HAIPd01"
+            override val label = "HAIP (d01)"
             override val urlPrefix = "haip://"
             override val clientIdScheme = runBlocking {
                 ClientIdScheme.CertificateSanDns(
@@ -148,10 +208,61 @@ class VerifierProfiles(private val publicUrl: String) {
             ): String = openIdVerifier.createAuthnRequestAsSignedRequestObject(
                 OpenIdRequestOptions(
                     state = state,
-                    responseMode = OpenIdConstants.ResponseMode.DirectPost,
+                    responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = responseUrl,
                     credentials = requestOptionsCredentials,
-                    presentationMechanism = presentationMechanism,
+                    presentationMechanism = PresentationMechanismEnum.PresentationExchange,
+                )
+            ).getOrThrow().serialize()
+        },
+        object : Profile {
+            private val verifierKeyMaterial = KeyStoreMaterial(
+                keyStore = KeyStore.getInstance("PKCS12").apply {
+                    load(File("verifier.p12").inputStream(), "changeit".toCharArray())
+                },
+                keyAlias = "verifier",
+                privateKeyPassword = "changeit".toCharArray(),
+                certAlias = "verifier",
+            )
+            override val name = "HAIPd03"
+            override val label = "HAIP (d03)"
+            override val urlPrefix = "haip://"
+            override val clientIdScheme = runBlocking {
+                ClientIdScheme.CertificateSanDns(
+                    listOf(verifierKeyMaterial.getCertificate()!!),
+                    publicUrl.getDnsName(),
+                    publicUrl,
+                    useDeprecatedClientIdScheme = true,
+                )
+            }
+            override val openIdVerifier = OpenId4VpVerifier(
+                keyMaterial = verifierKeyMaterial,
+                clientIdScheme = clientIdScheme
+            )
+
+            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
+                .fromUriString(urlPrefix).apply {
+                    AuthenticationRequestParameters(
+                        clientId = clientIdScheme.clientId,
+                        requestUri = requestUrl,
+                    ).encodeToParameters()
+                        .forEach { queryParam(it.key, it.value) }
+                }
+                .toUriString()
+
+            override suspend fun transactionGet(
+                responseUrl: String,
+                state: String,
+                requestOptionsCredentials: Set<RequestOptionsCredential>,
+                presentationMechanism: PresentationMechanismEnum,
+            ): String = openIdVerifier.createAuthnRequestAsSignedRequestObject(
+                OpenIdRequestOptions(
+                    state = state,
+                    responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
+                    encryption = true,
+                    responseUrl = responseUrl,
+                    credentials = requestOptionsCredentials,
+                    presentationMechanism = PresentationMechanismEnum.DCQL,
                 )
             ).getOrThrow().serialize()
         },
@@ -171,24 +282,29 @@ class VerifierProfiles(private val publicUrl: String) {
                 ClientIdScheme.CertificateSanDns(
                     listOf(verifierKeyMaterial.getCertificate()!!),
                     publicUrl.getDnsName(),
-                    publicUrl
+                    publicUrl,
+                    useDeprecatedClientIdScheme = true,
                 )
             }
+            val strippedClientId = clientIdScheme.clientId.removePrefix(clientIdScheme.scheme.prefix)
 
             override val openIdVerifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
-                clientIdScheme = clientIdScheme
+                verifier = VerifierAgent(identifier = strippedClientId),
+                clientIdScheme = clientIdScheme,
             )
 
-            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
-                .fromUriString(urlPrefix).apply {
-                    AuthenticationRequestParameters(
-                        clientId = clientIdScheme.clientId,
-                        requestUri = requestUrl,
-                    ).encodeToParameters()
-                        .forEach { queryParam(it.key, it.value) }
-                }
-                .toUriString()
+            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String {
+                return ServletUriComponentsBuilder
+                    .fromUriString(urlPrefix).apply {
+                        AuthenticationRequestParameters(
+                            clientId = strippedClientId,
+                            requestUri = requestUrl,
+                        ).encodeToParameters()
+                            .forEach { queryParam(it.key, it.value) }
+                    }
+                    .toUriString()
+            }
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -218,7 +334,7 @@ class VerifierProfiles(private val publicUrl: String) {
 
     fun getJarMetadataByName(profileName: String): JwtVcIssuerMetadata? {
         val profile = (knownProfiles.firstOrNull { it.name == profileName }
-            ?: knownProfiles.firstOrNull { it.name == "HAIP" })
+            ?: knownProfiles.firstOrNull { it.name == "Potential" })
         return profile?.openIdVerifier?.jarMetadata
     }
 }

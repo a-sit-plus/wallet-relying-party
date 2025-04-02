@@ -1,7 +1,7 @@
 # Changelog
 
 Version 5.5.1:
- - tbd
+ - Add more profiles, also with deprecated `client_id_scheme`
 
 Version 5.5.0:
  - Update to Spring Boot 3.4.3
