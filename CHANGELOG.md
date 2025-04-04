@@ -1,5 +1,8 @@
 # Changelog
 
+Version 5.5.2:
+ - tbd
+
 Version 5.5.1:
  - Add more profiles, also with deprecated `client_id_scheme`
 
