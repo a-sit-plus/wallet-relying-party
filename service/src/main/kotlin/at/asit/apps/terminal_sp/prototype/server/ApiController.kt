@@ -211,7 +211,7 @@ class ApiController(
     fun jarMetadata(
         request: HttpServletRequest,
     ): ResponseEntity<JwtVcIssuerMetadata> {
-        val metadata = profiles.getJarMetadataByName("Potential")
+        val metadata = profiles.getJarMetadataByName("Potentialv1")
         Napier.i("${request.requestURI} returns $metadata")
         return ResponseEntity.ok(metadata)
     }
@@ -224,7 +224,7 @@ class ApiController(
         @PathVariable("id") verifierId: String?,
         request: HttpServletRequest,
     ): ResponseEntity<JwtVcIssuerMetadata> {
-        val metadata = profiles.getJarMetadataByName(verifierId ?: "Potential")
+        val metadata = profiles.getJarMetadataByName(verifierId ?: "Potentialv1")
         Napier.i("${request.requestURI} returns $metadata")
         return ResponseEntity.ok(metadata)
     }

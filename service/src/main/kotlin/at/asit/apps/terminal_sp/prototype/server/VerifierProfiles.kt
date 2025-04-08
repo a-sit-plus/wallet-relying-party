@@ -334,7 +334,7 @@ class VerifierProfiles(private val publicUrl: String) {
 
     fun getJarMetadataByName(profileName: String): JwtVcIssuerMetadata? {
         val profile = (knownProfiles.firstOrNull { it.name == profileName }
-            ?: knownProfiles.firstOrNull { it.name == "Potential" })
+            ?: knownProfiles.firstOrNull { it.name == "Potentialv1" })
         return profile?.openIdVerifier?.jarMetadata
     }
 }
