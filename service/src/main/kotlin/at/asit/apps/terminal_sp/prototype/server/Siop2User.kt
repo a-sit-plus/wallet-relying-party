@@ -42,7 +42,7 @@ fun List<ApiItemCredential>.toSiop2User() = Siop2User(
         id = Json.encodeToString(this).sha256(),
         firstname = firstNotNullOfOrNull { it.getGivenName() } ?: "N/A",
         lastname = firstNotNullOfOrNull { it.getFamilyName() } ?: "N/A",
-        imageDataBase64 = firstNotNullOfOrNull { it.getPortrait() }?.let { "data:image;base64,$it" },
+        imageDataBase64 = firstNotNullOfOrNull { it.getPortrait() }?.toImage(),
         timestamp = Instant.now().toEpochMilli(),
         credentials = this
     )
@@ -53,11 +53,13 @@ fun ApiItemCredential.toSiop2User() = Siop2User(
         id = Json.encodeToString(this).sha256(),
         firstname = getGivenName() ?: "N/A",
         lastname = getFamilyName() ?: "N/A",
-        imageDataBase64 = getPortrait()?.let { "data:image;base64,$it" },
+        imageDataBase64 = getPortrait()?.toImage(),
         timestamp = Instant.now().toEpochMilli(),
         credentials = listOf(this)
     )
 )
+
+private fun String?.toImage() = this?.let { "data:image;base64,${it.replace("-", "+").replace("_", "/")}" }
 
 private fun ApiItemCredential.getPortrait() = getClaim(MobileDrivingLicenceDataElements.PORTRAIT)
     ?: getClaim(EuPidScheme.Attributes.PORTRAIT)
