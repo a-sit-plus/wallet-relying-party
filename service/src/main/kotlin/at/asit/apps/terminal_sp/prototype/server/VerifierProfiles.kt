@@ -69,7 +69,7 @@ class VerifierProfiles(private val publicUrl: String) {
     val knownProfiles: List<Profile> = listOf(
         object : Profile {
             override val name = "Potentialv1"
-            override val label = "Potential (pre-registered)"
+            override val label = "Potential (v1)"
             override val urlPrefix = "haip://"
             override val clientIdScheme = PreRegistered(
                 clientId = "AT-GV-EGIZ-CUSTOMVERIFIER",
@@ -122,7 +122,7 @@ class VerifierProfiles(private val publicUrl: String) {
                 certAlias = "verifier",
             )
             override val name = "Potentialv2"
-            override val label = "Potential (x509_san_dns)"
+            override val label = "Potential (v2)"
             override val urlPrefix = "haip://"
             override val clientIdScheme = runBlocking {
                 ClientIdScheme.CertificateSanDns(
@@ -161,6 +161,7 @@ class VerifierProfiles(private val publicUrl: String) {
                     responseUrl = responseUrl,
                     credentials = requestOptionsCredentials,
                     presentationMechanism = PresentationMechanismEnum.PresentationExchange,
+                    encryption = true,
                 )
             ).getOrThrow().serialize()
         },

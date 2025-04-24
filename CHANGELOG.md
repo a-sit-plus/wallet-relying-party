@@ -1,10 +1,12 @@
 # Changelog
 
 Version 5.5.2:
- - tbd
+ - Change profile "Potential v2" to request encryption
+ - Update to VC-K 5.5.2
 
 Version 5.5.1:
  - Add more profiles, also with deprecated `client_id_scheme`
+ - Update to VC-K 5.5.1
 
 Version 5.5.0:
  - Update to Spring Boot 3.4.3
