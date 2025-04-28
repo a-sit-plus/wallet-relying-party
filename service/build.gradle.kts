@@ -1,7 +1,3 @@
-
-import at.asitplus.gradle.bouncycastle
-import at.asitplus.gradle.coroutines
-import at.asitplus.gradle.gitLab
 import at.asitplus.gradle.ktor
 import at.asitplus.gradle.napier
 import org.springframework.boot.gradle.tasks.bundling.BootJar
@@ -45,6 +41,7 @@ dependencies {
     implementation("at.asitplus.wallet:vck:5.5.2")
     implementation("at.asitplus.wallet:vck-openid:5.5.2")
     implementation("at.asitplus.wallet:eupidcredential:3.0.0")
+    implementation("at.asitplus.wallet:eupidcredential-sdjwt:1.0.0")
     implementation("at.asitplus.wallet:mobiledrivinglicence:1.1.4")
     implementation("at.asitplus.wallet:powerofrepresentation:1.2.0")
     implementation("at.asitplus.wallet:certificateofresidence:2.1.1")

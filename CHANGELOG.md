@@ -1,6 +1,8 @@
 # Changelog
 
+Version 5.5.3:
  - Add basic Digital Credentials API support
+ - Add PID with SD-JWT claim names and new `vct` `urn:eudi:pid:1`
 
 Version 5.5.2:
  - Change profile "Potential v2" to request encryption

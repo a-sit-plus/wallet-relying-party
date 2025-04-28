@@ -15,6 +15,7 @@ fun main(args: Array<String>) {
 	initOpenIdModule()
 	at.asitplus.wallet.taxid.Initializer.initWithVCK()
 	at.asitplus.wallet.eupid.Initializer.initWithVCK()
+	at.asitplus.wallet.eupidsdjwt.Initializer.initWithVCK()
 	at.asitplus.wallet.mdl.Initializer.initWithVCK()
 	at.asitplus.wallet.cor.Initializer.initWithVCK()
 	at.asitplus.wallet.por.Initializer.initWithVCK()

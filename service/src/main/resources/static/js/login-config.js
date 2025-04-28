@@ -61,8 +61,8 @@ export default { "schemeTypes": [
         { "label": "signature_usual_mark", "value": "signature_usual_mark" }
       ]
     },
-    { "label": "PID",
-      "value": "urn:eu.europa.ec.eudi:pid:1",
+    { "label": "PID (ISO)",
+      "value": "eu.europa.ec.eudi.pid.1",
       "sd": true,
       "attributes": [
         { "label": "family_name", "value": "family_name", "isSelected": true },
@@ -99,6 +99,47 @@ export default { "schemeTypes": [
         { "label": "mobile_phone_number", "value": "mobile_phone_number" },
         { "label": "trust_anchor", "value": "trust_anchor" },
         { "label": "location_status", "value": "location_status" }
+      ]
+    },
+    { "label": "PID (SD-JWT)",
+      "value": "urn:eudi:pid:1",
+      "sd": true,
+      "attributes": [
+        { "label": "family_name", "value": "family_name", "isSelected": true },
+        { "label": "given_name", "value": "given_name", "isSelected": true },
+        { "label": "birthdate", "value": "birthdate", "isSelected": true },
+        { "label": "picture", "value": "picture" },
+        { "label": "age_equal_or_over.12", "value": "age_equal_or_over.12" },
+        { "label": "age_equal_or_over.14", "value": "age_equal_or_over.14" },
+        { "label": "age_equal_or_over.16", "value": "age_equal_or_over.16" },
+        { "label": "age_equal_or_over.18", "value": "age_equal_or_over.18" },
+        { "label": "age_equal_or_over.21", "value": "age_equal_or_over.21" },
+        { "label": "age_in_years", "value": "age_in_years" },
+        { "label": "age_birth_year", "value": "age_birth_year" },
+        { "label": "birth_family_name", "value": "birth_family_name" },
+        { "label": "birth_given_name", "value": "birth_given_name" },
+        { "label": "place_of_birth.country", "value": "place_of_birth.country" },
+        { "label": "place_of_birth.region", "value": "place_of_birth.region" },
+        { "label": "place_of_birth.locality", "value": "place_of_birth.locality", "isSelected": true },
+        { "label": "address.formatted", "value": "address.formatted" },
+        { "label": "address.country", "value": "address.country" },
+        { "label": "address.region", "value": "address.region" },
+        { "label": "address.locality", "value": "address.locality" },
+        { "label": "address.postal_code", "value": "address.postal_code" },
+        { "label": "address.street", "value": "address.street" },
+        { "label": "address.house_number", "value": "address.house_number" },
+        { "label": "sex", "value": "sex" },
+        { "label": "nationalities", "value": "nationalities", "isSelected": true },
+        { "label": "date_of_issuance", "value": "date_of_issuance" },
+        { "label": "date_of_expiry", "value": "date_of_expiry", "isSelected": true },
+        { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true },
+        { "label": "document_number", "value": "document_number" },
+        { "label": "issuing_country", "value": "issuing_country", "isSelected": true },
+        { "label": "issuing_jurisdiction", "value": "issuing_jurisdiction" },
+        { "label": "personal_administrative_number", "value": "personal_administrative_number" },
+        { "label": "email", "value": "email" },
+        { "label": "phone_number", "value": "phone_number" },
+        { "label": "trust_anchor", "value": "trust_anchor" }
       ]
     },
     { "label": "Power of Representation (PoR)",
@@ -256,15 +297,15 @@ export default { "schemeTypes": [
       "simple": false,
       "credentials": [
         {
-          "schemeType": "urn:eu.europa.ec.eudi:pid:1",
+          "schemeType": "urn:eudi:pid:1",
           "representation": "SD_JWT",
           "sd": true,
           "attributes": [
             { "label": "family_name", "value": "family_name", "isSelected": true },
             { "label": "given_name", "value": "given_name", "isSelected": true },
-            { "label": "birth_date", "value": "birth_date", "isSelected": true },
-            { "label": "nationality", "value": "nationality", "isSelected": true },
-            { "label": "expiry_date", "value": "expiry_date", "isSelected": true },
+            { "label": "birthdate", "value": "birthdate", "isSelected": true },
+            { "label": "nationalities", "value": "nationalities", "isSelected": true },
+            { "label": "date_of_expiry", "value": "date_of_expiry", "isSelected": true },
             { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true },
             { "label": "issuing_country", "value": "issuing_country", "isSelected": true },
           ]
@@ -334,15 +375,15 @@ export default { "schemeTypes": [
       "simple": false,
       "credentials": [
         {
-          "schemeType": "urn:eu.europa.ec.eudi:pid:1",
+          "schemeType": "urn:eudi:pid:1",
           "representation": "SD_JWT",
           "sd": true,
           "attributes": [
             { "label": "family_name", "value": "family_name", "isSelected": true },
             { "label": "given_name", "value": "given_name", "isSelected": true },
-            { "label": "birth_date", "value": "birth_date", "isSelected": true },
-            { "label": "nationality", "value": "nationality", "isSelected": true },
-            { "label": "expiry_date", "value": "expiry_date", "isSelected": true },
+            { "label": "birthdate", "value": "birthdate", "isSelected": true },
+            { "label": "nationalities", "value": "nationalities", "isSelected": true },
+            { "label": "date_of_expiry", "value": "date_of_expiry", "isSelected": true },
             { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true },
             { "label": "issuing_country", "value": "issuing_country", "isSelected": true }
           ]
