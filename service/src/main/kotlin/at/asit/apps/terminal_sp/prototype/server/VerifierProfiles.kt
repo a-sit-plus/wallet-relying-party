@@ -135,7 +135,10 @@ class VerifierProfiles(private val publicUrl: String) {
             val strippedClientId = clientIdScheme.clientId.removePrefix(clientIdScheme.scheme.prefix)
             override val openIdVerifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
-                verifier = VerifierAgent(identifier = strippedClientId),
+                verifier = VerifierAgent(
+                    identifier = strippedClientId,
+                    validator = potentialValidator()
+                ),
                 clientIdScheme = clientIdScheme,
             )
 
