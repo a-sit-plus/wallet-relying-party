@@ -59,19 +59,14 @@ export default {
                     <a target="_blank" :href="profile.url" class="btn btn-primary m-3">Open App Wallet</a>
                 </div>
                 <p>The whole link is: <a target="_blank" :href="profile.url">{{ profile.url }}</a></p>
-            </div>
-            
-            <div class="col-lg-4 border rounded p-2 bg-white">
-                <h2>Option C: Remote Wallet</h2>
                 <p>Click the following button to authenticate via the Remote Wallet:</p>
                 <div class="text-center">
                     <a target="_blank" :href="profile.remoteWalletUrl" class="btn btn-primary mb-3"
                        :title="profile.remoteWalletUrl">Open Remote Wallet</a>
                 </div>
             </div>
-
             <div class="col-lg-4 border rounded p-2 bg-white">
-                <h2>Option D: Digital Credentials API</h2>
+                <h2>Option C: Digital Credentials API</h2>
                 <p>Click the following button to authenticate via the Digital Credentials API:</p>
                 <div class="text-center">
                     <button @click="$emit('invokeDCAPI')" class="btn btn-primary">Start Request</button>
