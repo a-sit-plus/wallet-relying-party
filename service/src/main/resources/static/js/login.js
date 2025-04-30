@@ -164,6 +164,85 @@ const createBasicSetup = function (config) {
         return JSON.stringify(request)
     }
 
+    function parseJwt (token) {
+        const parts = token.split('.');
+
+        if (parts.length !== 3) {
+            throw new Error('Invalid JWT token');
+        }
+
+        // Source: https://stackoverflow.com/a/38552302
+        const content = parts[1].replace(/-/g, '+').replace(/_/g, '/')
+        const payload = decodeURIComponent(atob(content).split('').map(function(c) {
+            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+        }).join(''))
+
+        return JSON.parse(payload)
+    }
+
+    async function invokeDCAPI() {
+        if (!document.getElementsByName("DCQL")[0].checked) {
+            const confirmed = confirm("Presentation Mechanism will be set to DCQL for Digital Credentials API")
+            if (!confirmed) {
+                return;
+            }
+            document.getElementsByName("DCQL")[0].click()
+            await generateQrCode()
+        }
+
+        if (reqResult.value == null || reqResult.value.profiles == null)
+            return;
+        const urlString = reqResult.value.profiles[0].url
+        const requestUri = new URLSearchParams(urlString).get("request_uri")
+
+        const query = await fetch(requestUri)
+          .then(async(response) => {
+            if (!response.ok) {
+              throw new Error('Network response was not ok ' + response.statusText);
+            }
+            const responseText = (await response.text())
+            const jwtResponse = parseJwt(responseText);
+
+            if (!('dcql_query' in jwtResponse)) {
+                throw new Error('Object does not have a query' + jwtResponse);
+            }
+
+            return {
+                dcql_query: jwtResponse.dcql_query,
+                nonce: jwtResponse.nonce
+             }
+          });
+        const requestData = {
+            responseType: "vp_token",
+            response_mode: "dc_api",
+            nonce: query.nonce,
+            dcql_query: query.dcql_query
+        };
+
+        const protocolName = "openid4vp"
+        const providers = [{
+           protocol: protocolName,
+           request:  JSON.stringify(requestData)
+         }];
+
+        const walletResponse = await navigator.credentials.get({
+          digital: {
+            providers: providers,
+          }
+        });
+
+        if (walletResponse.constructor.name == 'DigitalCredential') {
+            const data = walletResponse.data
+            const protocol = walletResponse.protocol
+            console.log("Response Data: " + data + " Protocol: " + protocol)
+        } else if (walletResponse.constructor.name == 'IdentityCredential') {
+            const data = walletResponse.token
+            console.log("Response Data: " + data)
+        } else {
+            throw new Error("Unknown response type")
+        }
+    }
+
     async function generateQrCode() {
         console.log('generateQrCode', reqSelection.value)
 
@@ -281,6 +360,7 @@ const createBasicSetup = function (config) {
         startPeriodicUpdate,
         resetRequestChanged,
         compareRequestChanged,
+        invokeDCAPI,
     }
 }
 

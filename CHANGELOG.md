@@ -1,5 +1,7 @@
 # Changelog
 
+ - Add basic Digital Credentials API support
+
 Version 5.5.2:
  - Change profile "Potential v2" to request encryption
  - Update to VC-K 5.5.2

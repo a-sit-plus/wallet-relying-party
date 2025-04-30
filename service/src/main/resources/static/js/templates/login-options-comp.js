@@ -5,7 +5,8 @@ export default {
         'error'
     ],
     emits: [
-        'generateQrCode'
+        'generateQrCode',
+        'invokeDCAPI'
     ],
     template: `
 <div v-if="result != null && result.profiles != null && changed.changed && !error.message" class="z-3 position-absolute rounded w-100">
@@ -66,6 +67,14 @@ export default {
                 <div class="text-center">
                     <a target="_blank" :href="profile.remoteWalletUrl" class="btn btn-primary mb-3"
                        :title="profile.remoteWalletUrl">Open Remote Wallet</a>
+                </div>
+            </div>
+
+            <div class="col-lg-4 border rounded p-2 bg-white">
+                <h2>Option D: Digital Credentials API</h2>
+                <p>Click the following button to authenticate via the Digital Credentials API:</p>
+                <div class="text-center">
+                    <button @click="$emit('invokeDCAPI')" class="btn btn-primary">Start Request</button>
                 </div>
             </div>
             </div>

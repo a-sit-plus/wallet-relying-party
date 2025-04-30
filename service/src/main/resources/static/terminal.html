@@ -65,7 +65,27 @@
 <header-comp></header-comp>
 
 <div class="container px-4 py-5">
-    <div class="row g-4 py-5 row-cols-1 row-cols-lg-2">
+    <div class="row g-4 py-5 row-cols-1 row-cols-lg-1">
+        <div class="col">
+            <div class="p-3 border rounded bg-white">
+
+                <title-comp title="Employee-Page" icon="bi-bank">
+                    <p>
+                        Employees are presented with all recent authentication results on the Employee-Page.
+                        The identity data of these authentication results can be used to compare whether the right
+                        person is standing in front of the counter.
+                    </p>
+                    <div class="d-flex justify-content-end">
+                        <a href="employee.html" class="btn btn-primary">
+                            Employee Page
+                            <i class="bi-chevron-right"></i>
+                        </a>
+                    </div>
+                </title-comp>
+
+            </div>
+        </div>
+
         <div class="col">
             <div class="p-3 border rounded bg-white mb-3">
 
@@ -109,32 +129,14 @@
                                 :result="reqResult"
                                 :changed="reqChanged"
                                 :error="error"
-                                @generate-qr-code="generateQrCode"></login-options-comp>
+                                @generate-qr-code="generateQrCode"
+                                @invoke-d-c-a-p-i="invokeDCAPI"></login-options-comp>
 
                     </div>
                 </div>
             </div>
         </div>
 
-        <div class="col">
-            <div class="p-3 border rounded bg-white">
-
-                <title-comp title="Employee-Page" icon="bi-bank">
-                    <p>
-                        Employees are presented with all recent authentication results on the Employee-Page.
-                        The identity data of these authentication results can be used to compare whether the right
-                        person is standing in front of the counter.
-                    </p>
-                    <div class="d-flex justify-content-end">
-                        <a href="employee.html" class="btn btn-primary">
-                            Employee Page
-                            <i class="bi-chevron-right"></i>
-                        </a>
-                    </div>
-                </title-comp>
-
-            </div>
-        </div>
     </div>
 </div>
 
