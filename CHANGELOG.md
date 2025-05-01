@@ -1,5 +1,8 @@
 # Changelog
 
+Version 5.6.0:
+ - Update to VC-K 5.6.0
+
 Version 5.5.3:
  - Add basic Digital Credentials API support
  - Add PID with SD-JWT claim names and new `vct` `urn:eudi:pid:1`
