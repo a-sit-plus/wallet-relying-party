@@ -68,7 +68,7 @@ class VerifierProfiles(private val publicUrl: String) {
 
     val knownProfiles: List<Profile> = listOf(
         object : Profile {
-            override val name = "Potentialv1"
+            override val name = DEFAULT_PROFILE
             override val label = "Potential (v1)"
             override val urlPrefix = "haip://"
             override val clientIdScheme = PreRegistered(
@@ -338,7 +338,7 @@ class VerifierProfiles(private val publicUrl: String) {
 
     fun getJarMetadataByName(profileName: String): JwtVcIssuerMetadata? {
         val profile = (knownProfiles.firstOrNull { it.name == profileName }
-            ?: knownProfiles.firstOrNull { it.name == "Potentialv1" })
+            ?: knownProfiles.firstOrNull { it.name == DEFAULT_PROFILE })
         return profile?.openIdVerifier?.jarMetadata
     }
 }
@@ -379,3 +379,6 @@ interface Profile {
         presentationMechanism: PresentationMechanismEnum,
     ): String
 }
+
+
+const val DEFAULT_PROFILE = "Potentialv1"

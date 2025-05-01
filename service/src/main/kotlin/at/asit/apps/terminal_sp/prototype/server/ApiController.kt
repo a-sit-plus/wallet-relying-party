@@ -33,7 +33,6 @@ import kotlin.collections.set
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
-
 @Controller
 class ApiController(
     @Value("\${app.public-url}")
@@ -211,7 +210,7 @@ class ApiController(
     fun jarMetadata(
         request: HttpServletRequest,
     ): ResponseEntity<JwtVcIssuerMetadata> {
-        val metadata = profiles.getJarMetadataByName("Potentialv1")
+        val metadata = profiles.getJarMetadataByName(DEFAULT_PROFILE)
         Napier.i("${request.requestURI} returns $metadata")
         return ResponseEntity.ok(metadata)
     }
@@ -224,7 +223,7 @@ class ApiController(
         @PathVariable("id") verifierId: String?,
         request: HttpServletRequest,
     ): ResponseEntity<JwtVcIssuerMetadata> {
-        val metadata = profiles.getJarMetadataByName(verifierId ?: "Potentialv1")
+        val metadata = profiles.getJarMetadataByName(verifierId ?: DEFAULT_PROFILE)
         Napier.i("${request.requestURI} returns $metadata")
         return ResponseEntity.ok(metadata)
     }
