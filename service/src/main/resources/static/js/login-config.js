@@ -232,7 +232,7 @@ export default { "schemeTypes": [
       ]
     },
     { "label": "Tax Identified (TAX ID)",
-      "value": "Tax Number",
+      "value": "urn:eu.europa.ec.eudi:tax:1",
       "sd": false,
       "attributes": [
         { "label": "tax_number", "value": "tax_number" },

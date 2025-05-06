@@ -13,7 +13,7 @@ fun main(args: Array<String>) {
 	Napier.takeLogarithm()
 	Napier.base(AntilogSlf4jAdapter)
 	initOpenIdModule()
-	at.asitplus.wallet.taxid.Initializer.initWithVCK()
+	at.asitplus.wallet.taxid.Initializer2025.initWithVCK()
 	at.asitplus.wallet.eupid.Initializer.initWithVCK()
 	at.asitplus.wallet.eupidsdjwt.Initializer.initWithVCK()
 	at.asitplus.wallet.mdl.Initializer.initWithVCK()
