@@ -1,5 +1,8 @@
 # Changelog
 
+TBA:
+ - Add support for european heath insurance card (EHIC) credential
+
 Version 5.6.0:
  - Update to VC-K 5.6.0
 

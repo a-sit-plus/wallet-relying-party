@@ -48,7 +48,7 @@ dependencies {
     implementation("at.asitplus.wallet:healthid:2.0.0")
     implementation("at.asitplus.wallet:company-registration:1.1.0")
     implementation("at.asitplus.wallet:taxid:1.1.1")
-    implementation("at.asitplus.wallet:ehic:1.0.0-SNAPSHOT")
+    implementation("at.asitplus.wallet:ehic:1.0.1-SNAPSHOT")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")
@@ -78,5 +78,4 @@ tasks.getByName<BootJar>("bootJar") {
 
 repositories {
     mavenCentral()
-    mavenLocal()
 }
