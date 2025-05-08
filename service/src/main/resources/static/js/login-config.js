@@ -18,6 +18,18 @@ export default { "schemeTypes": [
         { "label": "issuing_jurisdiction", "value": "issuing_jurisdiction" }
       ]
     },
+    { "label": "EuropeanHealthInsuranceCard",
+      "value": "urn:eudi:ehic:1",
+      "sd": false,
+      "attributes": [
+        { "label": "issuing_country", "value": "issuing_country" },
+        { "label": "social_security_number", "value": "social_security_number" },
+        { "label": "issuing_authority", "value": "issuing_authority" },
+        { "label": "document_number", "value": "document_number" },
+        { "label": "issuance_date", "value": "issuance_date" },
+        { "label": "expiry_date", "value": "expiry_date" },
+      ]
+    },
     { "label": "mDL",
       "value": "org.iso.18013.5.1.mDL",
       "sd": true,
@@ -288,6 +300,24 @@ export default { "schemeTypes": [
             { "label": "expiry_date", "value": "expiry_date", "isSelected": true  },
             { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true  },
             { "label": "issuing_country", "value": "issuing_country", "isSelected": true  },
+          ]
+        }
+      ]
+    },
+    { "label": "EuropeanHealthInsuranceCard",
+      "simple": false,
+      "credentials": [
+        {
+          "schemeType": "urn:eudi:ehic:1",
+          "representation": "SD_JWT",
+          "sd": false,
+          "attributes": [
+            { "label": "issuing_country", "value": "issuing_country" },
+            { "label": "social_security_number", "value": "social_security_number" },
+            { "label": "issuing_authority", "value": "issuing_authority" },
+            { "label": "document_number", "value": "document_number" },
+            { "label": "issuance_date", "value": "issuance_date" },
+            { "label": "expiry_date", "value": "expiry_date" },
           ]
         }
       ]

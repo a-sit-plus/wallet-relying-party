@@ -1,8 +1,8 @@
 package at.asit.apps.terminal_sp.prototype.server
 
+import at.asitplus.wallet.ehic.EhicScheme
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.healthid.HealthIdScheme
-import at.asitplus.wallet.healthid.HealthIdScheme.Attributes
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
@@ -65,6 +65,7 @@ data class TransactionRequestCredential(
     @Suppress("DEPRECATION")
     private fun CredentialScheme.isSd(): Boolean = when (this) {
         is HealthIdScheme -> false
+        is EhicScheme -> false
         is at.asitplus.wallet.taxid.TaxIdScheme -> false
         is TaxId2025Scheme -> false
         is PowerOfRepresentationScheme -> false
