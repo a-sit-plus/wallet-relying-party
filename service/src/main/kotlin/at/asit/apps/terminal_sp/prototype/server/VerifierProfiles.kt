@@ -104,7 +104,7 @@ class VerifierProfiles(private val publicUrl: String) {
             ): String = openIdVerifier.createAuthnRequestAsSignedRequestObject(
                 OpenIdRequestOptions(
                     state = state,
-                    responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
+                    responseMode = OpenIdConstants.ResponseMode.DirectPost,
                     responseUrl = responseUrl,
                     credentials = requestOptionsCredentials,
                     presentationMechanism = presentationMechanism,
