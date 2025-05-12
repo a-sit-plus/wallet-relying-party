@@ -98,7 +98,7 @@ export default {
             <legend class="col-form-label col-sm-4 pt-0 fw-bold">Attributes</legend>
             <div class="col-sm-8">
                 <p v-if="credential.attributes.length == 0">Please select a Credential Type.</p>
-                <div v-if="credential.sd == true" 
+                <div v-if="credential.sd == true || credential.representation.value != 'SD_JWT'" 
                      v-for="item in credential.attributes"
                      :key="credential.schemeType + '-' + item.value"
                      class="form-check">
@@ -107,13 +107,12 @@ export default {
                            :name="(credential.schemeType ? credential.schemeType.label : 'unknown') + '-attributes'"
                            :value="item.value"
                            :checked="item.isSelected"
-                           :disabled="credential.sd == false"
                            @click="$emit('updateAttribute', item)">
                     <label class="form-check-label" for="attributes1">
                         {{ item.label }}
                     </label>
                 </div>
-                <div v-if="credential.sd == false" >
+                <div v-if="credential.sd == false && credential.representation.value == 'SD_JWT'" >
                     <p>For this credential, attributes can not be selectively disclosed.</p>
                     <ul class="list-group list-group-flush">
                         <li class="list-group-item" v-for="item in credential.attributes">{{ item.label }}</li>

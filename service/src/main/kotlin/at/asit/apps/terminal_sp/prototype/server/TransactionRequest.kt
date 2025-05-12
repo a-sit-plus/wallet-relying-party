@@ -2,6 +2,7 @@ package at.asit.apps.terminal_sp.prototype.server
 
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.healthid.HealthIdScheme
+import at.asitplus.wallet.healthid.HealthIdScheme.Attributes
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
@@ -44,18 +45,25 @@ data class TransactionRequestCredential(
 ) {
     fun toRequestOptionsCredential() =
         (credentialType?.let { AttributeIndex.resolveCredential(it)?.first } ?: EuPidScheme).let { scheme ->
-            RequestOptionsCredential(
-                credentialScheme = scheme,
-                representation = CredentialRepresentation.entries.firstOrNull { it.name == representation }
-                    ?: CredentialRepresentation.SD_JWT,
-                // if credential is not selectively disclosable, do not request any attributes
-                requestedOptionalAttributes = if (scheme.isSd() == false) null
-                    else attributes?.ifEmpty { null }?.toSet(),
-            )
+            (CredentialRepresentation.entries.firstOrNull { it.name == representation }
+                ?: CredentialRepresentation.SD_JWT).let { representation ->
+                RequestOptionsCredential(
+                    credentialScheme = scheme,
+                    representation = representation,
+                    // if credential is not selectively disclosable, do not request any attributes
+                    requestedOptionalAttributes = scheme.requestedOptionalAttributes(representation),
+                )
+            }
         }
 
+    private fun CredentialScheme.requestedOptionalAttributes(
+        representation: CredentialRepresentation,
+    ): Set<String>? =
+        if (!isSd() && representation == CredentialRepresentation.SD_JWT) null
+        else attributes?.ifEmpty { null }?.toSet()
+
     @Suppress("DEPRECATION")
-    private fun CredentialScheme.isSd(): Boolean = when (this){
+    private fun CredentialScheme.isSd(): Boolean = when (this) {
         is HealthIdScheme -> false
         is at.asitplus.wallet.taxid.TaxIdScheme -> false
         is TaxId2025Scheme -> false
@@ -63,7 +71,6 @@ data class TransactionRequestCredential(
         else -> true
     }
 }
-
 
 @Serializable
 data class TransactionResponse(

@@ -6,15 +6,15 @@ export default { "schemeTypes": [
         { "label": "health_insurance_id", "value": "health_insurance_id" },
         { "label": "patient_id", "value": "patient_id" },
         { "label": "tax_number", "value": "tax_number" },
-        { "label": "one_time_token", "value": "one_time_token" },
+        { "label": "one_time_token", "value": "one_time_token", "isSelected": true },
         { "label": "wallet_e_prescription_code", "value": "wallet_e_prescription_code" },
-        { "label": "affiliation_country", "value": "affiliation_country" },
-        { "label": "issue_date", "value": "issue_date" },
-        { "label": "expiry_date", "value": "expiry_date" },
-        { "label": "issuing_authority", "value": "issuing_authority" },
+        { "label": "affiliation_country", "value": "affiliation_country", "isSelected": true  },
+        { "label": "issue_date", "value": "issue_date", "isSelected": true  },
+        { "label": "expiry_date", "value": "expiry_date", "isSelected": true  },
+        { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true  },
         { "label": "document_number", "value": "document_number" },
         { "label": "administrative_number", "value": "administrative_number" },
-        { "label": "issuing_country", "value": "issuing_country" },
+        { "label": "issuing_country", "value": "issuing_country", "isSelected": true  },
         { "label": "issuing_jurisdiction", "value": "issuing_jurisdiction" }
       ]
     },
@@ -117,7 +117,7 @@ export default { "schemeTypes": [
         { "label": "location_status", "value": "location_status" }
       ]
     },
-    { "label": "PID (SD-JWT)",
+    { "label": "PID (ARF 1.8.0)",
       "value": "urn:eudi:pid:1",
       "sd": true,
       "attributes": [
@@ -282,12 +282,12 @@ export default { "schemeTypes": [
           "representation": "SD_JWT",
           "sd": false,
           "attributes": [
-            { "label": "one_time_token", "value": "one_time_token" },
-            { "label": "affiliation_country", "value": "affiliation_country" },
-            { "label": "issue_date", "value": "issue_date" },
-            { "label": "expiry_date", "value": "expiry_date" },
-            { "label": "issuing_authority", "value": "issuing_authority" },
-            { "label": "issuing_country", "value": "issuing_country" },
+            { "label": "one_time_token", "value": "one_time_token", "isSelected": true  },
+            { "label": "affiliation_country", "value": "affiliation_country", "isSelected": true  },
+            { "label": "issue_date", "value": "issue_date", "isSelected": true  },
+            { "label": "expiry_date", "value": "expiry_date", "isSelected": true  },
+            { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true  },
+            { "label": "issuing_country", "value": "issuing_country", "isSelected": true  },
           ]
         }
       ]
