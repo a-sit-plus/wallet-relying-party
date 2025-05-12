@@ -9,7 +9,6 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import io.github.aakira.napier.Napier
-import io.ktor.client.request.request
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import jakarta.servlet.http.HttpServletRequest
@@ -42,7 +41,7 @@ class ApiController(
     private val statisticLogger = LoggerFactory.getLogger("statistic")
     private val transactions: MutableMap<String, Transaction> = HashMap()
     private val customerSuccessUrl by lazy {
-        ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
+        ServletUriComponentsBuilder.fromUriString(publicUrl)
             .pathSegment("customer-success.html")
             .toUriString()
     }
@@ -121,7 +120,7 @@ class ApiController(
                 .also { Napier.i("/transaction/$id returns $it") }
             ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/" + JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST))
-                .body<String>(result)
+                .body(result)
         } catch (e: Exception) {
             Napier.w("/transaction/get/$id error", e)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, e.localizedMessage)
@@ -168,7 +167,7 @@ class ApiController(
         Napier.i("Storing user for transaction $id: $user")
         transactionStore.put(id, user)
         val redirectUrlWithId = ServletUriComponentsBuilder
-            .fromHttpUrl(customerSuccessUrl)
+            .fromUriString(customerSuccessUrl)
             .queryParam("id", id)
             .toUriString()
         ResponseEntity.ok()
@@ -179,13 +178,13 @@ class ApiController(
     private fun buildTransactionUrl(request: TransactionRequest, transactionId: String, profile: Profile) =
         runBlocking {
             transactions[transactionId] = Transaction(transactionId, request, profile)
-            ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
+            ServletUriComponentsBuilder.fromUriString(publicUrl)
                 .pathSegment("transaction", "get", transactionId)
                 .toUriString()
         }
 
     private fun buildPostSuccessUrl(transactionId: String) = runBlocking {
-        ServletUriComponentsBuilder.fromHttpUrl(publicUrl)
+        ServletUriComponentsBuilder.fromUriString(publicUrl)
             .pathSegment("transaction", "result", transactionId)
             .toUriString()
     }

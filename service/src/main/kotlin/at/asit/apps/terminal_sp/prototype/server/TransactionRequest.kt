@@ -9,7 +9,6 @@ import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import at.asitplus.wallet.lib.openid.RequestOptionsCredential
 import at.asitplus.wallet.por.PowerOfRepresentationScheme
 import at.asitplus.wallet.taxid.TaxId2025Scheme
-import at.asitplus.wallet.taxid.TaxIdScheme
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -55,9 +54,10 @@ data class TransactionRequestCredential(
             )
         }
 
+    @Suppress("DEPRECATION")
     private fun CredentialScheme.isSd(): Boolean = when (this){
         is HealthIdScheme -> false
-        is TaxIdScheme -> false
+        is at.asitplus.wallet.taxid.TaxIdScheme -> false
         is TaxId2025Scheme -> false
         is PowerOfRepresentationScheme -> false
         else -> true

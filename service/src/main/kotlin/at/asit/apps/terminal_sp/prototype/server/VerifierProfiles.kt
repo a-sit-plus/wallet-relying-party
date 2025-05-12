@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.agent.KeyStoreMaterial
 import at.asitplus.wallet.lib.agent.Validator
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.ClientIdScheme.PreRegistered
@@ -163,7 +164,7 @@ class VerifierProfiles(private val publicUrl: String) {
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = responseUrl,
                     credentials = requestOptionsCredentials,
-                    presentationMechanism = PresentationMechanismEnum.PresentationExchange,
+                    presentationMechanism = presentationMechanism,
                     encryption = true,
                 )
             ).getOrThrow().serialize()
@@ -215,7 +216,7 @@ class VerifierProfiles(private val publicUrl: String) {
                     responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
                     responseUrl = responseUrl,
                     credentials = requestOptionsCredentials,
-                    presentationMechanism = PresentationMechanismEnum.PresentationExchange,
+                    presentationMechanism = presentationMechanism,
                 )
             ).getOrThrow().serialize()
         },
@@ -236,7 +237,6 @@ class VerifierProfiles(private val publicUrl: String) {
                     listOf(verifierKeyMaterial.getCertificate()!!),
                     publicUrl.getDnsName(),
                     publicUrl,
-                    useDeprecatedClientIdScheme = true,
                 )
             }
             override val openIdVerifier = OpenId4VpVerifier(
@@ -266,7 +266,7 @@ class VerifierProfiles(private val publicUrl: String) {
                     encryption = true,
                     responseUrl = responseUrl,
                     credentials = requestOptionsCredentials,
-                    presentationMechanism = PresentationMechanismEnum.DCQL,
+                    presentationMechanism = presentationMechanism,
                 )
             ).getOrThrow().serialize()
         },
@@ -328,10 +328,13 @@ class VerifierProfiles(private val publicUrl: String) {
         }
     )
 
-    fun potentialValidator(): Validator =
-        Validator(verifierJwsService = DefaultVerifierJwsService(publicKeyLookup = { jwsSigned ->
-            buildPotentialKeyLookup(jwsSigned)
-        }))
+    fun potentialValidator(): Validator = Validator(
+        verifyJwsObject = VerifyJwsObject(
+            publicKeyLookup = { jwsSigned ->
+                buildPotentialKeyLookup(jwsSigned)
+            }
+        )
+    )
 
     fun getVerifierByName(profileName: String): OpenId4VpVerifier? =
         knownProfiles.firstOrNull { it.name == profileName }?.openIdVerifier
