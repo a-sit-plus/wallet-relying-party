@@ -4,10 +4,12 @@ import at.asitplus.wallet.ehic.EhicScheme
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.healthid.HealthIdScheme
 import at.asitplus.wallet.lib.data.AttributeIndex
+import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import at.asitplus.wallet.lib.openid.RequestOptionsCredential
+import at.asitplus.wallet.por.PowerOfRepresentationDataElements
 import at.asitplus.wallet.por.PowerOfRepresentationScheme
 import at.asitplus.wallet.taxid.TaxId2025Scheme
 import kotlinx.serialization.SerialName
@@ -50,17 +52,53 @@ data class TransactionRequestCredential(
                 RequestOptionsCredential(
                     credentialScheme = scheme,
                     representation = representation,
-                    // if credential is not selectively disclosable, do not request any attributes
-                    requestedOptionalAttributes = scheme.requestedOptionalAttributes(representation),
+                    requestedOptionalAttributes = scheme.optionalAttributes(representation),
+                    requestedAttributes = scheme.requestedAttributes(representation),
                 )
             }
         }
 
-    private fun CredentialScheme.requestedOptionalAttributes(
+    // if the credential is not selectively disclosable, do not request any attributes
+    private fun CredentialScheme.optionalAttributes(
         representation: CredentialRepresentation,
     ): Set<String>? =
         if (!isSd() && representation == CredentialRepresentation.SD_JWT) null
         else attributes?.ifEmpty { null }?.toSet()
+
+    // if the credential is not selectively disclosable, request all attributes
+    private fun CredentialScheme.requestedAttributes(
+        representation: CredentialRepresentation,
+    ): Set<String>? =
+        if (!isSd() && representation == CredentialRepresentation.SD_JWT) mandatoryAttributes()
+        else null
+
+    private fun ConstantIndex.CredentialScheme.mandatoryAttributes(): Set<String>? {
+        return when (this) {
+            is HealthIdScheme -> with(HealthIdScheme.Attributes) {
+                setOf(
+                    EXPIRY_DATE,
+                    ISSUE_DATE,
+                    ISSUING_AUTHORITY,
+                    ISSUING_COUNTRY,
+                )
+            }
+
+            is EhicScheme -> with(EhicScheme.Attributes) {
+                setOf(
+                    ISSUING_COUNTRY,
+                    SOCIAL_SECURITY_NUMBER,
+                    PREFIX_ISSUING_AUTHORITY,
+                    DOCUMENT_NUMBER,
+                    ISSUANCE_DATE,
+                    EXPIRY_DATE
+                )
+            }
+
+            is TaxId2025Scheme -> TaxId2025Scheme.requiredClaims.toSet()
+            is PowerOfRepresentationScheme -> PowerOfRepresentationDataElements.MANDATORY_ELEMENTS.toSet()
+            else -> setOf()
+        }
+    }
 
     @Suppress("DEPRECATION")
     private fun CredentialScheme.isSd(): Boolean = when (this) {

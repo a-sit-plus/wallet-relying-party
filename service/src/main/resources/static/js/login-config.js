@@ -18,7 +18,7 @@ export default { "schemeTypes": [
         { "label": "issuing_jurisdiction", "value": "issuing_jurisdiction" }
       ]
     },
-    { "label": "EuropeanHealthInsuranceCard",
+    { "label": "European Health Insurance Card (EHIC)",
       "value": "urn:eudi:ehic:1",
       "sd": false,
       "attributes": [
@@ -82,8 +82,8 @@ export default { "schemeTypes": [
         { "label": "signature_usual_mark", "value": "signature_usual_mark" }
       ]
     },
-    { "label": "PID (ISO)",
-      "value": "eu.europa.ec.eudi.pid.1",
+    { "label": "PID (pre ARF 1.8.0)",
+      "value": "urn:eu.europa.ec.eudi:pid:1",
       "sd": true,
       "attributes": [
         { "label": "family_name", "value": "family_name", "isSelected": true },
@@ -129,7 +129,7 @@ export default { "schemeTypes": [
         { "label": "location_status", "value": "location_status" }
       ]
     },
-    { "label": "PID (ARF 1.8.0)",
+    { "label": "PID (SD-JWT after ARF 1.8.0)",
       "value": "urn:eudi:pid:1",
       "sd": true,
       "attributes": [
@@ -304,7 +304,7 @@ export default { "schemeTypes": [
         }
       ]
     },
-    { "label": "EuropeanHealthInsuranceCard",
+    { "label": "European Health Insurance Card (EHIC)",
       "simple": false,
       "credentials": [
         {
@@ -349,15 +349,15 @@ export default { "schemeTypes": [
       "simple": false,
       "credentials": [
         {
-          "schemeType": "urn:eudi:pid:1",
+          "schemeType": "urn:eu.europa.ec.eudi:pid:1",
           "representation": "SD_JWT",
           "sd": true,
           "attributes": [
             { "label": "family_name", "value": "family_name", "isSelected": true },
             { "label": "given_name", "value": "given_name", "isSelected": true },
-            { "label": "birthdate", "value": "birthdate", "isSelected": true },
-            { "label": "nationalities", "value": "nationalities", "isSelected": true },
-            { "label": "date_of_expiry", "value": "date_of_expiry", "isSelected": true },
+            { "label": "birth_date", "value": "birth_date", "isSelected": true },
+            { "label": "nationality", "value": "nationality", "isSelected": true },
+            { "label": "expiry_date", "value": "expiry_date", "isSelected": true },
             { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true },
             { "label": "issuing_country", "value": "issuing_country", "isSelected": true },
           ]
@@ -427,15 +427,15 @@ export default { "schemeTypes": [
       "simple": false,
       "credentials": [
         {
-          "schemeType": "urn:eudi:pid:1",
+          "schemeType": "urn:eu.europa.ec.eudi:pid:1",
           "representation": "SD_JWT",
           "sd": true,
           "attributes": [
             { "label": "family_name", "value": "family_name", "isSelected": true },
             { "label": "given_name", "value": "given_name", "isSelected": true },
-            { "label": "birthdate", "value": "birthdate", "isSelected": true },
-            { "label": "nationalities", "value": "nationalities", "isSelected": true },
-            { "label": "date_of_expiry", "value": "date_of_expiry", "isSelected": true },
+            { "label": "birth_date", "value": "birth_date", "isSelected": true },
+            { "label": "nationality", "value": "nationality", "isSelected": true },
+            { "label": "expiry_date", "value": "expiry_date", "isSelected": true },
             { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true },
             { "label": "issuing_country", "value": "issuing_country", "isSelected": true }
           ]

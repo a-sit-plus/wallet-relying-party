@@ -43,7 +43,7 @@
             setup: function () {
                 let app = createBasicSetup(config);
                 const selectedProfile = config.profiles.find(function (profile) {
-                    return profile.label == "EuropeanHealthInsuranceCard";
+                    return profile.label == "European Health Insurance Card (EHIC)";
                 });
                 app.updateProfile(selectedProfile);
                 app.generateQrCode();
@@ -67,9 +67,9 @@
 <header-comp></header-comp>
 
 <div class="container px-4 py-5 position-relative">
-    <title-comp title="EuropeanHealthInsuranceCard" icon="bi-capsule-pill">
+    <title-comp title="European Health Insurance Card (EHIC)" icon="bi-capsule-pill">
         <p>
-            Present an european health insurance card associated with the wallet holder to the service provider.
+            Present a European Health Insurance Card (EHIC) associated with the wallet holder to the service provider.
         </p>
     </title-comp>
 
