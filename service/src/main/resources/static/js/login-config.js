@@ -82,7 +82,7 @@ export default { "schemeTypes": [
         { "label": "signature_usual_mark", "value": "signature_usual_mark" }
       ]
     },
-    { "label": "PID (pre ARF 1.8.0)",
+    { "label": "PID",
       "value": "urn:eu.europa.ec.eudi:pid:1",
       "sd": true,
       "attributes": [
@@ -129,7 +129,7 @@ export default { "schemeTypes": [
         { "label": "location_status", "value": "location_status" }
       ]
     },
-    { "label": "PID (SD-JWT after ARF 1.8.0)",
+    { "label": "PID (SD-JWT, ARF 1.8.0)",
       "value": "urn:eudi:pid:1",
       "sd": true,
       "attributes": [
