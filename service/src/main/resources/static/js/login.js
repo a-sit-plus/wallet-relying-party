@@ -77,6 +77,7 @@ const createBasicSetup = function (config) {
         console.log('updateSchemeType', schemeType)
         credential.schemeType = schemeType
         credential.attributes = schemeType.attributes
+        credential.validRepresentations = schemeType.validRepresentations
         credential.sd = schemeType.sd
         compareRequestChanged()
     }
@@ -164,7 +165,7 @@ const createBasicSetup = function (config) {
         return JSON.stringify(request)
     }
 
-    function parseJwt (token) {
+    function parseJwt(token) {
         const parts = token.split('.');
 
         if (parts.length !== 3) {
@@ -173,7 +174,7 @@ const createBasicSetup = function (config) {
 
         // Source: https://stackoverflow.com/a/38552302
         const content = parts[1].replace(/-/g, '+').replace(/_/g, '/')
-        const payload = decodeURIComponent(atob(content).split('').map(function(c) {
+        const payload = decodeURIComponent(atob(content).split('').map(function (c) {
             return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
         }).join(''))
 
@@ -181,7 +182,7 @@ const createBasicSetup = function (config) {
     }
 
     async function invokeDCAPI() {
-        try{
+        try {
             if (!document.getElementsByName("DCQL")[0].checked) {
                 const confirmed = confirm("Presentation Mechanism will be set to DCQL for Digital Credentials API")
                 if (!confirmed) {
@@ -198,22 +199,22 @@ const createBasicSetup = function (config) {
             const requestUri = new URLSearchParams(urlString).get("request_uri")
 
             const query = await fetch(requestUri)
-              .then(async(response) => {
-                if (!response.ok) {
-                  throw new Error('Network response was not ok ' + response.statusText);
-                }
-                const responseText = (await response.text())
-                const jwtResponse = parseJwt(responseText);
+                .then(async (response) => {
+                    if (!response.ok) {
+                        throw new Error('Network response was not ok ' + response.statusText);
+                    }
+                    const responseText = (await response.text())
+                    const jwtResponse = parseJwt(responseText);
 
-                if (!('dcql_query' in jwtResponse)) {
-                    throw new Error('Object does not have a query' + jwtResponse);
-                }
+                    if (!('dcql_query' in jwtResponse)) {
+                        throw new Error('Object does not have a query' + jwtResponse);
+                    }
 
-                return {
-                    dcql_query: jwtResponse.dcql_query,
-                    nonce: jwtResponse.nonce
-                 }
-              });
+                    return {
+                        dcql_query: jwtResponse.dcql_query,
+                        nonce: jwtResponse.nonce
+                    }
+                });
 
             const requestData = {
                 responseType: "vp_token",
@@ -224,14 +225,14 @@ const createBasicSetup = function (config) {
 
             const protocolName = "openid4vp"
             const providers = [{
-               protocol: protocolName,
-               request:  JSON.stringify(requestData)
-             }];
+                protocol: protocolName,
+                request: JSON.stringify(requestData)
+            }];
 
             const walletResponse = await navigator.credentials.get({
-              digital: {
-                providers: providers,
-              }
+                digital: {
+                    providers: providers,
+                }
             });
 
             if (walletResponse.constructor.name == 'DigitalCredential') {
@@ -244,8 +245,7 @@ const createBasicSetup = function (config) {
             } else {
                 throw new Error("Unknown response type")
             }
-        }
-        catch(err) {
+        } catch (err) {
             console.log('error: ', error)
         }
     }

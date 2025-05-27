@@ -83,10 +83,12 @@ export default {
                     <input class="form-check-input" type="radio"
                            :name="(credential.schemeType ? credential.schemeType.label : 'unknown') + '-representation'"
                            :value="item.value"
+                           :disabled="credential.validRepresentations && !credential.validRepresentations.includes(item.value)"
                            :checked="credential.representation && credential.representation.value == item.value"
                            @click="$emit('updateRepresentation', credential, item)">
                     <label class="form-check-label">
                         {{ item.label }} - <span class="text-primary">{{ item.value }}</span>
+                        <span v-if="credential.validRepresentations && credential.validRepresentations.includes(item.value) == false"> (Not supported)</span>
                     </label>
                 </div>
             </div>

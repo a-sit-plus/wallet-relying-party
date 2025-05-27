@@ -2,6 +2,7 @@ export default { "schemeTypes": [
     { "label": "HealthID",
       "value": "urn:eu.europa.ec.eudi:hiid:1",
       "sd": false,
+      "validRepresentations": [ "SD_JWT", "ISO_MDOC" ],
       "attributes": [
         { "label": "health_insurance_id", "value": "health_insurance_id" },
         { "label": "patient_id", "value": "patient_id" },
@@ -21,6 +22,7 @@ export default { "schemeTypes": [
     { "label": "European Health Insurance Card (EHIC)",
       "value": "urn:eudi:ehic:1",
       "sd": false,
+      "validRepresentations": [ "SD_JWT" ],
       "attributes": [
         { "label": "issuing_country", "value": "issuing_country" },
         { "label": "social_security_number", "value": "social_security_number" },
@@ -33,6 +35,7 @@ export default { "schemeTypes": [
     { "label": "mDL",
       "value": "org.iso.18013.5.1.mDL",
       "sd": true,
+      "validRepresentations": [ "ISO_MDOC" ],
       "attributes": [
         { "label": "family_name", "value": "family_name", "isSelected": true },
         { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -85,6 +88,7 @@ export default { "schemeTypes": [
     { "label": "PID",
       "value": "urn:eu.europa.ec.eudi:pid:1",
       "sd": true,
+      "validRepresentations": [ "SD_JWT", "ISO_MDOC" ],
       "attributes": [
         { "label": "family_name", "value": "family_name", "isSelected": true },
         { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -132,6 +136,7 @@ export default { "schemeTypes": [
     { "label": "PID (SD-JWT, ARF 1.8.0)",
       "value": "urn:eudi:pid:1",
       "sd": true,
+      "validRepresentations": [ "SD_JWT" ],
       "attributes": [
         { "label": "family_name", "value": "family_name", "isSelected": true },
         { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -179,6 +184,7 @@ export default { "schemeTypes": [
     { "label": "Power of Representation (PoR)",
       "value": "urn:eu.europa.ec.eudi:por:1",
       "sd": false,
+      "validRepresentations": [ "SD_JWT" ],
       "attributes": [
         { "label": "legal_person_identifier", "value": "legal_person_identifier" },
         { "label": "legal_name", "value": "legal_name" },
@@ -198,6 +204,7 @@ export default { "schemeTypes": [
     { "label": "Certificate of Residence (CoR)",
       "value": "eu.europa.ec.eudi.cor.1",
       "sd": true,
+      "validRepresentations": [ "SD_JWT" ],
       "attributes": [
         { "label": "family_name", "value": "family_name", "isSelected": true },
         { "label": "given_name", "value": "given_name", "isSelected": true },
@@ -228,6 +235,7 @@ export default { "schemeTypes": [
     { "label": "Company Registration (CRA)",
       "value": "urn:eu.europa.ec.eudi:cr:1",
       "sd": true,
+      "validRepresentations": [ "SD_JWT" ],
       "attributes": [
         { "label": "company_name", "value": "company_name", "isSelected": true },
         { "label": "company_type", "value": "company_type", "isSelected": true },
@@ -243,9 +251,10 @@ export default { "schemeTypes": [
         { "label": "branch", "value": "branch" }
       ]
     },
-    { "label": "Tax Identified (TAX ID)",
+    { "label": "Tax ID",
       "value": "urn:eu.europa.ec.eudi:tax:1",
       "sd": false,
+      "validRepresentations": [ "SD_JWT" ],
       "attributes": [
         { "label": "tax_number", "value": "tax_number" },
         { "label": "affiliation_country", "value": "affiliation_country" },
