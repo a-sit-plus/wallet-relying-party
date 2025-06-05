@@ -68,13 +68,17 @@ export default {
 
                       <div v-for="(credential, key) in item.credentials" :key="key"
                            class="border rounded p-2 bg-light my-3">
-                          <h4>Credential Type: {{ credential.credentialType }}</h4>
+                          <h4 v-if="credential.credentialType != null">Credential Type: {{ credential.credentialType }}</h4>
                           <p v-for="(value, key) in credential.allFields" :key="key"
                              class="text-break mb-1">
                               <span class="fw-semibold">{{ key }}: </span>
                               <span v-if="key == 'portrait' || key == 'signature_usual_mark'"
                                     class="text-truncate d-inline-block" style="max-width: 100%">{{ value }}</span>
                               <span v-else>{{ value }}</span>
+                          </p>
+                          <p v-if="credential.error != null">
+                              <h4>Error</h4>
+                              <span class="row alert alert-danger" role="alert">{{ credential.error }}</span>
                           </p>
                       </div>
                       <div class="foldout-fade"></div>

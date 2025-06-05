@@ -154,7 +154,7 @@ class ApiController(
             throw ResponseStatusException(HttpStatus.NOT_FOUND)
         }
         val user = try {
-            validateSiopResponse(requestBody, transaction.profile.openIdVerifier)
+            validateSiopResponse(id, requestBody, transaction.profile.openIdVerifier)
         } catch (e: Exception) {
             statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})", e)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, e.localizedMessage, e)
@@ -228,9 +228,12 @@ class ApiController(
     }
 
     private suspend fun validateSiopResponse(
+        id: String,
         requestBody: String,
         verifier: OpenId4VpVerifier,
-    ): Siop2User? = when (val result = verifier.validateAuthnResponse(requestBody)) {
+    ): Siop2User? = when (val result = verifier.validateAuthnResponse(requestBody).also {
+        Napier.i("/transaction/result/$id extracted result $it")
+    }) {
         is AuthnResponseResult.VerifiableDCQLPresentationValidationResults -> result.validationResults.toSiop2User()
         is AuthnResponseResult.Success -> result.vp.toSiop2User()
         is AuthnResponseResult.SuccessSdJwt -> result.toApiItemCredential().toSiop2User()

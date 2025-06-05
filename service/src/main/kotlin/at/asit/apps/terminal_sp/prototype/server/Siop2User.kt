@@ -80,12 +80,12 @@ fun ApiItemCredential.getClaim(claim: String) = this.allFields?.entries?.firstOr
 fun VerifiablePresentationValidationResults.toApiItemCredentials(): List<ApiItemCredential> =
     validationResults.flatMap {
         when (it) {
-            is Error -> listOf()
-            is IdToken -> listOf()
+            is Error -> listOf(it.toApiItemCredential())
+            is IdToken -> listOf(it.toApiItemCredential())
             is Success -> listOf(it.vp.toApiItemCredential())
             is SuccessIso -> it.toApiItemCredentials()
             is SuccessSdJwt -> listOf(it.toApiItemCredential())
-            is ValidationError -> listOf()
+            is ValidationError -> listOf(it.toApiItemCredential())
             is VerifiablePresentationValidationResults -> it.toApiItemCredentials()
             is VerifiableDCQLPresentationValidationResults -> it.validationResults.toApiItemCredentials()
         }
@@ -94,16 +94,28 @@ fun VerifiablePresentationValidationResults.toApiItemCredentials(): List<ApiItem
 fun Map<DCQLCredentialQueryIdentifier, AuthnResponseResult>.toApiItemCredentials(): List<ApiItemCredential> =
     values.flatMap {
         when (it) {
-            is Error -> listOf()
-            is IdToken -> listOf()
+            is Error -> listOf(it.toApiItemCredential())
+            is IdToken -> listOf(it.toApiItemCredential())
             is Success -> listOfNotNull(it.vp.toApiItemCredential())
             is SuccessIso -> it.toApiItemCredentials()
             is SuccessSdJwt -> listOfNotNull(it.toApiItemCredential())
-            is ValidationError -> listOf()
+            is ValidationError -> listOf(it.toApiItemCredential())
             is VerifiableDCQLPresentationValidationResults -> it.validationResults.toApiItemCredentials()
             is VerifiablePresentationValidationResults -> listOfNotNull(it.toApiItemCredentials())
         }
     }.filterIsInstance<ApiItemCredential>()
+
+fun Error.toApiItemCredential(): ApiItemCredential = ApiItemCredential(
+    error = reason + cause?.let { ": " + it.message },
+)
+
+fun IdToken.toApiItemCredential(): ApiItemCredential = ApiItemCredential(
+    error = "Got IdToken: ${this.idToken}"
+)
+
+fun ValidationError.toApiItemCredential(): ApiItemCredential = ApiItemCredential(
+    error = field + cause?.let { ": " + it.message }
+)
 
 fun Map<DCQLCredentialQueryIdentifier, AuthnResponseResult>.toSiop2User(): Siop2User? =
     this.toApiItemCredentials().toSiop2User()

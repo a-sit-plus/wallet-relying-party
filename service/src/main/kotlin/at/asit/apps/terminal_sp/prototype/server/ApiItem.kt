@@ -13,7 +13,7 @@ data class ApiItem(
     val lastname: String,
     val imageDataBase64: String?,
     val timestamp: Long,
-    val credentials: List<ApiItemCredential>
+    val credentials: List<ApiItemCredential>,
 )
 
 @Serializable
@@ -21,6 +21,7 @@ data class ApiItemCredential(
     val jwtCredential: JsonElement? = null,
     val allFields: JsonObject? = null,
     val credentialType: String? = null,
+    val error: String? = null,
 )
 
 @Serializable
