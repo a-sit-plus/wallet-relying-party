@@ -86,11 +86,14 @@ data class TransactionRequestCredential(
             is EhicScheme -> with(EhicScheme.Attributes) {
                 setOf(
                     ISSUING_COUNTRY,
-                    SOCIAL_SECURITY_NUMBER,
+                    PERSONAL_ADMINISTRATIVE_NUMBER,
                     PREFIX_ISSUING_AUTHORITY,
+                    PREFIX_AUTHENTIC_SOURCE,
                     DOCUMENT_NUMBER,
-                    ISSUANCE_DATE,
-                    EXPIRY_DATE
+                    DATE_OF_ISSUANCE,
+                    DATE_OF_EXPIRY,
+                    STARTING_DATE,
+                    ENDING_DATE,
                 )
             }
 

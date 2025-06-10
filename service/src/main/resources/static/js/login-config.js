@@ -25,11 +25,14 @@ export default { "schemeTypes": [
       "validRepresentations": [ "SD_JWT" ],
       "attributes": [
         { "label": "issuing_country", "value": "issuing_country" },
-        { "label": "social_security_number", "value": "social_security_number" },
+        { "label": "personal_administrative_number", "value": "personal_administrative_number" },
         { "label": "issuing_authority", "value": "issuing_authority" },
+        { "label": "authentic_source", "value": "authentic_source" },
         { "label": "document_number", "value": "document_number" },
-        { "label": "issuance_date", "value": "issuance_date" },
-        { "label": "expiry_date", "value": "expiry_date" },
+        { "label": "date_of_issuance", "value": "date_of_issuance" },
+        { "label": "date_of_expiry", "value": "date_of_expiry" },
+        { "label": "starting_date", "value": "starting_date" },
+        { "label": "ending_date", "value": "ending_date" },
       ]
     },
     { "label": "mDL",
@@ -322,11 +325,14 @@ export default { "schemeTypes": [
           "sd": false,
           "attributes": [
             { "label": "issuing_country", "value": "issuing_country" },
-            { "label": "social_security_number", "value": "social_security_number" },
+            { "label": "personal_administrative_number", "value": "personal_administrative_number" },
             { "label": "issuing_authority", "value": "issuing_authority" },
+            { "label": "authentic_source", "value": "authentic_source" },
             { "label": "document_number", "value": "document_number" },
-            { "label": "issuance_date", "value": "issuance_date" },
-            { "label": "expiry_date", "value": "expiry_date" },
+            { "label": "date_of_issuance", "value": "date_of_issuance" },
+            { "label": "date_of_expiry", "value": "date_of_expiry" },
+            { "label": "starting_date", "value": "starting_date" },
+            { "label": "ending_date", "value": "ending_date" },
           ]
         }
       ]
