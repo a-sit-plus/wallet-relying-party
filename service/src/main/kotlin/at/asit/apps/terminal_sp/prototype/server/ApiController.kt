@@ -86,13 +86,14 @@ class ApiController(
             val remoteWalletPrefix = "https://wallet.a-sit.at/remote/" + if (request.simple) "simple" else ""
             val remoteWalletUrl = it.buildQrCodeUrl(transactionUrl, remoteWalletPrefix)
             TransactionProfile(
-                transactionId,
-                it.name,
-                it.label,
-                it.urlPrefix,
-                qrCodeBytes.toDataUrl(),
-                qrCodeUrl,
-                remoteWalletUrl
+                id = transactionId,
+                name = it.name,
+                description = it.description,
+                label = it.label,
+                prefix = it.urlPrefix,
+                png = qrCodeBytes.toDataUrl(),
+                url = qrCodeUrl,
+                remoteWalletUrl = remoteWalletUrl
             )
         }
         val response = TransactionResponse(profiles)

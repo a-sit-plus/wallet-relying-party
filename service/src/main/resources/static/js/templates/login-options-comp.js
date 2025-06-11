@@ -42,6 +42,7 @@ export default {
              role="tabpanel"
              :id="'tab-' + profile.name"
              :class="{ 'active' : index == 0}">
+             <p>Details: {{profile.description}}</p>
             <div class="row">
             <div class="col-lg-4 border rounded p-2 bg-white">
                 <h2>Option A: Cross device</h2>

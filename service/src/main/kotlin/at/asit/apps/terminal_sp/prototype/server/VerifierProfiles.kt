@@ -71,6 +71,7 @@ class VerifierProfiles(private val publicUrl: String) {
         object : Profile {
             override val name = DEFAULT_PROFILE
             override val label = "Potential (v1)"
+            override val description = "pre-registered client, OpenID4VP d18, direct_post"
             override val urlPrefix = "haip://"
             override val clientIdScheme = PreRegistered(
                 clientId = "AT-GV-EGIZ-CUSTOMVERIFIER",
@@ -124,6 +125,7 @@ class VerifierProfiles(private val publicUrl: String) {
             )
             override val name = "Potentialv2"
             override val label = "Potential (v2)"
+            override val description = "x509_san_dns, OpenID4VP d18, direct_post.jwt"
             override val urlPrefix = "haip://"
             override val clientIdScheme = runBlocking {
                 ClientIdScheme.CertificateSanDns(
@@ -182,6 +184,7 @@ class VerifierProfiles(private val publicUrl: String) {
             )
             override val name = "HAIPd01"
             override val label = "HAIP (d01)"
+            override val description = "x509_san_dns, OpenID4VP d23, direct_post"
             override val urlPrefix = "haip://"
             override val clientIdScheme = runBlocking {
                 ClientIdScheme.CertificateSanDns(
@@ -231,6 +234,7 @@ class VerifierProfiles(private val publicUrl: String) {
             )
             override val name = "HAIPd03"
             override val label = "HAIP (d03)"
+            override val description = "x509_san_dns, OpenID4VP d23, direct_post.jwt"
             override val urlPrefix = "haip://"
             override val clientIdScheme = runBlocking {
                 ClientIdScheme.CertificateSanDns(
@@ -281,6 +285,7 @@ class VerifierProfiles(private val publicUrl: String) {
             )
             override val name = "MDOC"
             override val label = "ISO 18013-7"
+            override val description = "x509_san_dns, OpenID4VP d18, direct_post.jwt"
             override val urlPrefix = "mdoc-openid4vp://"
             override val clientIdScheme = runBlocking {
                 ClientIdScheme.CertificateSanDns(
@@ -309,6 +314,57 @@ class VerifierProfiles(private val publicUrl: String) {
                     }
                     .toUriString()
             }
+
+            override suspend fun transactionGet(
+                responseUrl: String,
+                state: String,
+                requestOptionsCredentials: Set<RequestOptionsCredential>,
+                presentationMechanism: PresentationMechanismEnum,
+            ): String = openIdVerifier.createAuthnRequestAsSignedRequestObject(
+                OpenIdRequestOptions(
+                    state = state,
+                    responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
+                    responseUrl = responseUrl,
+                    credentials = requestOptionsCredentials,
+                    encryption = true,
+                    presentationMechanism = presentationMechanism,
+                )
+            ).getOrThrow().serialize()
+        },
+        object : Profile {
+            private val verifierKeyMaterial = KeyStoreMaterial(
+                keyStore = KeyStore.getInstance("PKCS12").apply {
+                    load(File("verifier.p12").inputStream(), "changeit".toCharArray())
+                },
+                keyAlias = "verifier",
+                privateKeyPassword = "changeit".toCharArray(),
+                certAlias = "verifier",
+            )
+            override val name = "EUDIW"
+            override val label = "EUDIW Ref."
+            override val description = "x509_san_dns, OpenID4VP d23, direct_post.jwt"
+            override val urlPrefix = "openid4vp://"
+            override val clientIdScheme = runBlocking {
+                ClientIdScheme.CertificateSanDns(
+                    listOf(verifierKeyMaterial.getCertificate()!!),
+                    publicUrl.getDnsName(),
+                    publicUrl,
+                )
+            }
+            override val openIdVerifier = OpenId4VpVerifier(
+                keyMaterial = verifierKeyMaterial,
+                clientIdScheme = clientIdScheme
+            )
+
+            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
+                .fromUriString(urlPrefix).apply {
+                    AuthenticationRequestParameters(
+                        clientId = clientIdScheme.clientId,
+                        requestUri = requestUrl,
+                    ).encodeToParameters()
+                        .forEach { queryParam(it.key, it.value) }
+                }
+                .toUriString()
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -371,6 +427,7 @@ private fun String.getDnsName() = UriComponentsBuilder.fromUriString(this).build
 interface Profile {
     val name: String
     val label: String
+    val description: String
     val urlPrefix: String
     val clientIdScheme: ClientIdScheme
     val openIdVerifier: OpenId4VpVerifier
