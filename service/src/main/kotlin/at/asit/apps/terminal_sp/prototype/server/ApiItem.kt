@@ -13,7 +13,7 @@ data class ApiItem(
     val lastname: String,
     val imageDataBase64: String?,
     val timestamp: Long,
-    val credentials: List<ApiItemCredential>,
+    val credentials: Collection<ApiItemCredential>,
 )
 
 @Serializable

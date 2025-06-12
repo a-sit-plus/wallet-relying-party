@@ -4,24 +4,22 @@ import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.lib.data.*
+import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
+import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
-import at.asitplus.wallet.lib.iso.IssuerSignedItem
+import at.asitplus.wallet.lib.data.IsoDocumentParsed
+import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
+import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.*
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
-import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
-import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.encodeToJsonElement
-import kotlinx.serialization.json.jsonPrimitive
 import org.springframework.security.core.AuthenticatedPrincipal
 import java.security.MessageDigest
 import java.time.Instant
@@ -37,7 +35,7 @@ class Siop2User(
 
 }
 
-fun List<ApiItemCredential>.toSiop2User() = Siop2User(
+fun Collection<ApiItemCredential>.toSiop2User() = Siop2User(
     apiItem = ApiItem(
         id = Json.encodeToString(this).sha256(),
         firstname = firstNotNullOfOrNull { it.getGivenName() } ?: "N/A",
@@ -77,21 +75,21 @@ fun ApiItemCredential.getClaim(claim: String) = this.allFields?.entries?.firstOr
     }
 }
 
-fun VerifiablePresentationValidationResults.toApiItemCredentials(): List<ApiItemCredential> =
+fun VerifiablePresentationValidationResults.toApiItemCredentials(): Collection<ApiItemCredential> =
     validationResults.flatMap {
         when (it) {
             is Error -> listOf(it.toApiItemCredential())
             is IdToken -> listOf(it.toApiItemCredential())
-            is Success -> listOf(it.vp.toApiItemCredential())
+            is Success -> it.vp.toApiItemCredential()
             is SuccessIso -> it.toApiItemCredentials()
             is SuccessSdJwt -> listOf(it.toApiItemCredential())
             is ValidationError -> listOf(it.toApiItemCredential())
             is VerifiablePresentationValidationResults -> it.toApiItemCredentials()
             is VerifiableDCQLPresentationValidationResults -> it.validationResults.toApiItemCredentials()
         }
-    }.filterNotNull()
+    }
 
-fun Map<DCQLCredentialQueryIdentifier, AuthnResponseResult>.toApiItemCredentials(): List<ApiItemCredential> =
+fun Map<DCQLCredentialQueryIdentifier, AuthnResponseResult>.toApiItemCredentials(): Collection<ApiItemCredential> =
     values.flatMap {
         when (it) {
             is Error -> listOf(it.toApiItemCredential())
@@ -120,46 +118,80 @@ fun ValidationError.toApiItemCredential(): ApiItemCredential = ApiItemCredential
 fun Map<DCQLCredentialQueryIdentifier, AuthnResponseResult>.toSiop2User(): Siop2User? =
     this.toApiItemCredentials().toSiop2User()
 
-fun VerifiablePresentationParsed.toApiItemCredential(): ApiItemCredential? = verifiableCredentials
-    .map { it.vc.credentialSubject }
-    .filterIsInstance<EuPidCredential>()
-    .firstOrNull()?.toApiItemCredential()
+fun VerifiablePresentationParsed.toApiItemCredential(): List<ApiItemCredential> =
+    freshVerifiableCredentials.takeIf { it.isNotEmpty() }?.let {
+        it.map { it.vcJws.vc.credentialSubject }
+            .filterIsInstance<EuPidCredential>()
+            .map { it.toApiItemCredential() }
+    } ?: notVerifiablyFreshVerifiableCredentials.takeIf { it.isNotEmpty() }?.let {
+        it.map { it.freshnessSummary }
+            .map { it.toApiItemCredential() }
+    } ?: invalidVerifiableCredentials.takeIf { it.isNotEmpty() }?.let {
+        it.map { ApiItemCredential(error = "Structure invalid: $it") }
+    } ?: listOf(ApiItemCredential(error = "No result"))
 
-fun VerifiablePresentationParsed.toSiop2User() = verifiableCredentials
-    .map { it.vc.credentialSubject }
-    .filterIsInstance<EuPidCredential>()
-    .firstOrNull()?.toApiItemCredential()?.toSiop2User()
+fun CredentialFreshnessSummary.VcJws.toApiItemCredential(): ApiItemCredential =
+    ApiItemCredential(error = this.toString())
 
 private fun EuPidCredential.toApiItemCredential() =
     ApiItemCredential(
-        jwtCredential = kotlin.runCatching { vckJsonSerializer.encodeToJsonElement(this) }.getOrNull(),
+        jwtCredential = runCatching { vckJsonSerializer.encodeToJsonElement(this) }.getOrNull(),
         credentialType = EuPidScheme.vcType,
     )
 
 fun SuccessSdJwt.toApiItemCredential(): ApiItemCredential =
-    ApiItemCredential(
-        allFields = reconstructed,
-        credentialType = verifiableCredentialSdJwt.verifiableCredentialType,
-    )
+    if (freshnessSummary.isFresh) {
+        ApiItemCredential(
+            allFields = reconstructed,
+            credentialType = verifiableCredentialSdJwt.verifiableCredentialType,
+        )
+    } else {
+        freshnessSummary.toApiItemCredential()
+    }
 
-fun SuccessIso.toApiItemCredentials(): List<ApiItemCredential> = documents.map { doc ->
+fun CredentialFreshnessSummary.toApiItemCredential(): ApiItemCredential =
+    if (!timelinessValidationSummary.isTimely) {
+        timelinessValidationSummary.toApiItemCredential()
+    } else when (tokenStatusValidationResult) {
+        is TokenStatusValidationResult.Invalid -> ApiItemCredential(error = "Token status invalid")
+        is TokenStatusValidationResult.Rejected -> ApiItemCredential(error = "Token status rejected")
+        is TokenStatusValidationResult.Valid -> ApiItemCredential(error = "Token status valid")
+    }
+
+fun CredentialTimelinessValidationSummary.toApiItemCredential() = ApiItemCredential(
+    error = if (isNotYetValid) "Credential not yet valid: ${detailsNotYetValid()}" else if (isExpired) "Credential expired: ${detailsExpired()}" else toString(),
+)
+
+fun CredentialTimelinessValidationSummary.detailsNotYetValid() = when (this) {
+    is CredentialTimelinessValidationSummary.Mdoc -> details.msoTimelinessValidationSummary?.mdocNotYetValidError
+    is CredentialTimelinessValidationSummary.SdJwt -> details.jwsNotYetValidError
+    is CredentialTimelinessValidationSummary.VcJws -> details.jwsNotYetValidError ?: details.credentialNotYetValidError
+}
+
+fun CredentialTimelinessValidationSummary.detailsExpired() = when (this) {
+    is CredentialTimelinessValidationSummary.Mdoc -> details.msoTimelinessValidationSummary?.mdocExpiredError
+    is CredentialTimelinessValidationSummary.SdJwt -> details.jwsExpiredError
+    is CredentialTimelinessValidationSummary.VcJws -> details.jwsExpiredError ?: details.credentialExpiredError
+}
+
+fun SuccessIso.toApiItemCredentials(): List<ApiItemCredential> = documents.map { it.toApiItemCredential() }
+
+private fun IsoDocumentParsed.toApiItemCredential(): ApiItemCredential = if (freshnessSummary.isFresh) {
     ApiItemCredential(
         allFields = buildJsonObject {
-            doc.validItems.forEach {
+            validItems.forEach {
                 put(it.elementIdentifier, it.elementValue.toJsonElement())
             }
         },
-        credentialType = doc.mso.docType,
+        credentialType = mso.docType,
+    )
+} else {
+    ApiItemCredential(
+        error = "Credential not fresh: $freshnessSummary"
     )
 }
 
 private fun String.sha256() = runCatching {
     MessageDigest.getInstance("SHA-256").digest(this.encodeToByteArray()).encodeToString(Base64UrlStrict)
 }.getOrElse { this.hashCode().toString() }
-
-private fun IssuerSignedItem.elementValueToString() = when (elementValue) {
-    is ByteArray -> (elementValue as ByteArray).encodeToString(Base64())
-    is Array<*> -> (elementValue as Array<*>).contentToString()
-    else -> elementValue.toString()
-}
 

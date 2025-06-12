@@ -236,7 +236,7 @@ class ApiController(
         Napier.i("/transaction/result/$id extracted result $it")
     }) {
         is AuthnResponseResult.VerifiableDCQLPresentationValidationResults -> result.validationResults.toSiop2User()
-        is AuthnResponseResult.Success -> result.vp.toSiop2User()
+        is AuthnResponseResult.Success -> result.vp.toApiItemCredential().toSiop2User()
         is AuthnResponseResult.SuccessSdJwt -> result.toApiItemCredential().toSiop2User()
         is AuthnResponseResult.SuccessIso -> result.toApiItemCredentials().toSiop2User()
         is AuthnResponseResult.Error -> throw RuntimeException(result.reason, result.cause)

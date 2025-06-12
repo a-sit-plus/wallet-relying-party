@@ -405,7 +405,6 @@ class VerifierProfiles(private val publicUrl: String) {
 
     fun validator(): Validator = Validator(
         resolveStatusListToken = resolveStatusListToken(),
-        acceptedTokenStatuses = setOf(TokenStatus.Valid, TokenStatus.Invalid)
     )
 
     fun potentialValidator(): Validator = Validator(
@@ -415,7 +414,6 @@ class VerifierProfiles(private val publicUrl: String) {
             }
         ),
         resolveStatusListToken = resolveStatusListToken(),
-        acceptedTokenStatuses = setOf(TokenStatus.Valid, TokenStatus.Invalid)
     )
 
     private fun resolveStatusListToken() = StatusListTokenResolver {
