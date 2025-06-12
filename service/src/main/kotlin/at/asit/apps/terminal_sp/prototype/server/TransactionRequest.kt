@@ -72,7 +72,7 @@ data class TransactionRequestCredential(
         if (!isSd() && representation == CredentialRepresentation.SD_JWT) mandatoryAttributes()
         else null
 
-    private fun ConstantIndex.CredentialScheme.mandatoryAttributes(): Set<String>? {
+    private fun CredentialScheme.mandatoryAttributes(): Set<String>? {
         return when (this) {
             is HealthIdScheme -> with(HealthIdScheme.Attributes) {
                 setOf(

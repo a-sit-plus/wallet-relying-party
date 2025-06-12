@@ -1,5 +1,8 @@
 # Changelog
 
+Version 5.7.0:
+ - Update to VC-K 5.7.0
+
 Version 5.6.1:
  - Add support for european heath insurance card (EHIC) credential (1.1.0)
  - Update to VC-K 5.6.6

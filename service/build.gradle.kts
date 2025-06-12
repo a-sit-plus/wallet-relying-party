@@ -8,7 +8,7 @@ plugins {
     kotlin("plugin.spring")
     kotlin("plugin.jpa")
     kotlin("plugin.allopen")
-    id("org.springframework.boot") version "3.4.3"
+    id("org.springframework.boot") version "3.4.6"
     id("at.asitplus.gradle.conventions")
 }
 
@@ -38,8 +38,8 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 
     implementation(napier())
-    implementation("at.asitplus.wallet:vck:5.6.6")
-    implementation("at.asitplus.wallet:vck-openid:5.6.6")
+    implementation("at.asitplus.wallet:vck:5.7.0-SNAPSHOT")
+    implementation("at.asitplus.wallet:vck-openid:5.7.0-SNAPSHOT")
     implementation("at.asitplus.wallet:eupidcredential:3.0.1")
     implementation("at.asitplus.wallet:eupidcredential-sdjwt:1.0.1")
     implementation("at.asitplus.wallet:mobiledrivinglicence:1.1.5")

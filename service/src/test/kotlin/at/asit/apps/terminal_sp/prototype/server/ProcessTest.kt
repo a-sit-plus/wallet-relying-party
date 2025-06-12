@@ -2,15 +2,18 @@ package at.asit.apps.terminal_sp.prototype.server
 
 import at.asit.apps.terminal_sp.prototype.server.util.AntilogSlf4jAdapter
 import at.asitplus.wallet.lib.Initializer.initOpenIdModule
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.ClaimToBeIssued
+import at.asitplus.wallet.lib.agent.CredentialToBeIssued
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import com.benasher44.uuid.uuid4
-import com.fasterxml.jackson.databind.ObjectMapper
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.test.runTest
 import kotlinx.datetime.Clock
@@ -26,7 +29,6 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
-import kotlin.random.Random
 import kotlin.time.Duration.Companion.minutes
 
 @SpringBootTest
@@ -35,9 +37,6 @@ class ProcessTest {
 
     @Autowired
     private lateinit var mockMvc: MockMvc
-
-    @Autowired
-    private lateinit var objectMapper: ObjectMapper
 
     @Autowired
     private lateinit var transactionStore: TransactionStore
