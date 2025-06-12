@@ -87,8 +87,9 @@ class ProcessTest {
 
         val holderKey = EphemeralKeyWithoutCert()
         val holder = HolderAgent(keyMaterial = holderKey)
+        val issuer = IssuerAgent(statusListBaseUrl = "https://wallet.a-sit.at/m6/credentials/status")
         holder.storeCredential(
-            IssuerAgent().issueCredential(
+            issuer.issueCredential(
                 CredentialToBeIssued.VcSd(
                     claims = listOf(ClaimToBeIssued(AtomicAttribute2023.CLAIM_GIVEN_NAME, givenName)),
                     expiration = Clock.System.now() + 1.minutes,

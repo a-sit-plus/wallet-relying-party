@@ -12,7 +12,12 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyStoreMaterial
 import at.asitplus.wallet.lib.agent.Validator
 import at.asitplus.wallet.lib.agent.VerifierAgent
-import at.asitplus.wallet.lib.jws.DefaultVerifierJwsService
+import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
+import at.asitplus.wallet.lib.data.StatusListToken
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.ClientIdScheme
@@ -37,6 +42,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import org.springframework.web.util.UriComponentsBuilder
 import java.io.File
 import java.security.KeyStore
+import kotlin.time.Clock
 
 class VerifierProfiles(private val publicUrl: String) {
 
@@ -54,13 +60,11 @@ class VerifierProfiles(private val publicUrl: String) {
         }
     }
 
-    private fun buildPotentialKeyLookup(jwsSigned: JwsSigned<*>): Set<JsonWebKey>? =
+    private suspend fun buildPotentialKeyLookup(jwsSigned: JwsSigned<*>): Set<JsonWebKey>? =
         (jwsSigned.payload as? JsonObject)?.get("iss")?.jsonPrimitive?.content?.let { iss ->
-            runBlocking {
-                val url = buildVcIssuerUrl(iss)
-                Napier.i("Resolving Key for $iss from $url")
-                httpClient.get(url).body<JwtVcIssuerMetadata>().jsonWebKeySet?.keys?.toSet()
-            }
+            val url = buildVcIssuerUrl(iss)
+            Napier.i("Resolving Key for $iss from $url")
+            httpClient.get(url).body<JwtVcIssuerMetadata>().jsonWebKeySet?.keys?.toSet()
         }
 
     private fun buildVcIssuerUrl(iss: String): Url = URLBuilder(urlString = iss).apply {
@@ -80,12 +84,12 @@ class VerifierProfiles(private val publicUrl: String) {
                 useDeprecatedClientIdScheme = true,
             )
             override val openIdVerifier = OpenId4VpVerifier(
+                keyMaterial = EphemeralKeyWithoutCert(),
+                clientIdScheme = clientIdScheme,
                 verifier = VerifierAgent(
                     identifier = clientIdScheme.clientId,
                     validator = potentialValidator()
                 ),
-                keyMaterial = EphemeralKeyWithoutCert(),
-                clientIdScheme = clientIdScheme,
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
@@ -138,11 +142,11 @@ class VerifierProfiles(private val publicUrl: String) {
             val strippedClientId = clientIdScheme.clientId.removePrefix(clientIdScheme.scheme.prefix)
             override val openIdVerifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
+                clientIdScheme = clientIdScheme,
                 verifier = VerifierAgent(
                     identifier = strippedClientId,
                     validator = potentialValidator()
                 ),
-                clientIdScheme = clientIdScheme,
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
@@ -195,7 +199,11 @@ class VerifierProfiles(private val publicUrl: String) {
             }
             override val openIdVerifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
-                clientIdScheme = clientIdScheme
+                clientIdScheme = clientIdScheme,
+                verifier = VerifierAgent(
+                    identifier = clientIdScheme.clientId,
+                    validator = validator()
+                ),
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
@@ -245,7 +253,11 @@ class VerifierProfiles(private val publicUrl: String) {
             }
             override val openIdVerifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
-                clientIdScheme = clientIdScheme
+                clientIdScheme = clientIdScheme,
+                verifier = VerifierAgent(
+                    identifier = clientIdScheme.clientId,
+                    validator = validator()
+                ),
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
@@ -299,8 +311,11 @@ class VerifierProfiles(private val publicUrl: String) {
 
             override val openIdVerifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
-                verifier = VerifierAgent(identifier = strippedClientId),
                 clientIdScheme = clientIdScheme,
+                verifier = VerifierAgent(
+                    identifier = strippedClientId,
+                    validator = validator(),
+                ),
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String {
@@ -353,7 +368,11 @@ class VerifierProfiles(private val publicUrl: String) {
             }
             override val openIdVerifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
-                clientIdScheme = clientIdScheme
+                clientIdScheme = clientIdScheme,
+                verifier = VerifierAgent(
+                    identifier = clientIdScheme.clientId,
+                    validator = validator()
+                ),
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
@@ -384,13 +403,33 @@ class VerifierProfiles(private val publicUrl: String) {
         }
     )
 
+    fun validator(): Validator = Validator(
+        resolveStatusListToken = resolveStatusListToken(),
+        acceptedTokenStatuses = setOf(TokenStatus.Valid, TokenStatus.Invalid)
+    )
+
     fun potentialValidator(): Validator = Validator(
         verifyJwsObject = VerifyJwsObject(
             publicKeyLookup = { jwsSigned ->
                 buildPotentialKeyLookup(jwsSigned)
             }
-        )
+        ),
+        resolveStatusListToken = resolveStatusListToken(),
+        acceptedTokenStatuses = setOf(TokenStatus.Valid, TokenStatus.Invalid)
     )
+
+    private fun resolveStatusListToken() = StatusListTokenResolver {
+        Napier.i("Resolving token status for from $it")
+        run {
+            httpClient.get(it.string) {
+                header(HttpHeaders.Accept, MediaTypes.Application.STATUSLIST_JWT)
+            }.body<String>()
+        }.let {
+            JwsSigned.deserialize<StatusListTokenPayload>(StatusListTokenPayload.serializer(), it).getOrThrow()
+        }.let {
+            StatusListToken.StatusListJwt(it, kotlinx.datetime.Clock.System.now())
+        }
+    }
 
     fun getVerifierByName(profileName: String): OpenId4VpVerifier? =
         knownProfiles.firstOrNull { it.name == profileName }?.openIdVerifier
