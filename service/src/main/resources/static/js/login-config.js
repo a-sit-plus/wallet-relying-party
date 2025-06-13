@@ -133,7 +133,8 @@ export default { "schemeTypes": [
         { "label": "email_address", "value": "email_address" },
         { "label": "mobile_phone_number", "value": "mobile_phone_number" },
         { "label": "trust_anchor", "value": "trust_anchor" },
-        { "label": "location_status", "value": "location_status" }
+        { "label": "location_status", "value": "location_status" },
+        { "label": "iss", "value": "iss" },
       ]
     },
     { "label": "PID (SD-JWT, ARF 1.8.0)",
@@ -181,7 +182,8 @@ export default { "schemeTypes": [
         { "label": "personal_administrative_number", "value": "personal_administrative_number" },
         { "label": "email", "value": "email" },
         { "label": "phone_number", "value": "phone_number" },
-        { "label": "trust_anchor", "value": "trust_anchor" }
+        { "label": "trust_anchor", "value": "trust_anchor" },
+        { "label": "iss", "value": "iss" },
       ]
     },
     { "label": "Power of Representation (PoR)",
