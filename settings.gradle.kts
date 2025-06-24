@@ -12,6 +12,8 @@ pluginManagement {
     }
 }
 
+val vckVersion: String by extra
+
 include("service")
 
 dependencyResolutionManagement {
@@ -21,8 +23,8 @@ dependencyResolutionManagement {
         maven("https://oss.sonatype.org/content/repositories/snapshots/")
     }
     versionCatalogs {
-        create("vclib") {
-            from("at.asitplus.wallet:vck-openid-versionCatalog:5.7.0-SNAPSHOT")
+        create("vck") {
+            from("at.asitplus.wallet:vck-openid-versionCatalog:$vckVersion")
         }
     }
 }

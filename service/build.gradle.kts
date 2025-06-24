@@ -12,6 +12,7 @@ plugins {
     id("at.asitplus.gradle.conventions")
 }
 
+val vckVersion: String by extra
 val artifactVersion: String by extra
 group = "at.asitplus.wallet"
 version = artifactVersion
@@ -38,8 +39,8 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-starter-test")
 
     implementation(napier())
-    implementation("at.asitplus.wallet:vck:5.7.0-SNAPSHOT")
-    implementation("at.asitplus.wallet:vck-openid:5.7.0-SNAPSHOT")
+    implementation("at.asitplus.wallet:vck:$vckVersion")
+    implementation("at.asitplus.wallet:vck-openid:$vckVersion")
     implementation("at.asitplus.wallet:eupidcredential:3.0.1")
     implementation("at.asitplus.wallet:eupidcredential-sdjwt:1.0.1")
     implementation("at.asitplus.wallet:mobiledrivinglicence:1.1.5")
