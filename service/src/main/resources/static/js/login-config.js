@@ -135,6 +135,7 @@ export default { "schemeTypes": [
         { "label": "trust_anchor", "value": "trust_anchor" },
         { "label": "location_status", "value": "location_status" },
         { "label": "iss", "value": "iss" },
+        { "label": "unknown", "value": "unknown" },
       ]
     },
     { "label": "PID (SD-JWT, ARF 1.8.0)",
@@ -184,6 +185,7 @@ export default { "schemeTypes": [
         { "label": "phone_number", "value": "phone_number" },
         { "label": "trust_anchor", "value": "trust_anchor" },
         { "label": "iss", "value": "iss" },
+        { "label": "unknown", "value": "unknown" },
       ]
     },
     { "label": "Power of Representation (PoR)",
