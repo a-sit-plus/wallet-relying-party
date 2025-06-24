@@ -76,10 +76,10 @@ export default {
                                     class="text-truncate d-inline-block" style="max-width: 100%">{{ value }}</span>
                               <span v-else>{{ value }}</span>
                           </p>
-                          <p v-if="credential.error != null">
+                          <div v-if="credential.error != null">
                               <h4>Error</h4>
-                              <span class="row alert alert-danger" role="alert">{{ credential.error }}</span>
-                          </p>
+                              <p><span class="row alert alert-danger" role="alert">{{ credential.error }}</span></p>
+                          </div>
                       </div>
                       <div class="foldout-fade"></div>
                   </div>
