@@ -1,8 +1,9 @@
 package at.asit.apps.terminal_sp.prototype.server
 
+import io.ktor.utils.io.InternalAPI
+import io.ktor.utils.io.locks.withLock
 import kotlinx.datetime.Clock
 import kotlinx.datetime.Instant
-import okio.withLock
 import org.springframework.stereotype.Service
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.time.Duration.Companion.minutes
@@ -17,6 +18,7 @@ class TransactionStore {
 
     fun getApiItem(id: String): ApiItem? = entries.firstOrNull { it.id == id }?.apiItem
 
+    @OptIn(InternalAPI::class)
     fun removeApiItem(id: String): ApiItem? = lock.withLock {
         removeExpiredEntries()
         val entry = entries.firstOrNull { it.id == id }
@@ -26,6 +28,7 @@ class TransactionStore {
         return entry?.apiItem
     }
 
+    @OptIn(InternalAPI::class)
     fun put(id: String, user: Siop2User): Boolean? = lock.withLock {
         removeExpiredEntries()
         user.toApiItem()?.let { entries.add(Entry(id, it, Clock.System.now().plus(lifetime))) }
