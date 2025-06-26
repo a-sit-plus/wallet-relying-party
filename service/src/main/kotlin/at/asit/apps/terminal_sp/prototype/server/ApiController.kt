@@ -155,7 +155,7 @@ class ApiController(
             throw ResponseStatusException(HttpStatus.NOT_FOUND)
         }
         val user = try {
-            validateSiopResponse(id, requestBody, transaction.profile.openIdVerifier)
+            validateSiopResponse(id, requestBody, transaction.profile.verifier)
         } catch (e: Exception) {
             statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})", e)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, e.localizedMessage, e)

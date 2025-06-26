@@ -83,7 +83,7 @@ class VerifierProfiles(private val publicUrl: String) {
             override val description = "pre-registered client, OpenID4VP d18, direct_post"
             override val urlPrefix = "haip://"
             override val clientIdScheme = preRegisteredD18()
-            override val openIdVerifier = OpenId4VpVerifier(
+            override val verifier = OpenId4VpVerifier(
                 keyMaterial = EphemeralKeyWithoutCert(),
                 clientIdScheme = clientIdScheme,
                 verifier = VerifierAgent(
@@ -100,15 +100,8 @@ class VerifierProfiles(private val publicUrl: String) {
                 state: String,
                 requestOptionsCredentials: Set<RequestOptionsCredential>,
                 presentationMechanism: PresentationMechanismEnum,
-            ): String = openIdVerifier.createAuthnRequestAsSignedRequestObject(
-                OpenIdRequestOptions(
-                    state = state,
-                    responseMode = OpenIdConstants.ResponseMode.DirectPost,
-                    responseUrl = responseUrl,
-                    credentials = requestOptionsCredentials,
-                    presentationMechanism = presentationMechanism,
-                )
-            ).getOrThrow().serialize()
+            ): String = directPost(state, responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
+
         },
 
         object : Profile {
@@ -117,7 +110,7 @@ class VerifierProfiles(private val publicUrl: String) {
             override val description = "x509_san_dns, OpenID4VP d18, direct_post.jwt"
             override val urlPrefix = "haip://"
             override val clientIdScheme = runBlocking { x509SanDnsD18() }
-            override val openIdVerifier = OpenId4VpVerifier(
+            override val verifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
                 clientIdScheme = clientIdScheme,
                 verifier = VerifierAgent(
@@ -134,16 +127,8 @@ class VerifierProfiles(private val publicUrl: String) {
                 state: String,
                 requestOptionsCredentials: Set<RequestOptionsCredential>,
                 presentationMechanism: PresentationMechanismEnum,
-            ): String = openIdVerifier.createAuthnRequestAsSignedRequestObject(
-                OpenIdRequestOptions(
-                    state = state,
-                    responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
-                    responseUrl = responseUrl,
-                    credentials = requestOptionsCredentials,
-                    presentationMechanism = presentationMechanism,
-                    encryption = true,
-                )
-            ).getOrThrow().serialize()
+            ): String = directPostJwt(state, responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
+
         },
 
 
@@ -153,7 +138,7 @@ class VerifierProfiles(private val publicUrl: String) {
             override val description = "x509_san_dns, OpenID4VP d23, direct_post"
             override val urlPrefix = "haip://"
             override val clientIdScheme = runBlocking { x509SanDnsD23() }
-            override val openIdVerifier = OpenId4VpVerifier(
+            override val verifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
                 clientIdScheme = clientIdScheme,
                 verifier = VerifierAgent(
@@ -170,15 +155,8 @@ class VerifierProfiles(private val publicUrl: String) {
                 state: String,
                 requestOptionsCredentials: Set<RequestOptionsCredential>,
                 presentationMechanism: PresentationMechanismEnum,
-            ): String = openIdVerifier.createAuthnRequestAsSignedRequestObject(
-                OpenIdRequestOptions(
-                    state = state,
-                    responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
-                    responseUrl = responseUrl,
-                    credentials = requestOptionsCredentials,
-                    presentationMechanism = presentationMechanism,
-                )
-            ).getOrThrow().serialize()
+            ): String = directPost(state, responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
+
         },
         object : Profile {
             override val name = "HAIPd03"
@@ -186,7 +164,7 @@ class VerifierProfiles(private val publicUrl: String) {
             override val description = "x509_san_dns, OpenID4VP d23, direct_post.jwt"
             override val urlPrefix = "haip://"
             override val clientIdScheme = runBlocking { x509SanDnsD23() }
-            override val openIdVerifier = OpenId4VpVerifier(
+            override val verifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
                 clientIdScheme = clientIdScheme,
                 verifier = VerifierAgent(
@@ -203,24 +181,16 @@ class VerifierProfiles(private val publicUrl: String) {
                 state: String,
                 requestOptionsCredentials: Set<RequestOptionsCredential>,
                 presentationMechanism: PresentationMechanismEnum,
-            ): String = openIdVerifier.createAuthnRequestAsSignedRequestObject(
-                OpenIdRequestOptions(
-                    state = state,
-                    responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
-                    encryption = true,
-                    responseUrl = responseUrl,
-                    credentials = requestOptionsCredentials,
-                    presentationMechanism = presentationMechanism,
-                )
-            ).getOrThrow().serialize()
+            ): String = directPostJwt(state, responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
         },
+
         object : Profile {
             override val name = "MDOC"
             override val label = "ISO 18013-7"
             override val description = "x509_san_dns, OpenID4VP d18, direct_post.jwt"
             override val urlPrefix = "mdoc-openid4vp://"
             override val clientIdScheme = runBlocking { x509SanDnsD18() }
-            override val openIdVerifier = OpenId4VpVerifier(
+            override val verifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
                 clientIdScheme = clientIdScheme,
                 verifier = VerifierAgent(
@@ -237,24 +207,17 @@ class VerifierProfiles(private val publicUrl: String) {
                 state: String,
                 requestOptionsCredentials: Set<RequestOptionsCredential>,
                 presentationMechanism: PresentationMechanismEnum,
-            ): String = openIdVerifier.createAuthnRequestAsSignedRequestObject(
-                OpenIdRequestOptions(
-                    state = state,
-                    responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
-                    responseUrl = responseUrl,
-                    credentials = requestOptionsCredentials,
-                    encryption = true,
-                    presentationMechanism = presentationMechanism,
-                )
-            ).getOrThrow().serialize()
+            ): String = directPostJwt(state, responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
         },
+        
+
         object : Profile {
             override val name = "EUDIW"
             override val label = "EUDIW Ref."
             override val description = "x509_san_dns, OpenID4VP d23, direct_post.jwt"
             override val urlPrefix = "openid4vp://"
             override val clientIdScheme = runBlocking { x509SanDnsD23() }
-            override val openIdVerifier = OpenId4VpVerifier(
+            override val verifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
                 clientIdScheme = clientIdScheme,
                 verifier = VerifierAgent(
@@ -271,16 +234,7 @@ class VerifierProfiles(private val publicUrl: String) {
                 state: String,
                 requestOptionsCredentials: Set<RequestOptionsCredential>,
                 presentationMechanism: PresentationMechanismEnum,
-            ): String = openIdVerifier.createAuthnRequestAsSignedRequestObject(
-                OpenIdRequestOptions(
-                    state = state,
-                    responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
-                    responseUrl = responseUrl,
-                    credentials = requestOptionsCredentials,
-                    encryption = true,
-                    presentationMechanism = presentationMechanism,
-                )
-            ).getOrThrow().serialize()
+            ): String = directPostJwt(state, responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
         }
     )
 
@@ -328,6 +282,39 @@ class VerifierProfiles(private val publicUrl: String) {
             .forEach { queryParam(it.key, it.value) }
     }.toUriString()
 
+    private suspend fun directPost(
+        state: String,
+        responseUrl: String,
+        requestOptionsCredentials: Set<RequestOptionsCredential>,
+        presentationMechanism: PresentationMechanismEnum,
+        verifier: OpenId4VpVerifier,
+    ): String = verifier.createAuthnRequestAsSignedRequestObject(
+        OpenIdRequestOptions(
+            state = state,
+            responseMode = OpenIdConstants.ResponseMode.DirectPost,
+            responseUrl = responseUrl,
+            credentials = requestOptionsCredentials,
+            presentationMechanism = presentationMechanism,
+        )
+    ).getOrThrow().serialize()
+
+    private suspend fun directPostJwt(
+        state: String,
+        responseUrl: String,
+        requestOptionsCredentials: Set<RequestOptionsCredential>,
+        presentationMechanism: PresentationMechanismEnum,
+        verifier: OpenId4VpVerifier,
+    ): String = verifier.createAuthnRequestAsSignedRequestObject(
+        OpenIdRequestOptions(
+            state = state,
+            responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
+            responseUrl = responseUrl,
+            credentials = requestOptionsCredentials,
+            presentationMechanism = presentationMechanism,
+            encryption = true,
+        )
+    ).getOrThrow().serialize()
+
     fun validator(): Validator = Validator(
         resolveStatusListToken = resolveStatusListToken(),
     )
@@ -355,12 +342,12 @@ class VerifierProfiles(private val publicUrl: String) {
     }
 
     fun getVerifierByName(profileName: String): OpenId4VpVerifier? =
-        knownProfiles.firstOrNull { it.name == profileName }?.openIdVerifier
+        knownProfiles.firstOrNull { it.name == profileName }?.verifier
 
     fun getJarMetadataByName(profileName: String): JwtVcIssuerMetadata? {
         val profile = (knownProfiles.firstOrNull { it.name == profileName }
             ?: knownProfiles.firstOrNull { it.name == DEFAULT_PROFILE })
-        return profile?.openIdVerifier?.jarMetadata
+        return profile?.verifier?.jarMetadata
     }
 }
 
@@ -392,7 +379,7 @@ interface Profile {
     val description: String
     val urlPrefix: String
     val clientIdScheme: ClientIdScheme
-    val openIdVerifier: OpenId4VpVerifier
+    val verifier: OpenId4VpVerifier
     fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String
     suspend fun transactionGet(
         responseUrl: String,
