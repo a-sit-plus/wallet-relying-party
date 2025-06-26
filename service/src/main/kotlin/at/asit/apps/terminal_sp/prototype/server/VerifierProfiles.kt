@@ -16,8 +16,6 @@ import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.agents.communication.primitives.StatusListTokenMediaType
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.ClientIdScheme
@@ -42,7 +40,6 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import org.springframework.web.util.UriComponentsBuilder
 import java.io.File
 import java.security.KeyStore
-import kotlin.time.Clock
 
 class VerifierProfiles(private val publicUrl: String) {
 
@@ -85,12 +82,7 @@ class VerifierProfiles(private val publicUrl: String) {
             override val label = "Potential (v1)"
             override val description = "pre-registered client, OpenID4VP d18, direct_post"
             override val urlPrefix = "haip://"
-            override val clientIdScheme = PreRegistered(
-                clientId = "AT-GV-EGIZ-CUSTOMVERIFIER",
-                redirectUri = publicUrl,
-                issuerUri = publicUrl,
-                useDeprecatedClientIdScheme = true,
-            )
+            override val clientIdScheme = preRegisteredD18()
             override val openIdVerifier = OpenId4VpVerifier(
                 keyMaterial = EphemeralKeyWithoutCert(),
                 clientIdScheme = clientIdScheme,
@@ -101,13 +93,7 @@ class VerifierProfiles(private val publicUrl: String) {
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
-                ServletUriComponentsBuilder.fromUriString(urlPrefix).apply {
-                    AuthenticationRequestParameters(
-                        clientId = clientIdScheme.clientId,
-                        requestUri = requestUrl,
-                    ).encodeToParameters()
-                        .forEach { queryParam(it.key, it.value) }
-                }.toUriString()
+                buildQrCodeUrlD23(urlPrefix, requestUrl, this.clientIdScheme)
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -130,32 +116,18 @@ class VerifierProfiles(private val publicUrl: String) {
             override val label = "Potential (v2)"
             override val description = "x509_san_dns, OpenID4VP d18, direct_post.jwt"
             override val urlPrefix = "haip://"
-            override val clientIdScheme = runBlocking {
-                ClientIdScheme.CertificateSanDns(
-                    chain = listOf(verifierKeyMaterial.getCertificate()!!),
-                    clientIdDnsName = publicUrl.getDnsName(),
-                    redirectUri = publicUrl,
-                    useDeprecatedClientIdScheme = true,
-                )
-            }
-            val strippedClientId = clientIdScheme.clientId.removePrefix(clientIdScheme.scheme.prefix)
+            override val clientIdScheme = runBlocking { x509SanDnsD18() }
             override val openIdVerifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
                 clientIdScheme = clientIdScheme,
                 verifier = VerifierAgent(
-                    identifier = strippedClientId,
+                    identifier = clientIdScheme.clientId.removePrefix(clientIdScheme.scheme.prefix),
                     validator = potentialValidator()
                 ),
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
-                ServletUriComponentsBuilder.fromUriString(urlPrefix).apply {
-                    AuthenticationRequestParameters(
-                        clientId = strippedClientId,
-                        requestUri = requestUrl,
-                    ).encodeToParameters()
-                        .forEach { queryParam(it.key, it.value) }
-                }.toUriString()
+                buildQrCodeUrlD18(urlPrefix, requestUrl, clientIdScheme)
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -180,13 +152,7 @@ class VerifierProfiles(private val publicUrl: String) {
             override val label = "HAIP (d01)"
             override val description = "x509_san_dns, OpenID4VP d23, direct_post"
             override val urlPrefix = "haip://"
-            override val clientIdScheme = runBlocking {
-                ClientIdScheme.CertificateSanDns(
-                    listOf(verifierKeyMaterial.getCertificate()!!),
-                    publicUrl.getDnsName(),
-                    publicUrl
-                )
-            }
+            override val clientIdScheme = runBlocking { x509SanDnsD23() }
             override val openIdVerifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
                 clientIdScheme = clientIdScheme,
@@ -197,13 +163,7 @@ class VerifierProfiles(private val publicUrl: String) {
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
-                ServletUriComponentsBuilder.fromUriString(urlPrefix).apply {
-                    AuthenticationRequestParameters(
-                        clientId = clientIdScheme.clientId,
-                        requestUri = requestUrl,
-                    ).encodeToParameters()
-                        .forEach { queryParam(it.key, it.value) }
-                }.toUriString()
+                buildQrCodeUrlD23(urlPrefix, requestUrl, clientIdScheme)
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -225,13 +185,7 @@ class VerifierProfiles(private val publicUrl: String) {
             override val label = "HAIP (d03)"
             override val description = "x509_san_dns, OpenID4VP d23, direct_post.jwt"
             override val urlPrefix = "haip://"
-            override val clientIdScheme = runBlocking {
-                ClientIdScheme.CertificateSanDns(
-                    listOf(verifierKeyMaterial.getCertificate()!!),
-                    publicUrl.getDnsName(),
-                    publicUrl,
-                )
-            }
+            override val clientIdScheme = runBlocking { x509SanDnsD23() }
             override val openIdVerifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
                 clientIdScheme = clientIdScheme,
@@ -242,13 +196,7 @@ class VerifierProfiles(private val publicUrl: String) {
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
-                ServletUriComponentsBuilder.fromUriString(urlPrefix).apply {
-                    AuthenticationRequestParameters(
-                        clientId = clientIdScheme.clientId,
-                        requestUri = requestUrl,
-                    ).encodeToParameters()
-                        .forEach { queryParam(it.key, it.value) }
-                }.toUriString()
+                buildQrCodeUrlD23(urlPrefix, requestUrl, clientIdScheme)
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -271,33 +219,18 @@ class VerifierProfiles(private val publicUrl: String) {
             override val label = "ISO 18013-7"
             override val description = "x509_san_dns, OpenID4VP d18, direct_post.jwt"
             override val urlPrefix = "mdoc-openid4vp://"
-            override val clientIdScheme = runBlocking {
-                ClientIdScheme.CertificateSanDns(
-                    listOf(verifierKeyMaterial.getCertificate()!!),
-                    publicUrl.getDnsName(),
-                    publicUrl,
-                    useDeprecatedClientIdScheme = true,
-                )
-            }
-            val strippedClientId = clientIdScheme.clientId.removePrefix(clientIdScheme.scheme.prefix)
-
+            override val clientIdScheme = runBlocking { x509SanDnsD18() }
             override val openIdVerifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
                 clientIdScheme = clientIdScheme,
                 verifier = VerifierAgent(
-                    identifier = strippedClientId,
+                    identifier = clientIdScheme.clientId.removePrefix(clientIdScheme.scheme.prefix),
                     validator = validator(),
                 ),
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String =
-                ServletUriComponentsBuilder.fromUriString(urlPrefix).apply {
-                    AuthenticationRequestParameters(
-                        clientId = strippedClientId,
-                        requestUri = requestUrl,
-                    ).encodeToParameters()
-                        .forEach { queryParam(it.key, it.value) }
-                }.toUriString()
+                buildQrCodeUrlD18(urlPrefix, requestUrl, clientIdScheme)
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -320,13 +253,7 @@ class VerifierProfiles(private val publicUrl: String) {
             override val label = "EUDIW Ref."
             override val description = "x509_san_dns, OpenID4VP d23, direct_post.jwt"
             override val urlPrefix = "openid4vp://"
-            override val clientIdScheme = runBlocking {
-                ClientIdScheme.CertificateSanDns(
-                    listOf(verifierKeyMaterial.getCertificate()!!),
-                    publicUrl.getDnsName(),
-                    publicUrl,
-                )
-            }
+            override val clientIdScheme = runBlocking { x509SanDnsD23() }
             override val openIdVerifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
                 clientIdScheme = clientIdScheme,
@@ -337,13 +264,7 @@ class VerifierProfiles(private val publicUrl: String) {
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
-                ServletUriComponentsBuilder.fromUriString(urlPrefix).apply {
-                    AuthenticationRequestParameters(
-                        clientId = clientIdScheme.clientId,
-                        requestUri = requestUrl,
-                    ).encodeToParameters()
-                        .forEach { queryParam(it.key, it.value) }
-                }.toUriString()
+                buildQrCodeUrlD23(urlPrefix, requestUrl, clientIdScheme)
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -362,6 +283,50 @@ class VerifierProfiles(private val publicUrl: String) {
             ).getOrThrow().serialize()
         }
     )
+
+    private suspend fun x509SanDnsD23(): ClientIdScheme.CertificateSanDns = ClientIdScheme.CertificateSanDns(
+        listOf(verifierKeyMaterial.getCertificate()!!),
+        publicUrl.getDnsName(),
+        publicUrl
+    )
+
+    private fun preRegisteredD18(): PreRegistered = PreRegistered(
+        clientId = "AT-GV-EGIZ-CUSTOMVERIFIER",
+        redirectUri = publicUrl,
+        issuerUri = publicUrl,
+        useDeprecatedClientIdScheme = true,
+    )
+
+    private suspend fun x509SanDnsD18(): ClientIdScheme.CertificateSanDns = ClientIdScheme.CertificateSanDns(
+        chain = listOf(verifierKeyMaterial.getCertificate()!!),
+        clientIdDnsName = publicUrl.getDnsName(),
+        redirectUri = publicUrl,
+        useDeprecatedClientIdScheme = true,
+    )
+
+    private fun buildQrCodeUrlD18(
+        urlPrefix: String,
+        requestUrl: String,
+        clientIdScheme: ClientIdScheme,
+    ): String = ServletUriComponentsBuilder.fromUriString(urlPrefix).apply {
+        AuthenticationRequestParameters(
+            clientId = clientIdScheme.clientId.removePrefix(clientIdScheme.scheme.prefix),
+            requestUri = requestUrl,
+        ).encodeToParameters()
+            .forEach { queryParam(it.key, it.value) }
+    }.toUriString()
+
+    private fun buildQrCodeUrlD23(
+        urlPrefix: String,
+        requestUrl: String,
+        clientIdScheme: ClientIdScheme,
+    ): String = ServletUriComponentsBuilder.fromUriString(urlPrefix).apply {
+        AuthenticationRequestParameters(
+            clientId = clientIdScheme.clientId,
+            requestUri = requestUrl,
+        ).encodeToParameters()
+            .forEach { queryParam(it.key, it.value) }
+    }.toUriString()
 
     fun validator(): Validator = Validator(
         resolveStatusListToken = resolveStatusListToken(),
