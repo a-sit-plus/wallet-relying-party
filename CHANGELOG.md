@@ -2,6 +2,7 @@
 
 Version 5.7.1:
  - Update to VC-K 5.7.1
+ - Add profile ISO 18013-7 with Draft23
 
 Version 5.7.0:
  - Update to VC-K 5.7.0

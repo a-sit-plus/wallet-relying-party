@@ -209,7 +209,32 @@ class VerifierProfiles(private val publicUrl: String) {
                 presentationMechanism: PresentationMechanismEnum,
             ): String = directPostJwt(state, responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
         },
-        
+
+        object : Profile {
+            override val name = "MDOCd23"
+            override val label = "ISO 18013-7 (d23)"
+            override val description = "x509_san_dns, OpenID4VP d23, direct_post.jwt"
+            override val urlPrefix = "mdoc-openid4vp://"
+            override val clientIdScheme = runBlocking { x509SanDnsD23() }
+            override val verifier = OpenId4VpVerifier(
+                keyMaterial = verifierKeyMaterial,
+                clientIdScheme = clientIdScheme,
+                verifier = VerifierAgent(
+                    identifier = clientIdScheme.clientId,
+                    validator = validator(),
+                ),
+            )
+
+            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String =
+                buildQrCodeUrlD23(urlPrefix, requestUrl, clientIdScheme)
+
+            override suspend fun transactionGet(
+                responseUrl: String,
+                state: String,
+                requestOptionsCredentials: Set<RequestOptionsCredential>,
+                presentationMechanism: PresentationMechanismEnum,
+            ): String = directPostJwt(state, responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
+        },
 
         object : Profile {
             override val name = "EUDIW"
