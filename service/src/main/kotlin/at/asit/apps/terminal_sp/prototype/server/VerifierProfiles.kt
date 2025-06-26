@@ -71,6 +71,14 @@ class VerifierProfiles(private val publicUrl: String) {
         path(".well-known", "jwt-vc-issuer", *(pathSegments.toTypedArray()))
     }.build()
 
+    private val verifierKeyMaterial = KeyStoreMaterial(
+        keyStore = KeyStore.getInstance("PKCS12").apply {
+            load(File("verifier.p12").inputStream(), "changeit".toCharArray())
+        },
+        keyAlias = "verifier",
+        privateKeyPassword = "changeit".toCharArray(),
+        certAlias = "verifier",
+    )
     val knownProfiles: List<Profile> = listOf(
         object : Profile {
             override val name = DEFAULT_PROFILE
@@ -92,15 +100,14 @@ class VerifierProfiles(private val publicUrl: String) {
                 ),
             )
 
-            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
-                .fromUriString(urlPrefix).apply {
+            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
+                ServletUriComponentsBuilder.fromUriString(urlPrefix).apply {
                     AuthenticationRequestParameters(
                         clientId = clientIdScheme.clientId,
                         requestUri = requestUrl,
                     ).encodeToParameters()
                         .forEach { queryParam(it.key, it.value) }
-                }
-                .toUriString()
+                }.toUriString()
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -119,14 +126,6 @@ class VerifierProfiles(private val publicUrl: String) {
         },
 
         object : Profile {
-            private val verifierKeyMaterial = KeyStoreMaterial(
-                keyStore = KeyStore.getInstance("PKCS12").apply {
-                    load(File("verifier.p12").inputStream(), "changeit".toCharArray())
-                },
-                keyAlias = "verifier",
-                privateKeyPassword = "changeit".toCharArray(),
-                certAlias = "verifier",
-            )
             override val name = "Potentialv2"
             override val label = "Potential (v2)"
             override val description = "x509_san_dns, OpenID4VP d18, direct_post.jwt"
@@ -149,15 +148,14 @@ class VerifierProfiles(private val publicUrl: String) {
                 ),
             )
 
-            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
-                .fromUriString(urlPrefix).apply {
+            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
+                ServletUriComponentsBuilder.fromUriString(urlPrefix).apply {
                     AuthenticationRequestParameters(
                         clientId = strippedClientId,
                         requestUri = requestUrl,
                     ).encodeToParameters()
                         .forEach { queryParam(it.key, it.value) }
-                }
-                .toUriString()
+                }.toUriString()
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -178,14 +176,6 @@ class VerifierProfiles(private val publicUrl: String) {
 
 
         object : Profile {
-            private val verifierKeyMaterial = KeyStoreMaterial(
-                keyStore = KeyStore.getInstance("PKCS12").apply {
-                    load(File("verifier.p12").inputStream(), "changeit".toCharArray())
-                },
-                keyAlias = "verifier",
-                privateKeyPassword = "changeit".toCharArray(),
-                certAlias = "verifier",
-            )
             override val name = "HAIPd01"
             override val label = "HAIP (d01)"
             override val description = "x509_san_dns, OpenID4VP d23, direct_post"
@@ -206,15 +196,14 @@ class VerifierProfiles(private val publicUrl: String) {
                 ),
             )
 
-            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
-                .fromUriString(urlPrefix).apply {
+            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
+                ServletUriComponentsBuilder.fromUriString(urlPrefix).apply {
                     AuthenticationRequestParameters(
                         clientId = clientIdScheme.clientId,
                         requestUri = requestUrl,
                     ).encodeToParameters()
                         .forEach { queryParam(it.key, it.value) }
-                }
-                .toUriString()
+                }.toUriString()
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -232,14 +221,6 @@ class VerifierProfiles(private val publicUrl: String) {
             ).getOrThrow().serialize()
         },
         object : Profile {
-            private val verifierKeyMaterial = KeyStoreMaterial(
-                keyStore = KeyStore.getInstance("PKCS12").apply {
-                    load(File("verifier.p12").inputStream(), "changeit".toCharArray())
-                },
-                keyAlias = "verifier",
-                privateKeyPassword = "changeit".toCharArray(),
-                certAlias = "verifier",
-            )
             override val name = "HAIPd03"
             override val label = "HAIP (d03)"
             override val description = "x509_san_dns, OpenID4VP d23, direct_post.jwt"
@@ -260,15 +241,14 @@ class VerifierProfiles(private val publicUrl: String) {
                 ),
             )
 
-            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
-                .fromUriString(urlPrefix).apply {
+            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
+                ServletUriComponentsBuilder.fromUriString(urlPrefix).apply {
                     AuthenticationRequestParameters(
                         clientId = clientIdScheme.clientId,
                         requestUri = requestUrl,
                     ).encodeToParameters()
                         .forEach { queryParam(it.key, it.value) }
-                }
-                .toUriString()
+                }.toUriString()
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -287,14 +267,6 @@ class VerifierProfiles(private val publicUrl: String) {
             ).getOrThrow().serialize()
         },
         object : Profile {
-            private val verifierKeyMaterial = KeyStoreMaterial(
-                keyStore = KeyStore.getInstance("PKCS12").apply {
-                    load(File("verifier.p12").inputStream(), "changeit".toCharArray())
-                },
-                keyAlias = "verifier",
-                privateKeyPassword = "changeit".toCharArray(),
-                certAlias = "verifier",
-            )
             override val name = "MDOC"
             override val label = "ISO 18013-7"
             override val description = "x509_san_dns, OpenID4VP d18, direct_post.jwt"
@@ -318,17 +290,14 @@ class VerifierProfiles(private val publicUrl: String) {
                 ),
             )
 
-            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String {
-                return ServletUriComponentsBuilder
-                    .fromUriString(urlPrefix).apply {
-                        AuthenticationRequestParameters(
-                            clientId = strippedClientId,
-                            requestUri = requestUrl,
-                        ).encodeToParameters()
-                            .forEach { queryParam(it.key, it.value) }
-                    }
-                    .toUriString()
-            }
+            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String =
+                ServletUriComponentsBuilder.fromUriString(urlPrefix).apply {
+                    AuthenticationRequestParameters(
+                        clientId = strippedClientId,
+                        requestUri = requestUrl,
+                    ).encodeToParameters()
+                        .forEach { queryParam(it.key, it.value) }
+                }.toUriString()
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -347,14 +316,6 @@ class VerifierProfiles(private val publicUrl: String) {
             ).getOrThrow().serialize()
         },
         object : Profile {
-            private val verifierKeyMaterial = KeyStoreMaterial(
-                keyStore = KeyStore.getInstance("PKCS12").apply {
-                    load(File("verifier.p12").inputStream(), "changeit".toCharArray())
-                },
-                keyAlias = "verifier",
-                privateKeyPassword = "changeit".toCharArray(),
-                certAlias = "verifier",
-            )
             override val name = "EUDIW"
             override val label = "EUDIW Ref."
             override val description = "x509_san_dns, OpenID4VP d23, direct_post.jwt"
@@ -375,15 +336,14 @@ class VerifierProfiles(private val publicUrl: String) {
                 ),
             )
 
-            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) = ServletUriComponentsBuilder
-                .fromUriString(urlPrefix).apply {
+            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
+                ServletUriComponentsBuilder.fromUriString(urlPrefix).apply {
                     AuthenticationRequestParameters(
                         clientId = clientIdScheme.clientId,
                         requestUri = requestUrl,
                     ).encodeToParameters()
                         .forEach { queryParam(it.key, it.value) }
-                }
-                .toUriString()
+                }.toUriString()
 
             override suspend fun transactionGet(
                 responseUrl: String,
