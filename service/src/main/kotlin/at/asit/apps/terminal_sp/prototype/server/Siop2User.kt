@@ -6,6 +6,8 @@ import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
 import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
+import at.asitplus.wallet.lib.agent.validation.common.EntityExpiredError
+import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
@@ -15,6 +17,13 @@ import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.*
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.format
+import kotlinx.datetime.format.char
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
@@ -68,12 +77,14 @@ private fun ApiItemCredential.getFamilyName() = getClaim(EuPidScheme.Attributes.
 private fun ApiItemCredential.getGivenName() = getClaim(EuPidScheme.Attributes.GIVEN_NAME)
     ?: getClaim(MobileDrivingLicenceDataElements.GIVEN_NAME)
 
-fun ApiItemCredential.getClaim(claim: String) = this.allFields?.entries?.firstOrNull { it.key == claim }?.value?.let {
-    when (it) {
-        is JsonPrimitive -> it.content
-        else -> it.toString()
+fun ApiItemCredential.getClaim(claim: String) = allFields?.entries
+    ?.firstOrNull { it.key == claim }?.value
+    ?.let {
+        when (it) {
+            is JsonPrimitive -> it.content
+            else -> it.toString()
+        }
     }
-}
 
 fun VerifiablePresentationValidationResults.toApiItemCredentials(): Collection<ApiItemCredential> =
     validationResults.flatMap {
@@ -131,7 +142,7 @@ fun VerifiablePresentationParsed.toApiItemCredential(): List<ApiItemCredential> 
     } ?: listOf(ApiItemCredential(error = "No result"))
 
 fun CredentialFreshnessSummary.VcJws.toApiItemCredential(): ApiItemCredential =
-    ApiItemCredential(error = this.toString())
+    ApiItemCredential(error = errorMessage())
 
 private fun EuPidCredential.toApiItemCredential() =
     ApiItemCredential(
@@ -139,56 +150,78 @@ private fun EuPidCredential.toApiItemCredential() =
         credentialType = EuPidScheme.vcType,
     )
 
-fun SuccessSdJwt.toApiItemCredential(): ApiItemCredential =
-    if (freshnessSummary.isFresh) {
-        ApiItemCredential(
-            allFields = reconstructed,
-            credentialType = verifiableCredentialSdJwt.verifiableCredentialType,
-        )
-    } else {
-        freshnessSummary.toApiItemCredential()
-    }
-
-fun CredentialFreshnessSummary.toApiItemCredential(): ApiItemCredential =
-    if (!timelinessValidationSummary.isTimely) {
-        timelinessValidationSummary.toApiItemCredential()
-    } else when (tokenStatusValidationResult) {
-        is TokenStatusValidationResult.Invalid -> ApiItemCredential(error = "Token status invalid")
-        is TokenStatusValidationResult.Rejected -> ApiItemCredential(error = "Token status rejected")
-        is TokenStatusValidationResult.Valid -> ApiItemCredential(error = "Token status valid")
-    }
-
-fun CredentialTimelinessValidationSummary.toApiItemCredential() = ApiItemCredential(
-    error = if (isNotYetValid) "Credential not yet valid: ${detailsNotYetValid()}" else if (isExpired) "Credential expired: ${detailsExpired()}" else toString(),
+fun SuccessSdJwt.toApiItemCredential() = ApiItemCredential(
+    allFields = reconstructed,
+    credentialType = verifiableCredentialSdJwt.verifiableCredentialType,
+    error = freshnessSummary.errorMessage()
 )
 
+private fun CredentialTimelinessValidationSummary.errorMessage(): String? =
+    if (isNotYetValid) detailsNotYetValid()
+    else if (isExpired) detailsExpired()
+    else null
+
 fun CredentialTimelinessValidationSummary.detailsNotYetValid() = when (this) {
-    is CredentialTimelinessValidationSummary.Mdoc -> details.msoTimelinessValidationSummary?.mdocNotYetValidError
-    is CredentialTimelinessValidationSummary.SdJwt -> details.jwsNotYetValidError
-    is CredentialTimelinessValidationSummary.VcJws -> details.jwsNotYetValidError ?: details.credentialNotYetValidError
+    is CredentialTimelinessValidationSummary.Mdoc -> details.msoTimelinessValidationSummary?.mdocNotYetValidError?.errorMessage()
+    is CredentialTimelinessValidationSummary.SdJwt -> details.jwsNotYetValidError?.errorMessage()
+    is CredentialTimelinessValidationSummary.VcJws -> details.jwsNotYetValidError?.errorMessage()
+        ?: details.credentialNotYetValidError?.errorMessage()
 }
 
+private fun EntityNotYetValidError.errorMessage(): String =
+    "Not yet valid: ${notBeforeTime.formatted()}"
+
 fun CredentialTimelinessValidationSummary.detailsExpired() = when (this) {
-    is CredentialTimelinessValidationSummary.Mdoc -> details.msoTimelinessValidationSummary?.mdocExpiredError
-    is CredentialTimelinessValidationSummary.SdJwt -> details.jwsExpiredError
-    is CredentialTimelinessValidationSummary.VcJws -> details.jwsExpiredError ?: details.credentialExpiredError
+    is CredentialTimelinessValidationSummary.Mdoc -> details.msoTimelinessValidationSummary?.mdocExpiredError?.errorMessage()
+    is CredentialTimelinessValidationSummary.SdJwt -> details.jwsExpiredError?.errorMessage()
+    is CredentialTimelinessValidationSummary.VcJws -> details.jwsExpiredError?.errorMessage()
+        ?: details.credentialExpiredError?.errorMessage()
 }
+
+private fun EntityExpiredError.errorMessage(): String =
+    "Expired at: ${expirationTime.formatted()}"
+
+private fun kotlinx.datetime.Instant.formatted(): String =
+    toLocalDateTime(TimeZone.currentSystemDefault()).format(LocalDateTime.Format {
+        date(LocalDate.Format { year();char('-');monthNumber();char('-');dayOfMonth() })
+        char(' ')
+        time(LocalTime.Format { hour();char(':');minute();char(':');second() })
+    })
 
 fun SuccessIso.toApiItemCredentials(): List<ApiItemCredential> = documents.map { it.toApiItemCredential() }
 
-private fun IsoDocumentParsed.toApiItemCredential(): ApiItemCredential = if (freshnessSummary.isFresh) {
-    ApiItemCredential(
-        allFields = buildJsonObject {
-            validItems.forEach {
-                put(it.elementIdentifier, it.elementValue.toJsonElement())
-            }
-        },
-        credentialType = mso.docType,
-    )
-} else {
-    ApiItemCredential(
-        error = "Credential not fresh: $freshnessSummary"
-    )
+private fun IsoDocumentParsed.toApiItemCredential(): ApiItemCredential = ApiItemCredential(
+    allFields = buildJsonObject {
+        validItems.forEach {
+            put(it.elementIdentifier, it.elementValue.toJsonElement())
+        }
+    },
+    credentialType = mso.docType,
+    error = freshnessSummary.errorMessage(),
+)
+
+private fun CredentialFreshnessSummary.SdJwt.errorMessage(): String? =
+    if (isFresh) null else listOfNotNull(
+        tokenStatusValidationResult.errorMessage(),
+        timelinessValidationSummary.errorMessage()
+    ).takeIf { it.isNotEmpty() }?.joinToString()
+
+private fun CredentialFreshnessSummary.VcJws.errorMessage(): String? =
+    if (isFresh) null else listOfNotNull(
+        tokenStatusValidationResult.errorMessage(),
+        timelinessValidationSummary.errorMessage()
+    ).takeIf { it.isNotEmpty() }?.joinToString()
+
+private fun CredentialFreshnessSummary.Mdoc.errorMessage(): String? =
+    if (isFresh) null else listOfNotNull(
+        tokenStatusValidationResult.errorMessage(),
+        timelinessValidationSummary.errorMessage()
+    ).takeIf { it.isNotEmpty() }?.joinToString()
+
+private fun TokenStatusValidationResult.errorMessage(): String? = when (this) {
+    is TokenStatusValidationResult.Invalid -> "Invalid: Token status is ${this.tokenStatus}"
+    is TokenStatusValidationResult.Rejected -> "Rejected: Error is ${this.throwable.toString()}"
+    is TokenStatusValidationResult.Valid -> null
 }
 
 private fun String.sha256() = runCatching {
