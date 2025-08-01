@@ -18,12 +18,8 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import at.asitplus.wallet.lib.openid.ClientIdScheme
+import at.asitplus.wallet.lib.openid.*
 import at.asitplus.wallet.lib.openid.ClientIdScheme.PreRegistered
-import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
-import at.asitplus.wallet.lib.openid.OpenIdRequestOptions
-import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
-import at.asitplus.wallet.lib.openid.RequestOptionsCredential
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
@@ -40,6 +36,7 @@ import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import org.springframework.web.util.UriComponentsBuilder
 import java.io.File
 import java.security.KeyStore
+import kotlin.time.Clock
 
 class VerifierProfiles(private val publicUrl: String) {
 
@@ -362,7 +359,7 @@ class VerifierProfiles(private val publicUrl: String) {
         }.let {
             JwsSigned.deserialize<StatusListTokenPayload>(StatusListTokenPayload.serializer(), it).getOrThrow()
         }.let {
-            StatusListToken.StatusListJwt(it, kotlinx.datetime.Clock.System.now())
+            StatusListToken.StatusListJwt(it, Clock.System.now())
         }
     }
 

@@ -1,6 +1,7 @@
 package at.asit.apps.terminal_sp.prototype.server
 
 import at.asit.apps.terminal_sp.prototype.server.util.AntilogSlf4jAdapter
+import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.wallet.lib.Initializer.initOpenIdModule
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
@@ -16,8 +17,9 @@ import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.test.runTest
-import kotlinx.datetime.Clock
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.BeforeAll
@@ -29,6 +31,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
 @SpringBootTest
@@ -95,6 +98,7 @@ class ProcessTest {
                     expiration = Clock.System.now() + 1.minutes,
                     scheme = AtomicAttribute2023,
                     subjectPublicKey = holderKey.publicKey,
+                    userInfo = OidcUserInfoExtended.fromJsonObject(buildJsonObject { put("sub", "foo") }).getOrThrow()
                 )
             ).getOrThrow().toStoreCredentialInput()
         )

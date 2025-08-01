@@ -8,7 +8,7 @@ plugins {
     kotlin("plugin.spring")
     kotlin("plugin.jpa")
     kotlin("plugin.allopen")
-    id("org.springframework.boot") version "3.4.6"
+    id("org.springframework.boot") version "3.5.4"
     id("at.asitplus.gradle.conventions")
 }
 
@@ -19,6 +19,11 @@ version = artifactVersion
 
 kotlin {
     jvmToolchain(17)
+    sourceSets {
+        all {
+            languageSettings.optIn("kotlin.time.ExperimentalTime")
+        }
+    }
 }
 
 dependencies {
@@ -28,9 +33,8 @@ dependencies {
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.session:spring-session-core")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
-    implementation("io.github.g0dkar:qrcode-kotlin:4.0.6")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core:1.8.0")
-    implementation("de.codecentric:spring-boot-admin-client:3.2.3")
+    implementation("io.github.g0dkar:qrcode-kotlin:4.5.0")
+    implementation("de.codecentric:spring-boot-admin-client:3.5.1")
     implementation(ktor("http"))
     implementation(ktor("client-cio"))
     implementation(ktor("client-logging"))
@@ -41,15 +45,15 @@ dependencies {
     implementation(napier())
     implementation("at.asitplus.wallet:vck:$vckVersion")
     implementation("at.asitplus.wallet:vck-openid:$vckVersion")
-    implementation("at.asitplus.wallet:eupidcredential:3.0.1")
-    implementation("at.asitplus.wallet:eupidcredential-sdjwt:1.0.1")
-    implementation("at.asitplus.wallet:mobiledrivinglicence:1.1.5")
-    implementation("at.asitplus.wallet:powerofrepresentation:1.2.0")
-    implementation("at.asitplus.wallet:certificateofresidence:2.1.1")
-    implementation("at.asitplus.wallet:healthid:2.0.0")
-    implementation("at.asitplus.wallet:company-registration:1.1.0")
-    implementation("at.asitplus.wallet:taxid:1.1.1")
-    implementation("at.asitplus.wallet:ehic:1.1.0")
+    implementation("at.asitplus.wallet:eupidcredential:3.2.0")
+    implementation("at.asitplus.wallet:eupidcredential-sdjwt:1.2.0")
+    implementation("at.asitplus.wallet:mobiledrivinglicence:1.2.0")
+    implementation("at.asitplus.wallet:powerofrepresentation:1.3.0")
+    implementation("at.asitplus.wallet:certificateofresidence:2.2.0")
+    implementation("at.asitplus.wallet:healthid:2.2.0")
+    implementation("at.asitplus.wallet:company-registration:1.2.0")
+    implementation("at.asitplus.wallet:taxid:1.2.0")
+    implementation("at.asitplus.wallet:ehic:1.2.0")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")

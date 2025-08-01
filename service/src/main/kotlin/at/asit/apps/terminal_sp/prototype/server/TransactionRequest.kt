@@ -4,14 +4,13 @@ import at.asitplus.wallet.ehic.EhicScheme
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.healthid.HealthIdScheme
 import at.asitplus.wallet.lib.data.AttributeIndex
-import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import at.asitplus.wallet.lib.openid.RequestOptionsCredential
 import at.asitplus.wallet.por.PowerOfRepresentationDataElements
 import at.asitplus.wallet.por.PowerOfRepresentationScheme
-import at.asitplus.wallet.taxid.TaxId2025Scheme
+import at.asitplus.wallet.taxid.TaxIdScheme
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -97,7 +96,7 @@ data class TransactionRequestCredential(
                 )
             }
 
-            is TaxId2025Scheme -> TaxId2025Scheme.requiredClaims.toSet()
+            is TaxIdScheme -> TaxIdScheme.requiredClaims.toSet()
             is PowerOfRepresentationScheme -> PowerOfRepresentationDataElements.MANDATORY_ELEMENTS.toSet()
             else -> setOf()
         }
@@ -107,8 +106,7 @@ data class TransactionRequestCredential(
     private fun CredentialScheme.isSd(): Boolean = when (this) {
         is HealthIdScheme -> false
         is EhicScheme -> false
-        is at.asitplus.wallet.taxid.TaxIdScheme -> false
-        is TaxId2025Scheme -> false
+        is TaxIdScheme -> false
         is PowerOfRepresentationScheme -> false
         else -> true
     }
