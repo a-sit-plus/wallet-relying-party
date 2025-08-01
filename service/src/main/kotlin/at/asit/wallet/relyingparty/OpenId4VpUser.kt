@@ -29,17 +29,17 @@ import java.security.MessageDigest
 import java.time.Instant
 
 @Serializable
-class Siop2User(
+class OpenId4VpUser(
     val apiItem: ApiItem,
 ) : AuthenticatedPrincipal {
 
     override fun getName(): String = "${apiItem.firstname} ${apiItem.lastname} (${apiItem.id})"
 
-    override fun toString(): String = "Siop2User(apiItem=$apiItem)"
+    override fun toString(): String = "OpenId4VpUser(apiItem=$apiItem)"
 
 }
 
-fun Collection<ApiItemCredential>.toSiop2User() = Siop2User(
+fun Collection<ApiItemCredential>.toOpenId4VpUser() = OpenId4VpUser(
     apiItem = ApiItem(
         id = Json.encodeToString(this).sha256(),
         firstname = firstNotNullOfOrNull { it.getGivenName() } ?: "N/A",
@@ -50,7 +50,7 @@ fun Collection<ApiItemCredential>.toSiop2User() = Siop2User(
     )
 )
 
-fun ApiItemCredential.toSiop2User() = Siop2User(
+fun ApiItemCredential.toOpenId4VpUser() = OpenId4VpUser(
     apiItem = ApiItem(
         id = Json.encodeToString(this).sha256(),
         firstname = getGivenName() ?: "N/A",
@@ -121,8 +121,8 @@ fun ValidationError.toApiItemCredential(): ApiItemCredential = ApiItemCredential
     error = field + cause?.let { ": " + it.message }
 )
 
-fun Map<DCQLCredentialQueryIdentifier, AuthnResponseResult>.toSiop2User(): Siop2User? =
-    this.toApiItemCredentials().toSiop2User()
+fun Map<DCQLCredentialQueryIdentifier, AuthnResponseResult>.toOpenId4VpUser(): OpenId4VpUser? =
+    this.toApiItemCredentials().toOpenId4VpUser()
 
 fun VerifiablePresentationParsed.toApiItemCredential(): List<ApiItemCredential> =
     freshVerifiableCredentials.takeIf { it.isNotEmpty() }?.let {

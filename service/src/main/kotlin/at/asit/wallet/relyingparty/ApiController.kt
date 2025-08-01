@@ -1,10 +1,7 @@
 package at.asit.wallet.relyingparty
 
-import at.asit.wallet.relyingparty.AntilogSlf4jAdapter
-import at.asit.wallet.relyingparty.MDC_REQUEST_ID
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
-import at.asitplus.openid.RelyingPartyMetadata
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
@@ -136,7 +133,7 @@ class ApiController(
     }
 
     /**
-     * Expects SIOPv2 authn response as request body,
+     * Expects OpenID4VP authn response as request body,
      * called from Wallet App upon answering authn request from [transactionGet].
      */
     @PostMapping("/transaction/result/{id}")
@@ -153,7 +150,7 @@ class ApiController(
             throw ResponseStatusException(HttpStatus.NOT_FOUND)
         }
         val user = try {
-            validateSiopResponse(id, requestBody, transaction.profile.verifier)
+            validateAuthnResponse(id, requestBody, transaction.profile.verifier)
         } catch (e: Exception) {
             statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})", e)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, e.localizedMessage, e)
@@ -188,19 +185,6 @@ class ApiController(
             .toUriString()
     }
 
-    // TODO Maybe that's not needed at all, if nobody's using the client_metadata_uri
-    @ResponseBody
-    @GetMapping("/siopv2/metadata/{profilename}")
-    fun siopv2Metadata(@PathVariable("profilename") profileName: String): ResponseEntity<RelyingPartyMetadata> =
-        runBlocking {
-            Napier.i("/siopv2/metadata/$profileName called")
-            profiles.getVerifierByName(profileName)?.let { verifier ->
-                ResponseEntity.ok()
-                    .contentType(MediaType.APPLICATION_JSON)
-                    .body(verifier.metadata)
-            } ?: ResponseEntity.notFound().build()
-        }
-
     @GetMapping(
         value = [OpenIdConstants.PATH_WELL_KNOWN_JAR_ISSUER],
         produces = [APPLICATION_JSON_VALUE]
@@ -226,24 +210,24 @@ class ApiController(
         return ResponseEntity.ok(metadata)
     }
 
-    private suspend fun validateSiopResponse(
+    private suspend fun validateAuthnResponse(
         id: String,
         requestBody: String,
         verifier: OpenId4VpVerifier,
-    ): Siop2User? = when (val result = verifier.validateAuthnResponse(requestBody).also {
+    ): OpenId4VpUser? = when (val result = verifier.validateAuthnResponse(requestBody).also {
         Napier.i("/transaction/result/$id extracted result $it")
     }) {
-        is AuthnResponseResult.VerifiableDCQLPresentationValidationResults -> result.validationResults.toSiop2User()
-        is AuthnResponseResult.Success -> result.vp.toApiItemCredential().toSiop2User()
-        is AuthnResponseResult.SuccessSdJwt -> result.toApiItemCredential().toSiop2User()
-        is AuthnResponseResult.SuccessIso -> result.toApiItemCredentials().toSiop2User()
+        is AuthnResponseResult.VerifiableDCQLPresentationValidationResults -> result.validationResults.toOpenId4VpUser()
+        is AuthnResponseResult.Success -> result.vp.toApiItemCredential().toOpenId4VpUser()
+        is AuthnResponseResult.SuccessSdJwt -> result.toApiItemCredential().toOpenId4VpUser()
+        is AuthnResponseResult.SuccessIso -> result.toApiItemCredentials().toOpenId4VpUser()
         is AuthnResponseResult.Error -> throw RuntimeException(result.reason, result.cause)
         is AuthnResponseResult.ValidationError -> throw RuntimeException("Failed: ${result.field}", result.cause)
-        is AuthnResponseResult.VerifiablePresentationValidationResults -> result.toApiItemCredentials().toSiop2User()
+        is AuthnResponseResult.VerifiablePresentationValidationResults -> result.toApiItemCredentials().toOpenId4VpUser()
         is AuthnResponseResult.IdToken -> throw RuntimeException("Only got id_token")
     }
 
 }
 
-fun AuthenticatedPrincipal.toApiItem() = if (this is Siop2User) this.apiItem else null
+fun AuthenticatedPrincipal.toApiItem() = if (this is OpenId4VpUser) this.apiItem else null
 
