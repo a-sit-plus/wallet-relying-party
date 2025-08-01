@@ -1,14 +1,8 @@
-package at.asit.apps.terminal_sp.prototype.server
+package at.asit.wallet.relyingparty
 
-import at.asit.apps.terminal_sp.prototype.server.util.AntilogSlf4jAdapter
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.wallet.lib.Initializer.initOpenIdModule
-import at.asitplus.wallet.lib.agent.ClaimToBeIssued
-import at.asitplus.wallet.lib.agent.CredentialToBeIssued
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult

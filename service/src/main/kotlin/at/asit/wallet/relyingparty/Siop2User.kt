@@ -1,4 +1,4 @@
-package at.asit.apps.terminal_sp.prototype.server
+package at.asit.wallet.relyingparty
 
 import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
 import at.asitplus.signum.indispensable.io.Base64UrlStrict

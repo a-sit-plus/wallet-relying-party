@@ -1,4 +1,4 @@
-rootProject.name = "terminal_sp_server"
+rootProject.name = "Wallet Relying Party"
 
 pluginManagement {
     repositories {

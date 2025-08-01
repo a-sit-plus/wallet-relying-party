@@ -1,4 +1,4 @@
-package at.asit.apps.terminal_sp.prototype.server.util
+package at.asit.wallet.relyingparty
 
 import io.github.aakira.napier.Antilog
 import io.github.aakira.napier.LogLevel

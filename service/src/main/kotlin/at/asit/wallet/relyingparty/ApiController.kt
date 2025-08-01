@@ -1,7 +1,7 @@
-package at.asit.apps.terminal_sp.prototype.server
+package at.asit.wallet.relyingparty
 
-import at.asit.apps.terminal_sp.prototype.server.util.AntilogSlf4jAdapter
-import at.asit.apps.terminal_sp.prototype.server.util.MDC_REQUEST_ID
+import at.asit.wallet.relyingparty.AntilogSlf4jAdapter
+import at.asit.wallet.relyingparty.MDC_REQUEST_ID
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.RelyingPartyMetadata

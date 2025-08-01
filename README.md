@@ -1,4 +1,4 @@
-# Wallet Service Provider
+# Wallet Relying Party
 
 This service implements the SP for a Wallet system, requesting credentials from Wallets using OpenID 4 Verifiable Presentations.
 

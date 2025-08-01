@@ -1,4 +1,4 @@
-package at.asit.apps.terminal_sp.prototype.server
+package at.asit.wallet.relyingparty
 
 import at.asitplus.wallet.ehic.EhicScheme
 import at.asitplus.wallet.eupid.EuPidScheme

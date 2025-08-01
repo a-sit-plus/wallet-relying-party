@@ -1,4 +1,4 @@
-package at.asit.apps.terminal_sp.prototype.server
+package at.asit.wallet.relyingparty
 
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable

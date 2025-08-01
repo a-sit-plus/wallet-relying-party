@@ -1,7 +1,7 @@
-package at.asit.apps.terminal_sp.prototype.server
+package at.asit.wallet.relyingparty
 
 
-import at.asit.apps.terminal_sp.prototype.server.ApiController.Transaction
+import at.asit.wallet.relyingparty.ApiController.Transaction
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
