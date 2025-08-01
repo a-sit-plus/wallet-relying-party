@@ -8,7 +8,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 
 @SpringBootApplication
-class DemoApplication
+class RelyingPartyApplication
 
 fun main(args: Array<String>) {
 	Napier.takeLogarithm()
@@ -23,5 +23,5 @@ fun main(args: Array<String>) {
 	at.asitplus.wallet.healthid.Initializer.initWithVCK()
 	at.asitplus.wallet.companyregistration.Initializer.initWithVCK()
 	at.asitplus.wallet.ehic.Initializer.initWithVCK()
-	runApplication<DemoApplication>(*args)
+	runApplication<RelyingPartyApplication>(*args)
 }
