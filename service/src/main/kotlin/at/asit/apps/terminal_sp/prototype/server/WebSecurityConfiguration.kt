@@ -20,7 +20,7 @@ class WebSecurityConfiguration {
     }.headers {
         it.frameOptions { it.sameOrigin() }
     }.csrf {
-        it.disable() // to allow POST in SIOPv2 case
+        it.disable() // to allow POST for OpenID4VP
     }.build()
 
 

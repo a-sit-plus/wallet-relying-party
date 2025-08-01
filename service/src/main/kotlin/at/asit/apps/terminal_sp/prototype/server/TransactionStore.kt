@@ -1,7 +1,7 @@
 package at.asit.apps.terminal_sp.prototype.server
 
-import io.ktor.utils.io.InternalAPI
-import io.ktor.utils.io.locks.withLock
+import io.ktor.utils.io.*
+import io.ktor.utils.io.locks.*
 import org.springframework.stereotype.Service
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.time.Clock

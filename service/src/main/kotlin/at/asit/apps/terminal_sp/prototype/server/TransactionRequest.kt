@@ -102,7 +102,6 @@ data class TransactionRequestCredential(
         }
     }
 
-    @Suppress("DEPRECATION")
     private fun CredentialScheme.isSd(): Boolean = when (this) {
         is HealthIdScheme -> false
         is EhicScheme -> false
