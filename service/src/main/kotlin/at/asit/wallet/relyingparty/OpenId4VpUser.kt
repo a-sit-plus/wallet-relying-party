@@ -176,9 +176,9 @@ fun CredentialTimelinessValidationSummary.detailsExpired() = when (this) {
 private fun EntityExpiredError.errorMessage(): String =
     "Expired at: ${expirationTime.formatted()}"
 
-private fun kotlinx.datetime.Instant.formatted(): String =
+private fun kotlin.time.Instant.formatted(): String =
     toLocalDateTime(TimeZone.currentSystemDefault()).format(LocalDateTime.Format {
-        date(LocalDate.Format { year();char('-');monthNumber();char('-');dayOfMonth() })
+        date(LocalDate.Format { year();char('-');monthNumber();char('-');day() })
         char(' ')
         time(LocalTime.Format { hour();char(':');minute();char(':');second() })
     })

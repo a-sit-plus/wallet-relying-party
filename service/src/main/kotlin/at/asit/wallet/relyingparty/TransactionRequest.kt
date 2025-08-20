@@ -26,13 +26,17 @@ data class TransactionRequest(
     val credentials: List<TransactionRequestCredential>? = null,
 ) {
     fun toRequestOptionsCredential() = RequestOptionsCredential(
-        credentialScheme = credentialType
-            ?.let { AttributeIndex.resolveCredential(it)?.first }
-            ?: EuPidScheme,
+        credentialScheme = resolveCredentialType(),
         representation = CredentialRepresentation.entries.firstOrNull { it.name == representation }
             ?: CredentialRepresentation.SD_JWT,
         requestedOptionalAttributes = attributes?.ifEmpty { null }?.toSet(),
     )
+
+    private fun resolveCredentialType(): CredentialScheme = credentialType?.let {
+        AttributeIndex.resolveAttributeType(it)
+            ?: AttributeIndex.resolveSdJwtAttributeType(it)
+            ?: AttributeIndex.resolveIsoDoctype(it)
+    } ?: EuPidScheme
 
     fun toRequestOptionsCredentials() = credentials?.let { credentials.map { it.toRequestOptionsCredential() }.toSet() }
         ?: setOf(toRequestOptionsCredential())
@@ -45,7 +49,7 @@ data class TransactionRequestCredential(
     val attributes: List<String>? = null,
 ) {
     fun toRequestOptionsCredential() =
-        (credentialType?.let { AttributeIndex.resolveCredential(it)?.first } ?: EuPidScheme).let { scheme ->
+        (resolveCredentialType()).let { scheme ->
             (CredentialRepresentation.entries.firstOrNull { it.name == representation }
                 ?: CredentialRepresentation.SD_JWT).let { representation ->
                 RequestOptionsCredential(
@@ -56,6 +60,12 @@ data class TransactionRequestCredential(
                 )
             }
         }
+
+    private fun resolveCredentialType(): CredentialScheme = credentialType?.let {
+        AttributeIndex.resolveAttributeType(it)
+            ?: AttributeIndex.resolveSdJwtAttributeType(it)
+            ?: AttributeIndex.resolveIsoDoctype(it)
+    } ?: EuPidScheme
 
     // if the credential is not selectively disclosable, do not request any attributes
     private fun CredentialScheme.optionalAttributes(

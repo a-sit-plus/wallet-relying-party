@@ -29,7 +29,7 @@ import kotlin.uuid.Uuid
 
 @Controller
 class ApiController(
-    @Value("\${app.public-url}")
+    @param:Value("\${app.public-url}")
     private val publicUrl: String,
     private val transactionStore: TransactionStore,
 ) {
@@ -223,7 +223,9 @@ class ApiController(
         is AuthnResponseResult.SuccessIso -> result.toApiItemCredentials().toOpenId4VpUser()
         is AuthnResponseResult.Error -> throw RuntimeException(result.reason, result.cause)
         is AuthnResponseResult.ValidationError -> throw RuntimeException("Failed: ${result.field}", result.cause)
-        is AuthnResponseResult.VerifiablePresentationValidationResults -> result.toApiItemCredentials().toOpenId4VpUser()
+        is AuthnResponseResult.VerifiablePresentationValidationResults -> result.toApiItemCredentials()
+            .toOpenId4VpUser()
+
         is AuthnResponseResult.IdToken -> throw RuntimeException("Only got id_token")
     }
 
