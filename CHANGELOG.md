@@ -1,5 +1,8 @@
 # Changelog
 
+Version 5.9.0:
+ - Update to VC-K 5.9.0
+
 Version 5.8.0:
  - Update to VC-K 5.8.0
  - Update credentials

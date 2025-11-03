@@ -6,7 +6,7 @@ import kotlinx.serialization.KSerializer
 import kotlinx.serialization.builtins.serializer
 
 object WebUiPresentationMechanismEnumSelectionSerializer :
-    KSerializer<PresentationMechanismEnum> by TransformingSerializerTemplate<PresentationMechanismEnum, String>(
+    KSerializer<PresentationMechanismEnum> by TransformingSerializerTemplate(
         parent = String.serializer(),
         encodeAs = {
             when (it) {

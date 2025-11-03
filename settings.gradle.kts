@@ -12,23 +12,7 @@ pluginManagement {
     }
 }
 
-val vckVersion: String by extra
-
 include("service")
-
-dependencyResolutionManagement {
-    repositories {
-        mavenCentral()
-        maven("https://s01.oss.sonatype.org/content/repositories/snapshots/")
-        maven("https://oss.sonatype.org/content/repositories/snapshots/")
-    }
-    versionCatalogs {
-        create("vck") {
-            from("at.asitplus.wallet:vck-openid-versionCatalog:$vckVersion")
-        }
-    }
-}
-
 
 //If we have a working composite build, use it!
 if (File("../vck/signum").isDirectory && File("../vck/signum/build.gradle.kts").exists()) {

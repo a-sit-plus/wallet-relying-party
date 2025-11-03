@@ -2,24 +2,29 @@ package at.asit.wallet.relyingparty
 
 
 import at.asit.wallet.relyingparty.ApiController.Transaction
-import at.asitplus.openid.AuthenticationRequestParameters
+import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.KeyStoreMaterial
 import at.asitplus.wallet.lib.agent.Validator
+import at.asitplus.wallet.lib.agent.ValidatorMdoc
+import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
+import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import at.asitplus.wallet.lib.openid.*
-import at.asitplus.wallet.lib.openid.ClientIdScheme.PreRegistered
+import at.asitplus.wallet.lib.openid.ClientIdScheme
+import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
+import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
+import at.asitplus.wallet.lib.openid.RequestOptions
+import at.asitplus.wallet.lib.openid.RequestOptionsCredential
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
@@ -54,7 +59,7 @@ class VerifierProfiles(private val publicUrl: String) {
         }
     }
 
-    private suspend fun buildPotentialKeyLookup(jwsSigned: JwsSigned<*>): Set<JsonWebKey>? =
+    private suspend fun remoteKeyLookup(jwsSigned: JwsSigned<*>): Set<JsonWebKey>? =
         (jwsSigned.payload as? JsonObject)?.get("iss")?.jsonPrimitive?.content?.let { iss ->
             val url = buildVcIssuerUrl(iss)
             Napier.i("Resolving Key for $iss from $url")
@@ -74,63 +79,9 @@ class VerifierProfiles(private val publicUrl: String) {
         certAlias = "verifier",
     )
     val knownProfiles: List<Profile> = listOf(
+
         object : Profile {
             override val name = DEFAULT_PROFILE
-            override val label = "Potential (v1)"
-            override val description = "pre-registered client, OpenID4VP d18, direct_post"
-            override val urlPrefix = "haip://"
-            override val clientIdScheme = preRegisteredD18()
-            override val verifier = OpenId4VpVerifier(
-                keyMaterial = EphemeralKeyWithoutCert(),
-                clientIdScheme = clientIdScheme,
-                verifier = VerifierAgent(
-                    identifier = clientIdScheme.clientId,
-                    validator = potentialValidator()
-                ),
-            )
-
-            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
-                buildQrCodeUrlD23(urlPrefix, requestUrl, this.clientIdScheme)
-
-            override suspend fun transactionGet(
-                responseUrl: String,
-                state: String,
-                requestOptionsCredentials: Set<RequestOptionsCredential>,
-                presentationMechanism: PresentationMechanismEnum,
-            ): String = directPost(state, responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
-
-        },
-
-        object : Profile {
-            override val name = "Potentialv2"
-            override val label = "Potential (v2)"
-            override val description = "x509_san_dns, OpenID4VP d18, direct_post.jwt"
-            override val urlPrefix = "haip://"
-            override val clientIdScheme = runBlocking { x509SanDnsD18() }
-            override val verifier = OpenId4VpVerifier(
-                keyMaterial = verifierKeyMaterial,
-                clientIdScheme = clientIdScheme,
-                verifier = VerifierAgent(
-                    identifier = clientIdScheme.clientId.removePrefix(clientIdScheme.scheme.prefix),
-                    validator = potentialValidator()
-                ),
-            )
-
-            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
-                buildQrCodeUrlD18(urlPrefix, requestUrl, clientIdScheme)
-
-            override suspend fun transactionGet(
-                responseUrl: String,
-                state: String,
-                requestOptionsCredentials: Set<RequestOptionsCredential>,
-                presentationMechanism: PresentationMechanismEnum,
-            ): String = directPostJwt(state, responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
-
-        },
-
-
-        object : Profile {
-            override val name = "HAIPd01"
             override val label = "HAIP (d01)"
             override val description = "x509_san_dns, OpenID4VP d23, direct_post"
             override val urlPrefix = "haip://"
@@ -140,7 +91,8 @@ class VerifierProfiles(private val publicUrl: String) {
                 clientIdScheme = clientIdScheme,
                 verifier = VerifierAgent(
                     identifier = clientIdScheme.clientId,
-                    validator = validator()
+                    validatorSdJwt = potentialValidatorSdJwt(),
+                    validatorMdoc = potentialValidatorMdoc()
                 ),
             )
 
@@ -166,38 +118,13 @@ class VerifierProfiles(private val publicUrl: String) {
                 clientIdScheme = clientIdScheme,
                 verifier = VerifierAgent(
                     identifier = clientIdScheme.clientId,
-                    validator = validator()
+                    validatorSdJwt = potentialValidatorSdJwt(),
+                    validatorMdoc = potentialValidatorMdoc()
                 ),
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
                 buildQrCodeUrlD23(urlPrefix, requestUrl, clientIdScheme)
-
-            override suspend fun transactionGet(
-                responseUrl: String,
-                state: String,
-                requestOptionsCredentials: Set<RequestOptionsCredential>,
-                presentationMechanism: PresentationMechanismEnum,
-            ): String = directPostJwt(state, responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
-        },
-
-        object : Profile {
-            override val name = "MDOC"
-            override val label = "ISO 18013-7"
-            override val description = "x509_san_dns, OpenID4VP d18, direct_post.jwt"
-            override val urlPrefix = "mdoc-openid4vp://"
-            override val clientIdScheme = runBlocking { x509SanDnsD18() }
-            override val verifier = OpenId4VpVerifier(
-                keyMaterial = verifierKeyMaterial,
-                clientIdScheme = clientIdScheme,
-                verifier = VerifierAgent(
-                    identifier = clientIdScheme.clientId.removePrefix(clientIdScheme.scheme.prefix),
-                    validator = validator(),
-                ),
-            )
-
-            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String =
-                buildQrCodeUrlD18(urlPrefix, requestUrl, clientIdScheme)
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -218,7 +145,8 @@ class VerifierProfiles(private val publicUrl: String) {
                 clientIdScheme = clientIdScheme,
                 verifier = VerifierAgent(
                     identifier = clientIdScheme.clientId,
-                    validator = validator(),
+                    validatorSdJwt = potentialValidatorSdJwt(),
+                    validatorMdoc = potentialValidatorMdoc()
                 ),
             )
 
@@ -244,7 +172,8 @@ class VerifierProfiles(private val publicUrl: String) {
                 clientIdScheme = clientIdScheme,
                 verifier = VerifierAgent(
                     identifier = clientIdScheme.clientId,
-                    validator = validator()
+                    validatorSdJwt = potentialValidatorSdJwt(),
+                    validatorMdoc = potentialValidatorMdoc()
                 ),
             )
 
@@ -266,38 +195,12 @@ class VerifierProfiles(private val publicUrl: String) {
         publicUrl
     )
 
-    private fun preRegisteredD18(): PreRegistered = PreRegistered(
-        clientId = "AT-GV-EGIZ-CUSTOMVERIFIER",
-        redirectUri = publicUrl,
-        issuerUri = publicUrl,
-        useDeprecatedClientIdScheme = true,
-    )
-
-    private suspend fun x509SanDnsD18(): ClientIdScheme.CertificateSanDns = ClientIdScheme.CertificateSanDns(
-        chain = listOf(verifierKeyMaterial.getCertificate()!!),
-        clientIdDnsName = publicUrl.getDnsName(),
-        redirectUri = publicUrl,
-        useDeprecatedClientIdScheme = true,
-    )
-
-    private fun buildQrCodeUrlD18(
-        urlPrefix: String,
-        requestUrl: String,
-        clientIdScheme: ClientIdScheme,
-    ): String = ServletUriComponentsBuilder.fromUriString(urlPrefix).apply {
-        AuthenticationRequestParameters(
-            clientId = clientIdScheme.clientId.removePrefix(clientIdScheme.scheme.prefix),
-            requestUri = requestUrl,
-        ).encodeToParameters()
-            .forEach { queryParam(it.key, it.value) }
-    }.toUriString()
-
     private fun buildQrCodeUrlD23(
         urlPrefix: String,
         requestUrl: String,
         clientIdScheme: ClientIdScheme,
     ): String = ServletUriComponentsBuilder.fromUriString(urlPrefix).apply {
-        AuthenticationRequestParameters(
+        JarRequestParameters(
             clientId = clientIdScheme.clientId,
             requestUri = requestUrl,
         ).encodeToParameters()
@@ -311,7 +214,7 @@ class VerifierProfiles(private val publicUrl: String) {
         presentationMechanism: PresentationMechanismEnum,
         verifier: OpenId4VpVerifier,
     ): String = verifier.createAuthnRequestAsSignedRequestObject(
-        OpenIdRequestOptions(
+        RequestOptions(
             state = state,
             responseMode = OpenIdConstants.ResponseMode.DirectPost,
             responseUrl = responseUrl,
@@ -327,7 +230,7 @@ class VerifierProfiles(private val publicUrl: String) {
         presentationMechanism: PresentationMechanismEnum,
         verifier: OpenId4VpVerifier,
     ): String = verifier.createAuthnRequestAsSignedRequestObject(
-        OpenIdRequestOptions(
+        RequestOptions(
             state = state,
             responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
             responseUrl = responseUrl,
@@ -338,16 +241,22 @@ class VerifierProfiles(private val publicUrl: String) {
     ).getOrThrow().serialize()
 
     fun validator(): Validator = Validator(
-        resolveStatusListToken = resolveStatusListToken(),
+        tokenStatusResolver = TokenStatusResolverImpl(
+            resolveStatusListToken = resolveStatusListToken(),
+        ),
     )
 
-    fun potentialValidator(): Validator = Validator(
+    fun potentialValidatorSdJwt(): ValidatorSdJwt = ValidatorSdJwt(
         verifyJwsObject = VerifyJwsObject(
             publicKeyLookup = { jwsSigned ->
-                buildPotentialKeyLookup(jwsSigned)
+                remoteKeyLookup(jwsSigned)
             }
         ),
-        resolveStatusListToken = resolveStatusListToken(),
+        validator = validator(),
+    )
+
+    fun potentialValidatorMdoc(): ValidatorMdoc = ValidatorMdoc(
+        validator = validator(),
     )
 
     private fun resolveStatusListToken() = StatusListTokenResolver {
@@ -412,4 +321,4 @@ interface Profile {
 }
 
 
-const val DEFAULT_PROFILE = "Potentialv1"
+const val DEFAULT_PROFILE = "HAIPd01"

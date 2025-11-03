@@ -121,7 +121,7 @@ fun ValidationError.toApiItemCredential(): ApiItemCredential = ApiItemCredential
     error = field + cause?.let { ": " + it.message }
 )
 
-fun Map<DCQLCredentialQueryIdentifier, AuthnResponseResult>.toOpenId4VpUser(): OpenId4VpUser? =
+fun Map<DCQLCredentialQueryIdentifier, AuthnResponseResult>.toOpenId4VpUser(): OpenId4VpUser =
     this.toApiItemCredentials().toOpenId4VpUser()
 
 fun VerifiablePresentationParsed.toApiItemCredential(): List<ApiItemCredential> =

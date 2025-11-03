@@ -8,7 +8,7 @@ plugins {
     kotlin("plugin.spring")
     kotlin("plugin.jpa")
     kotlin("plugin.allopen")
-    id("org.springframework.boot") version "3.5.4"
+    id("org.springframework.boot") version "3.5.7"
     id("at.asitplus.gradle.conventions")
 }
 
