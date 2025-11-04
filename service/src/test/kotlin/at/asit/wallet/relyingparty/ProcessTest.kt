@@ -1,10 +1,10 @@
 package at.asit.wallet.relyingparty
 
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.wallet.lib.Initializer.initOpenIdModule
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
@@ -42,7 +42,6 @@ class ProcessTest {
         @BeforeAll
         @JvmStatic
         fun beforeAll() {
-            initOpenIdModule()
             Napier.takeLogarithm()
             Napier.base(AntilogSlf4jAdapter)
         }
@@ -84,7 +83,10 @@ class ProcessTest {
 
         val holderKey = EphemeralKeyWithoutCert()
         val holder = HolderAgent(keyMaterial = holderKey)
-        val issuer = IssuerAgent(statusListBaseUrl = "https://wallet.a-sit.at/m6/credentials/status")
+        val issuer = IssuerAgent(
+            statusListBaseUrl = "https://wallet.a-sit.at/m6/credentials/status",
+            identifier = UniformResourceIdentifier("https://example.com"),
+        )
         holder.storeCredential(
             issuer.issueCredential(
                 CredentialToBeIssued.VcSd(
