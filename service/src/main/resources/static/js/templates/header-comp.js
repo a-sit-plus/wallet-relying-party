@@ -1,6 +1,6 @@
 export default {
     props: {
-        title: { default: "A-SIT Demo Wallet Relying Party" },
+        title: { default: "A-SIT EUDI Relying Party" },
         darkMode: { default: false }
     },
     template: `

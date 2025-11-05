@@ -97,7 +97,7 @@ class VerifierProfiles(private val publicUrl: String) {
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
-                buildQrCodeUrlD23(urlPrefix, requestUrl, clientIdScheme)
+                buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme)
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -124,7 +124,34 @@ class VerifierProfiles(private val publicUrl: String) {
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
-                buildQrCodeUrlD23(urlPrefix, requestUrl, clientIdScheme)
+                buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme)
+
+            override suspend fun transactionGet(
+                responseUrl: String,
+                state: String,
+                requestOptionsCredentials: Set<RequestOptionsCredential>,
+                presentationMechanism: PresentationMechanismEnum,
+            ): String = directPostJwt(state, responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
+        },
+
+        object : Profile {
+            override val name = "HAIPd05"
+            override val label = "HAIP (d05)"
+            override val description = "x509_hash, OpenID4VP 1.0, direct_post.jwt"
+            override val urlPrefix = "haip-vp://"
+            override val clientIdScheme = runBlocking { x509Hash() }
+            override val verifier = OpenId4VpVerifier(
+                keyMaterial = verifierKeyMaterial,
+                clientIdScheme = clientIdScheme,
+                verifier = VerifierAgent(
+                    identifier = clientIdScheme.clientId,
+                    validatorSdJwt = potentialValidatorSdJwt(),
+                    validatorMdoc = potentialValidatorMdoc()
+                ),
+            )
+
+            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
+                buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme)
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -151,7 +178,7 @@ class VerifierProfiles(private val publicUrl: String) {
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String =
-                buildQrCodeUrlD23(urlPrefix, requestUrl, clientIdScheme)
+                buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme)
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -178,7 +205,7 @@ class VerifierProfiles(private val publicUrl: String) {
             )
 
             override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
-                buildQrCodeUrlD23(urlPrefix, requestUrl, clientIdScheme)
+                buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme)
 
             override suspend fun transactionGet(
                 responseUrl: String,
@@ -190,12 +217,17 @@ class VerifierProfiles(private val publicUrl: String) {
     )
 
     private suspend fun x509SanDnsD23(): ClientIdScheme.CertificateSanDns = ClientIdScheme.CertificateSanDns(
-        listOf(verifierKeyMaterial.getCertificate()!!),
-        publicUrl.getDnsName(),
-        publicUrl
+        chain = listOf(verifierKeyMaterial.getCertificate()!!),
+        clientIdDnsName = publicUrl.getDnsName(),
+        redirectUri = publicUrl
     )
 
-    private fun buildQrCodeUrlD23(
+    private suspend fun x509Hash(): ClientIdScheme.CertificateHash = ClientIdScheme.CertificateHash(
+        chain = listOf(verifierKeyMaterial.getCertificate()!!),
+        redirectUri = publicUrl,
+    )
+
+    private fun buildQrCodeUrlByReference(
         urlPrefix: String,
         requestUrl: String,
         clientIdScheme: ClientIdScheme,
