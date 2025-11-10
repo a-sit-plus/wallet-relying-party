@@ -19,6 +19,7 @@ import at.asitplus.wallet.lib.data.StatusListToken
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.oauth2.OAuth2Utils
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
@@ -61,14 +62,10 @@ class VerifierProfiles(private val publicUrl: String) {
 
     private suspend fun remoteKeyLookup(jwsSigned: JwsSigned<*>): Set<JsonWebKey>? =
         (jwsSigned.payload as? JsonObject)?.get("iss")?.jsonPrimitive?.content?.let { iss ->
-            val url = buildVcIssuerUrl(iss)
+            val url = OAuth2Utils.insertWellKnownPath(iss, OpenIdConstants.WellKnownPaths.JwtVcIssuer)
             Napier.i("Resolving Key for $iss from $url")
             httpClient.get(url).body<JwtVcIssuerMetadata>().jsonWebKeySet?.keys?.toSet()
         }
-
-    private fun buildVcIssuerUrl(iss: String): Url = URLBuilder(urlString = iss).apply {
-        path(".well-known", "jwt-vc-issuer", *(pathSegments.toTypedArray()))
-    }.build()
 
     private val verifierKeyMaterial = KeyStoreMaterial(
         keyStore = KeyStore.getInstance("PKCS12").apply {
@@ -307,11 +304,6 @@ class VerifierProfiles(private val publicUrl: String) {
     fun getVerifierByName(profileName: String): OpenId4VpVerifier? =
         knownProfiles.firstOrNull { it.name == profileName }?.verifier
 
-    fun getJarMetadataByName(profileName: String): JwtVcIssuerMetadata? {
-        val profile = (knownProfiles.firstOrNull { it.name == profileName }
-            ?: knownProfiles.firstOrNull { it.name == DEFAULT_PROFILE })
-        return profile?.verifier?.jarMetadata
-    }
 }
 
 suspend fun Transaction.transactionGet(

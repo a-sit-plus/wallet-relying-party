@@ -185,31 +185,6 @@ class ApiController(
             .toUriString()
     }
 
-    @GetMapping(
-        value = [OpenIdConstants.PATH_WELL_KNOWN_JAR_ISSUER],
-        produces = [APPLICATION_JSON_VALUE]
-    )
-    fun jarMetadata(
-        request: HttpServletRequest,
-    ): ResponseEntity<JwtVcIssuerMetadata> {
-        val metadata = profiles.getJarMetadataByName(DEFAULT_PROFILE)
-        Napier.i("${request.requestURI} returns $metadata")
-        return ResponseEntity.ok(metadata)
-    }
-
-    @GetMapping(
-        value = ["${OpenIdConstants.PATH_WELL_KNOWN_JAR_ISSUER}/{id}"],
-        produces = [APPLICATION_JSON_VALUE]
-    )
-    fun jarMetadataNamed(
-        @PathVariable("id") verifierId: String?,
-        request: HttpServletRequest,
-    ): ResponseEntity<JwtVcIssuerMetadata> {
-        val metadata = profiles.getJarMetadataByName(verifierId ?: DEFAULT_PROFILE)
-        Napier.i("${request.requestURI} returns $metadata")
-        return ResponseEntity.ok(metadata)
-    }
-
     private suspend fun validateAuthnResponse(
         id: String,
         requestBody: String,

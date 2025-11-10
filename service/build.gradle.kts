@@ -45,6 +45,7 @@ dependencies {
     implementation(napier())
     implementation("at.asitplus.wallet:vck:$vckVersion")
     implementation("at.asitplus.wallet:vck-openid:$vckVersion")
+    implementation("at.asitplus.wallet:ageverification:1.0.0")
     implementation("at.asitplus.wallet:eupidcredential:3.3.0")
     implementation("at.asitplus.wallet:eupidcredential-sdjwt:1.3.0")
     implementation("at.asitplus.wallet:mobiledrivinglicence:1.2.0")

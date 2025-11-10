@@ -1,5 +1,9 @@
 # Changelog
 
+Version 5.10.0:
+ - Update to VC-K 5.10.0
+ - Add Age Verification credential
+
 Version 5.9.0:
  - Update to VC-K 5.9.0
 

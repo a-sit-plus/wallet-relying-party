@@ -81,35 +81,33 @@ data class TransactionRequestCredential(
         if (!isSd() && representation == CredentialRepresentation.SD_JWT) mandatoryAttributes()
         else null
 
-    private fun CredentialScheme.mandatoryAttributes(): Set<String>? {
-        return when (this) {
-            is HealthIdScheme -> with(HealthIdScheme.Attributes) {
-                setOf(
-                    EXPIRY_DATE,
-                    ISSUE_DATE,
-                    ISSUING_AUTHORITY,
-                    ISSUING_COUNTRY,
-                )
-            }
-
-            is EhicScheme -> with(EhicScheme.Attributes) {
-                setOf(
-                    ISSUING_COUNTRY,
-                    PERSONAL_ADMINISTRATIVE_NUMBER,
-                    PREFIX_ISSUING_AUTHORITY,
-                    PREFIX_AUTHENTIC_SOURCE,
-                    DOCUMENT_NUMBER,
-                    DATE_OF_ISSUANCE,
-                    DATE_OF_EXPIRY,
-                    STARTING_DATE,
-                    ENDING_DATE,
-                )
-            }
-
-            is TaxIdScheme -> TaxIdScheme.requiredClaims.toSet()
-            is PowerOfRepresentationScheme -> PowerOfRepresentationDataElements.MANDATORY_ELEMENTS.toSet()
-            else -> setOf()
+    private fun CredentialScheme.mandatoryAttributes(): Set<String>? = when (this) {
+        is HealthIdScheme -> with(HealthIdScheme.Attributes) {
+            setOf(
+                EXPIRY_DATE,
+                ISSUE_DATE,
+                ISSUING_AUTHORITY,
+                ISSUING_COUNTRY,
+            )
         }
+
+        is EhicScheme -> with(EhicScheme.Attributes) {
+            setOf(
+                ISSUING_COUNTRY,
+                PERSONAL_ADMINISTRATIVE_NUMBER,
+                PREFIX_ISSUING_AUTHORITY,
+                PREFIX_AUTHENTIC_SOURCE,
+                DOCUMENT_NUMBER,
+                DATE_OF_ISSUANCE,
+                DATE_OF_EXPIRY,
+                STARTING_DATE,
+                ENDING_DATE,
+            )
+        }
+
+        is TaxIdScheme -> TaxIdScheme.requiredClaims.toSet()
+        is PowerOfRepresentationScheme -> PowerOfRepresentationDataElements.MANDATORY_ELEMENTS.toSet()
+        else -> setOf()
     }
 
     private fun CredentialScheme.isSd(): Boolean = when (this) {

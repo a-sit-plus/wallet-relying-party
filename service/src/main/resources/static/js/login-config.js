@@ -124,6 +124,24 @@ export default { "schemeTypes": [
         { "label": "unknown", "value": "unknown" },
       ]
     },
+    { "label": "Age Verification",
+      "value": "eu.europa.ec.av.1",
+      "sd": true,
+      "validRepresentations": [ "ISO_MDOC" ],
+      "attributes": [
+          { "label": "age_over_12", "value": "age_over_12" },
+          { "label": "age_over_13", "value": "age_over_13" },
+          { "label": "age_over_14", "value": "age_over_14" },
+          { "label": "age_over_16", "value": "age_over_16" },
+          { "label": "age_over_18", "value": "age_over_18" },
+          { "label": "age_over_21", "value": "age_over_21" },
+          { "label": "age_over_25", "value": "age_over_25" },
+          { "label": "age_over_60", "value": "age_over_60" },
+          { "label": "age_over_62", "value": "age_over_62" },
+          { "label": "age_over_65", "value": "age_over_65" },
+          { "label": "age_over_68", "value": "age_over_68" }
+      ]
+    },
     { "label": "PID (SD-JWT)",
       "value": "urn:eudi:pid:1",
       "sd": true,
