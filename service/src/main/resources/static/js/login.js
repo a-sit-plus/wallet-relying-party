@@ -17,7 +17,7 @@ const createBasicSetup = function (config) {
 
     const reqSelection = ref({
         simple: false,
-        presentationMechanismIdentifier: "presentation_definition",
+        presentationMechanismIdentifier: "dcql_query",
         credentials: [],
     })
     const error = ref({message: null})
@@ -66,7 +66,7 @@ const createBasicSetup = function (config) {
             simple: profile.simple,
             credentials: credentials,
             profileLabel: profile.label,
-            presentationMechanismIdentifier: "presentation_definition",
+            presentationMechanismIdentifier: "dcql_query",
         }
         console.log('updateProfile result', reqSelection.value)
 

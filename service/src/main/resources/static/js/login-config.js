@@ -276,8 +276,8 @@ export default { "schemeTypes": [
     }
   ],
   "presentationMechanisms": [
-    { "label": "Presentation Exchange", "value": "presentation_definition" },
-    { "label": "DCQL", "value": "dcql_query" }
+    { "label": "DCQL", "value": "dcql_query" },
+    { "label": "Presentation Exchange", "value": "presentation_definition" }
   ],
   "representation": [
     { "label": "SD-JWT", "value": "SD_JWT" },

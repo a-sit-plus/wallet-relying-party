@@ -8,24 +8,16 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.wallet.lib.agent.KeyStoreMaterial
-import at.asitplus.wallet.lib.agent.Validator
-import at.asitplus.wallet.lib.agent.ValidatorMdoc
-import at.asitplus.wallet.lib.agent.ValidatorSdJwt
-import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
-import at.asitplus.wallet.lib.data.StatusListToken
+import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
-import at.asitplus.wallet.lib.openid.ClientIdScheme
-import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
-import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
-import at.asitplus.wallet.lib.openid.RequestOptions
-import at.asitplus.wallet.lib.openid.RequestOptionsCredential
+import at.asitplus.wallet.lib.openid.*
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
@@ -297,7 +289,7 @@ class VerifierProfiles(private val publicUrl: String) {
         }.let {
             JwsSigned.deserialize<StatusListTokenPayload>(StatusListTokenPayload.serializer(), it).getOrThrow()
         }.let {
-            StatusListToken.StatusListJwt(it, Clock.System.now())
+            StatusListJwt(it, Clock.System.now())
         }
     }
 
