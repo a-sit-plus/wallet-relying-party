@@ -39,13 +39,35 @@
         import RequestDetailsComp from 'request-details-comp'
         import config from "main-config"
 
+        config.profiles = [
+            {
+                "label": "mDL Mandatory",
+                "credentials": [
+                    {
+                        "schemeType": "org.iso.18013.5.1.mDL",
+                        "representation": "ISO_MDOC",
+                        "attributes": [
+                            { "label": "family_name", "value": "family_name", "isSelected": true },
+                            { "label": "given_name", "value": "given_name", "isSelected": true },
+                            { "label": "birth_date", "value": "birth_date", "isSelected": true },
+                            { "label": "issue_date", "value": "issue_date", "isSelected": true },
+                            { "label": "expiry_date", "value": "expiry_date", "isSelected": true },
+                            { "label": "issuing_country", "value": "issuing_country", "isSelected": true },
+                            { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true },
+                            { "label": "document_number", "value": "document_number", "isSelected": true },
+                            { "label": "portrait", "value": "portrait", "isSelected": true },
+                            { "label": "driving_privileges", "value": "driving_privileges", "isSelected": true },
+                            { "label": "un_distinguishing_sign", "value": "un_distinguishing_sign", "isSelected": true }
+                        ]
+                    }
+                ]
+            }
+        ];
+
         createApp({
             setup: function () {
                 let app = createBasicSetup(config);
-                const selectedProfile = config.profiles.find(function (profile) {
-                    return profile.label == "mDL Mandatory";
-                });
-                app.updateProfile(selectedProfile);
+                app.updateProfile(config.profiles[0]);
                 app.generateQrCode();
                 app.resetRequestChanged();
                 app.startPeriodicUpdate();

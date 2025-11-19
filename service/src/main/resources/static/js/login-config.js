@@ -1,40 +1,4 @@
 export default { "schemeTypes": [
-    { "label": "HealthID",
-      "value": "urn:eu.europa.ec.eudi:hiid:1",
-      "sd": false,
-      "validRepresentations": [ "SD_JWT", "ISO_MDOC" ],
-      "attributes": [
-        { "label": "health_insurance_id", "value": "health_insurance_id" },
-        { "label": "patient_id", "value": "patient_id" },
-        { "label": "tax_number", "value": "tax_number" },
-        { "label": "one_time_token", "value": "one_time_token", "isSelected": true },
-        { "label": "wallet_e_prescription_code", "value": "wallet_e_prescription_code" },
-        { "label": "affiliation_country", "value": "affiliation_country", "isSelected": true  },
-        { "label": "issue_date", "value": "issue_date", "isSelected": true  },
-        { "label": "expiry_date", "value": "expiry_date", "isSelected": true  },
-        { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true  },
-        { "label": "document_number", "value": "document_number" },
-        { "label": "administrative_number", "value": "administrative_number" },
-        { "label": "issuing_country", "value": "issuing_country", "isSelected": true  },
-        { "label": "issuing_jurisdiction", "value": "issuing_jurisdiction" }
-      ]
-    },
-    { "label": "European Health Insurance Card (EHIC)",
-      "value": "urn:eudi:ehic:1",
-      "sd": false,
-      "validRepresentations": [ "SD_JWT" ],
-      "attributes": [
-        { "label": "issuing_country", "value": "issuing_country" },
-        { "label": "personal_administrative_number", "value": "personal_administrative_number" },
-        { "label": "issuing_authority", "value": "issuing_authority" },
-        { "label": "authentic_source", "value": "authentic_source" },
-        { "label": "document_number", "value": "document_number" },
-        { "label": "date_of_issuance", "value": "date_of_issuance" },
-        { "label": "date_of_expiry", "value": "date_of_expiry" },
-        { "label": "starting_date", "value": "starting_date" },
-        { "label": "ending_date", "value": "ending_date" },
-      ]
-    },
     { "label": "mDL",
       "value": "org.iso.18013.5.1.mDL",
       "sd": true,
@@ -88,6 +52,24 @@ export default { "schemeTypes": [
         { "label": "signature_usual_mark", "value": "signature_usual_mark" }
       ]
     },
+    { "label": "Age Verification",
+        "value": "eu.europa.ec.av.1",
+        "sd": true,
+        "validRepresentations": [ "ISO_MDOC" ],
+        "attributes": [
+            { "label": "age_over_12", "value": "age_over_12" },
+            { "label": "age_over_13", "value": "age_over_13" },
+            { "label": "age_over_14", "value": "age_over_14" },
+            { "label": "age_over_16", "value": "age_over_16" },
+            { "label": "age_over_18", "value": "age_over_18" },
+            { "label": "age_over_21", "value": "age_over_21" },
+            { "label": "age_over_25", "value": "age_over_25" },
+            { "label": "age_over_60", "value": "age_over_60" },
+            { "label": "age_over_62", "value": "age_over_62" },
+            { "label": "age_over_65", "value": "age_over_65" },
+            { "label": "age_over_68", "value": "age_over_68" }
+        ]
+    },
     { "label": "PID (MDOC)",
       "value": "urn:eu.europa.ec.eudi:pid:1",
       "sd": true,
@@ -122,24 +104,6 @@ export default { "schemeTypes": [
         { "label": "trust_anchor", "value": "trust_anchor" },
         { "label": "location_status", "value": "location_status" },
         { "label": "unknown", "value": "unknown" },
-      ]
-    },
-    { "label": "Age Verification",
-      "value": "eu.europa.ec.av.1",
-      "sd": true,
-      "validRepresentations": [ "ISO_MDOC" ],
-      "attributes": [
-          { "label": "age_over_12", "value": "age_over_12" },
-          { "label": "age_over_13", "value": "age_over_13" },
-          { "label": "age_over_14", "value": "age_over_14" },
-          { "label": "age_over_16", "value": "age_over_16" },
-          { "label": "age_over_18", "value": "age_over_18" },
-          { "label": "age_over_21", "value": "age_over_21" },
-          { "label": "age_over_25", "value": "age_over_25" },
-          { "label": "age_over_60", "value": "age_over_60" },
-          { "label": "age_over_62", "value": "age_over_62" },
-          { "label": "age_over_65", "value": "age_over_65" },
-          { "label": "age_over_68", "value": "age_over_68" }
       ]
     },
     { "label": "PID (SD-JWT)",
@@ -273,6 +237,42 @@ export default { "schemeTypes": [
         { "label": "document_number", "value": "document_number" },
         { "label": "issuing_jurisdiction", "value": "issuing_jurisdiction" },
       ]
+    },
+    { "label": "HealthID",
+      "value": "urn:eu.europa.ec.eudi:hiid:1",
+      "sd": false,
+      "validRepresentations": [ "SD_JWT", "ISO_MDOC" ],
+      "attributes": [
+          { "label": "health_insurance_id", "value": "health_insurance_id" },
+          { "label": "patient_id", "value": "patient_id" },
+          { "label": "tax_number", "value": "tax_number" },
+          { "label": "one_time_token", "value": "one_time_token", "isSelected": true },
+          { "label": "wallet_e_prescription_code", "value": "wallet_e_prescription_code" },
+          { "label": "affiliation_country", "value": "affiliation_country", "isSelected": true  },
+          { "label": "issue_date", "value": "issue_date", "isSelected": true  },
+          { "label": "expiry_date", "value": "expiry_date", "isSelected": true  },
+          { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true  },
+          { "label": "document_number", "value": "document_number" },
+          { "label": "administrative_number", "value": "administrative_number" },
+          { "label": "issuing_country", "value": "issuing_country", "isSelected": true  },
+          { "label": "issuing_jurisdiction", "value": "issuing_jurisdiction" }
+      ]
+    },
+    { "label": "European Health Insurance Card (EHIC)",
+      "value": "urn:eudi:ehic:1",
+      "sd": false,
+      "validRepresentations": [ "SD_JWT" ],
+      "attributes": [
+          { "label": "issuing_country", "value": "issuing_country" },
+          { "label": "personal_administrative_number", "value": "personal_administrative_number" },
+          { "label": "issuing_authority", "value": "issuing_authority" },
+          { "label": "authentic_source", "value": "authentic_source" },
+          { "label": "document_number", "value": "document_number" },
+          { "label": "date_of_issuance", "value": "date_of_issuance" },
+          { "label": "date_of_expiry", "value": "date_of_expiry" },
+          { "label": "starting_date", "value": "starting_date" },
+          { "label": "ending_date", "value": "ending_date" },
+      ]
     }
   ],
   "presentationMechanisms": [
@@ -292,180 +292,6 @@ export default { "schemeTypes": [
           "representation": null,
           "sd": true,
           "attributes": []
-        }
-      ]
-    },
-    { "label": "HealthID",
-      "simple": false,
-      "credentials": [
-        {
-          "schemeType": "urn:eu.europa.ec.eudi:hiid:1",
-          "representation": "SD_JWT",
-          "sd": false,
-          "attributes": [
-            { "label": "one_time_token", "value": "one_time_token", "isSelected": true  },
-            { "label": "affiliation_country", "value": "affiliation_country", "isSelected": true  },
-            { "label": "issue_date", "value": "issue_date", "isSelected": true  },
-            { "label": "expiry_date", "value": "expiry_date", "isSelected": true  },
-            { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true  },
-            { "label": "issuing_country", "value": "issuing_country", "isSelected": true  },
-          ]
-        }
-      ]
-    },
-    { "label": "European Health Insurance Card (EHIC)",
-      "simple": false,
-      "credentials": [
-        {
-          "schemeType": "urn:eudi:ehic:1",
-          "representation": "SD_JWT",
-          "sd": false,
-          "attributes": [
-            { "label": "issuing_country", "value": "issuing_country" },
-            { "label": "personal_administrative_number", "value": "personal_administrative_number" },
-            { "label": "issuing_authority", "value": "issuing_authority" },
-            { "label": "authentic_source", "value": "authentic_source" },
-            { "label": "document_number", "value": "document_number" },
-            { "label": "date_of_issuance", "value": "date_of_issuance" },
-            { "label": "date_of_expiry", "value": "date_of_expiry" },
-            { "label": "starting_date", "value": "starting_date" },
-            { "label": "ending_date", "value": "ending_date" },
-          ]
-        }
-      ]
-    },
-    { "label": "mDL Mandatory",
-      "simple": false,
-      "credentials": [
-        {
-          "schemeType": "org.iso.18013.5.1.mDL",
-          "representation": "ISO_MDOC",
-          "sd": true,
-          "attributes": [
-            { "label": "family_name", "value": "family_name", "isSelected": true },
-            { "label": "given_name", "value": "given_name", "isSelected": true },
-            { "label": "birth_date", "value": "birth_date", "isSelected": true },
-            { "label": "issue_date", "value": "issue_date", "isSelected": true },
-            { "label": "expiry_date", "value": "expiry_date", "isSelected": true },
-            { "label": "issuing_country", "value": "issuing_country", "isSelected": true },
-            { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true },
-            { "label": "document_number", "value": "document_number", "isSelected": true },
-            { "label": "portrait", "value": "portrait", "isSelected": true },
-            { "label": "driving_privileges", "value": "driving_privileges", "isSelected": true },
-            { "label": "un_distinguishing_sign", "value": "un_distinguishing_sign", "isSelected": true },
-          ]
-        }
-      ]
-    },
-    { "label": "PID Mandatory",
-      "simple": false,
-      "credentials": [
-        {
-          "schemeType": "urn:eudi:pid:1",
-          "representation": "SD_JWT",
-          "sd": true,
-          "attributes": [
-            { "label": "family_name", "value": "family_name", "isSelected": true },
-            { "label": "given_name", "value": "given_name", "isSelected": true },
-            { "label": "birthdate", "value": "birthdate", "isSelected": true },
-            { "label": "nationalities", "value": "nationalities", "isSelected": true },
-            { "label": "date_of_expiry", "value": "date_of_expiry", "isSelected": true },
-            { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true },
-            { "label": "issuing_country", "value": "issuing_country", "isSelected": true },
-          ]
-        }
-      ]
-    },
-    { "label": "PoR Mandatory",
-      "simple": false,
-      "credentials": [
-        {
-          "schemeType": "urn:eu.europa.ec.eudi:por:1",
-          "representation": "SD_JWT",
-          "sd": false,
-          "attributes": [
-            { "label": "legal_person_identifier", "value": "legal_person_identifier" },
-            { "label": "legal_name", "value": "legal_name" },
-            { "label": "full_powers", "value": "full_powers" },
-            { "label": "effective_from_date", "value": "effective_from_date" },
-            { "label": "issuance_date", "value": "issuance_date" },
-            { "label": "expiry_date", "value": "expiry_date" },
-            { "label": "issuing_authority", "value": "issuing_authority" },
-            { "label": "issuing_country", "value": "issuing_country" },
-          ]
-        }
-      ]
-    },
-    { "label": "CoR Mandatory",
-      "simple": false,
-      "credentials": [
-        {
-          "schemeType": "eu.europa.ec.eudi.cor.1",
-          "representation": "SD_JWT",
-          "sd": true,
-          "attributes": [
-            { "label": "family_name", "value": "family_name", "isSelected": true },
-            { "label": "given_name", "value": "given_name", "isSelected": true },
-            { "label": "birth_date", "value": "birth_date", "isSelected": true },
-            { "label": "residence_address", "value": "residence_address", "isSelected": true },
-            { "label": "issuance_date", "value": "issuance_date", "isSelected": true },
-            { "label": "expiry_date", "value": "expiry_date", "isSelected": true },
-            { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true },
-            { "label": "issuing_country", "value": "issuing_country", "isSelected": true },
-          ]
-        }
-      ]
-    },
-    { "label": "CRA Mandatory",
-      "simple": false,
-      "credentials": [
-        {
-          "schemeType": "urn:eu.europa.ec.eudi:cr:1",
-          "representation": "SD_JWT",
-          "sd": true,
-          "attributes": [
-            { "label": "company_name", "value": "company_name", "isSelected": true },
-            { "label": "company_type", "value": "company_type", "isSelected": true },
-            { "label": "company_status", "value": "company_status", "isSelected": true },
-            { "label": "company_activity", "value": "company_activity", "isSelected": true },
-            { "label": "registration_date", "value": "registration_date", "isSelected": true },
-            { "label": "company_EUID", "value": "company_EUID", "isSelected": true },
-            { "label": "registered_address", "value": "registered_address", "isSelected": true },
-          ]
-        }
-      ]
-    },
-    { "label": "Combined PID+PoR",
-      "simple": false,
-      "credentials": [
-        {
-          "schemeType": "urn:eudi:pid:1",
-          "representation": "SD_JWT",
-          "sd": true,
-          "attributes": [
-            { "label": "family_name", "value": "family_name", "isSelected": true },
-            { "label": "given_name", "value": "given_name", "isSelected": true },
-            { "label": "birthdate", "value": "birthdate", "isSelected": true },
-            { "label": "nationalities", "value": "nationalities", "isSelected": true },
-            { "label": "date_of_expiry", "value": "date_of_expiry", "isSelected": true },
-            { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true },
-            { "label": "issuing_country", "value": "issuing_country", "isSelected": true }
-          ]
-        },
-        {
-          "schemeType": "urn:eu.europa.ec.eudi:por:1",
-          "representation": "SD_JWT",
-          "sd": false,
-          "attributes": [
-            { "label": "legal_person_identifier", "value": "legal_person_identifier" },
-            { "label": "legal_name", "value": "legal_name" },
-            { "label": "full_powers", "value": "full_powers" },
-            { "label": "effective_from_date", "value": "effective_from_date" },
-            { "label": "issuance_date", "value": "issuance_date" },
-            { "label": "expiry_date", "value": "expiry_date" },
-            { "label": "issuing_authority", "value": "issuing_authority" },
-            { "label": "issuing_country", "value": "issuing_country" }
-          ]
         }
       ]
     }
