@@ -3,6 +3,7 @@
 Version 5.10.0:
  - Update to VC-K 5.10.0
  - Add Age Verification credential
+ - Offer test cases from EUDI Launchpad event December 2025
 
 Version 5.9.0:
  - Update to VC-K 5.9.0

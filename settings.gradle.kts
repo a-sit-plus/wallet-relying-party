@@ -37,18 +37,12 @@ if (File("../vck/signum").isDirectory && File("../vck/signum/build.gradle.kts").
             substitute(module("at.asitplus.wallet:vck-jvm")).using(project(":vck"))
             substitute(module("at.asitplus.wallet:vck-openid")).using(project(":vck-openid"))
             substitute(module("at.asitplus.wallet:vck-openid-jvm")).using(project(":vck-openid"))
-            substitute(module("at.asitplus.wallet:vck-rqes")).using(project(":vck-rqes"))
-            substitute(module("at.asitplus.wallet:vck-rqes-jvm")).using(project(":vck-rqes"))
             substitute(module("at.asitplus.wallet:vck-openid-ktor")).using(project(":vck-openid-ktor"))
             substitute(module("at.asitplus.wallet:vck-openid-ktor-jvm")).using(project(":vck-openid-ktor"))
             substitute(module("at.asitplus.wallet:openid-data-classes")).using(project(":openid-data-classes"))
             substitute(module("at.asitplus.wallet:openid-data-classes-jvm")).using(project(":openid-data-classes"))
             substitute(module("at.asitplus.wallet:dif-data-classes")).using(project(":dif-data-classes"))
             substitute(module("at.asitplus.wallet:dif-data-classes-jvm")).using(project(":dif-data-classes"))
-            substitute(module("at.asitplus.wallet:vck-rqes")).using(project(":vck-rqes"))
-            substitute(module("at.asitplus.wallet:vck-rqes-jvm")).using(project(":vck-rqes"))
-            substitute(module("at.asitplus.wallet:rqes-data-classes")).using(project(":rqes-data-classes"))
-            substitute(module("at.asitplus.wallet:rqes-data-classes-jvm")).using(project(":rqes-data-classes"))
         }
     }
 }
