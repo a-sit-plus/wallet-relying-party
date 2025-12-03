@@ -84,7 +84,7 @@ class ProcessTest {
         val holderKey = EphemeralKeyWithoutCert()
         val holder = HolderAgent(keyMaterial = holderKey)
         val issuer = IssuerAgent(
-            statusListBaseUrl = "https://wallet.a-sit.at/m6/credentials/status",
+            statusListBaseUrl = "https://wallet.a-sit.at/m7/credentials/status",
             identifier = UniformResourceIdentifier("https://example.com"),
         )
         holder.storeCredential(
@@ -104,7 +104,7 @@ class ProcessTest {
                 mockMvc.get(data.url).andReturn().response.contentAsString
             })
         val firstProfile = transactionResponse.profiles.first()
-        val authenticationResponseResult = wallet.createAuthnResponse(firstProfile.remoteWalletUrl).getOrThrow()
+        val authenticationResponseResult = wallet.createAuthnResponse(firstProfile.url).getOrThrow()
 
         authenticationResponseResult as AuthenticationResponseResult.Post
         mockMvc.post(authenticationResponseResult.url) {

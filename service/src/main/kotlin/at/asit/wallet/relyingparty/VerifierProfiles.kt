@@ -67,6 +67,7 @@ class VerifierProfiles(private val publicUrl: String) {
         privateKeyPassword = "changeit".toCharArray(),
         certAlias = "verifier",
     )
+
     val knownProfiles: List<Profile> = listOf(
 
         object : Profile {
@@ -85,7 +86,7 @@ class VerifierProfiles(private val publicUrl: String) {
                 ),
             )
 
-            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
+            override fun buildQrCodeUrl(requestUrl: String) =
                 buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme)
 
             override suspend fun transactionGet(
@@ -112,7 +113,7 @@ class VerifierProfiles(private val publicUrl: String) {
                 ),
             )
 
-            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
+            override fun buildQrCodeUrl(requestUrl: String) =
                 buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme)
 
             override suspend fun transactionGet(
@@ -139,7 +140,7 @@ class VerifierProfiles(private val publicUrl: String) {
                 ),
             )
 
-            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
+            override fun buildQrCodeUrl(requestUrl: String) =
                 buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme)
 
             override suspend fun transactionGet(
@@ -166,7 +167,7 @@ class VerifierProfiles(private val publicUrl: String) {
                 ),
             )
 
-            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String =
+            override fun buildQrCodeUrl(requestUrl: String): String =
                 buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme)
 
             override suspend fun transactionGet(
@@ -193,7 +194,7 @@ class VerifierProfiles(private val publicUrl: String) {
                 ),
             )
 
-            override fun buildQrCodeUrl(requestUrl: String, urlPrefix: String) =
+            override fun buildQrCodeUrl(requestUrl: String) =
                 buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme)
 
             override suspend fun transactionGet(
@@ -293,9 +294,6 @@ class VerifierProfiles(private val publicUrl: String) {
         }
     }
 
-    fun getVerifierByName(profileName: String): OpenId4VpVerifier? =
-        knownProfiles.firstOrNull { it.name == profileName }?.verifier
-
 }
 
 suspend fun Transaction.transactionGet(
@@ -327,7 +325,7 @@ interface Profile {
     val urlPrefix: String
     val clientIdScheme: ClientIdScheme
     val verifier: OpenId4VpVerifier
-    fun buildQrCodeUrl(requestUrl: String, urlPrefix: String): String
+    fun buildQrCodeUrl(requestUrl: String): String
     suspend fun transactionGet(
         responseUrl: String,
         state: String,

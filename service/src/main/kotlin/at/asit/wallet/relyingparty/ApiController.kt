@@ -76,10 +76,8 @@ class ApiController(
         val profiles = profiles.knownProfiles.map {
             val transactionId = Uuid.random().toString()
             val transactionUrl = buildTransactionUrl(request, transactionId, it)
-            val qrCodeUrl = it.buildQrCodeUrl(transactionUrl, it.urlPrefix)
+            val qrCodeUrl = it.buildQrCodeUrl(transactionUrl)
             val qrCodeBytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
-            val remoteWalletPrefix = "https://wallet.a-sit.at/remote/" + if (request.simple) "simple" else ""
-            val remoteWalletUrl = it.buildQrCodeUrl(transactionUrl, remoteWalletPrefix)
             TransactionProfile(
                 id = transactionId,
                 name = it.name,
@@ -88,7 +86,6 @@ class ApiController(
                 prefix = it.urlPrefix,
                 png = qrCodeBytes.toDataUrl(),
                 url = qrCodeUrl,
-                remoteWalletUrl = remoteWalletUrl
             )
         }
         val response = TransactionResponse(profiles)

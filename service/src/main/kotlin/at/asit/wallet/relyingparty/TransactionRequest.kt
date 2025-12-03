@@ -133,7 +133,6 @@ data class TransactionProfile(
     val prefix: String,
     val png: String,
     val url: String,
-    val remoteWalletUrl: String,
 ) {
     override fun toString(): String {
         return "TransactionResponseQrCode(id='$id'," +
@@ -142,7 +141,6 @@ data class TransactionProfile(
                 " description='$description'," +
                 " prefix='$prefix'," +
                 " png='${png.take(16)}...'," +
-                " url='$url'," +
-                " remoteWalletUrl='$remoteWalletUrl')"
+                " url='$url')"
     }
 }
