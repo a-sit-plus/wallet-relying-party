@@ -13,6 +13,7 @@ import at.asitplus.wallet.por.PowerOfRepresentationScheme
 import at.asitplus.wallet.taxid.TaxIdScheme
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 
 @Serializable
 data class TransactionRequest(
@@ -32,14 +33,22 @@ data class TransactionRequest(
         requestedOptionalAttributes = attributes?.ifEmpty { null }?.toSet(),
     )
 
+    @Transient
+    val requestOptionsCredentials = credentials?.let { credentials.map { it.toRequestOptionsCredential() }.toSet() }
+        ?: setOf(toRequestOptionsCredential())
+
     private fun resolveCredentialType(): CredentialScheme = credentialType?.let {
         AttributeIndex.resolveAttributeType(it)
             ?: AttributeIndex.resolveSdJwtAttributeType(it)
             ?: AttributeIndex.resolveIsoDoctype(it)
     } ?: EuPidScheme
 
-    fun toRequestOptionsCredentials() = credentials?.let { credentials.map { it.toRequestOptionsCredential() }.toSet() }
-        ?: setOf(toRequestOptionsCredential())
+    fun toCredentials() = if (presentationMechanism == PresentationMechanismEnum.DCQL) {
+        requestOptionsCredentials.map {
+            it.copy(requestedAttributes = it.requestedOptionalAttributes, requestedOptionalAttributes = null)
+        }.toSet()
+    } else requestOptionsCredentials
+
 }
 
 @Serializable
@@ -48,18 +57,17 @@ data class TransactionRequestCredential(
     val representation: String? = null,
     val attributes: List<String>? = null,
 ) {
-    fun toRequestOptionsCredential() =
-        (resolveCredentialType()).let { scheme ->
-            (CredentialRepresentation.entries.firstOrNull { it.name == representation }
-                ?: CredentialRepresentation.SD_JWT).let { representation ->
-                RequestOptionsCredential(
-                    credentialScheme = scheme,
-                    representation = representation,
-                    requestedOptionalAttributes = scheme.optionalAttributes(representation),
-                    requestedAttributes = scheme.requestedAttributes(representation),
-                )
-            }
+    fun toRequestOptionsCredential() = resolveCredentialType().let { scheme ->
+        (CredentialRepresentation.entries.firstOrNull { it.name == representation }
+            ?: CredentialRepresentation.SD_JWT).let { representation ->
+            RequestOptionsCredential(
+                credentialScheme = scheme,
+                representation = representation,
+                requestedOptionalAttributes = scheme.optionalAttributes(representation),
+                requestedAttributes = scheme.requestedAttributes(representation),
+            )
         }
+    }
 
     private fun resolveCredentialType(): CredentialScheme = credentialType?.let {
         AttributeIndex.resolveAttributeType(it)

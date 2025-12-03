@@ -1,9 +1,14 @@
 package at.asit.wallet.relyingparty
 
-import at.asitplus.openid.JwtVcIssuerMetadata
-import at.asitplus.openid.OpenIdConstants
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.openid.AuthnResponseResult
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.Error
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.IdToken
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.Success
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessSdJwt
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.ValidationError
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.VerifiableDCQLPresentationValidationResults
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.VerifiablePresentationValidationResults
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base64.Base64
@@ -35,12 +40,10 @@ class ApiController(
 ) {
     private val statisticLogger = LoggerFactory.getLogger("statistic")
     private val transactions: MutableMap<String, Transaction> = HashMap()
-    private val customerSuccessUrl by lazy {
-        ServletUriComponentsBuilder.fromUriString(publicUrl)
-            .pathSegment("customer-success.html")
-            .toUriString()
-    }
     private val profiles = VerifierProfiles(publicUrl)
+    private val customerSuccessUrl = ServletUriComponentsBuilder.fromUriString(publicUrl)
+        .pathSegment("customer-success.html")
+        .toUriString()
 
     data class Transaction(
         val id: String,
@@ -155,17 +158,14 @@ class ApiController(
             throw ResponseStatusException(HttpStatus.NOT_FOUND)
         }
         val user = try {
-            validateAuthnResponse(id, requestBody, transaction.profile.verifier)
+            validateAuthnResponse(requestBody, transaction.profile.verifier)
         } catch (e: Exception) {
+            Napier.w("/transaction/result/$id extracted got error", e)
             statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})", e)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, e.localizedMessage, e)
         }
-        if (user == null) {
-            statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})")
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Cannot parse from VP")
-        }
+        Napier.i("/transaction/result/$id extracted result $user")
         statisticLogger.info("$id success $user (${request.getHeader(HttpHeaders.USER_AGENT)})")
-        Napier.i("Storing user for transaction $id: $user")
         transactionStore.put(id, user)
         val redirectUrlWithId = ServletUriComponentsBuilder
             .fromUriString(customerSuccessUrl)
@@ -196,22 +196,17 @@ class ApiController(
     }
 
     private suspend fun validateAuthnResponse(
-        id: String,
         requestBody: String,
         verifier: OpenId4VpVerifier,
-    ): OpenId4VpUser? = when (val result = verifier.validateAuthnResponse(requestBody).also {
-        Napier.i("/transaction/result/$id extracted result $it")
-    }) {
-        is AuthnResponseResult.VerifiableDCQLPresentationValidationResults -> result.validationResults.toOpenId4VpUser()
-        is AuthnResponseResult.Success -> result.vp.toApiItemCredential().toOpenId4VpUser()
-        is AuthnResponseResult.SuccessSdJwt -> result.toApiItemCredential().toOpenId4VpUser()
-        is AuthnResponseResult.SuccessIso -> result.toApiItemCredentials().toOpenId4VpUser()
-        is AuthnResponseResult.Error -> throw RuntimeException(result.reason, result.cause)
-        is AuthnResponseResult.ValidationError -> throw RuntimeException("Failed: ${result.field}", result.cause)
-        is AuthnResponseResult.VerifiablePresentationValidationResults -> result.toApiItemCredentials()
-            .toOpenId4VpUser()
-
-        is AuthnResponseResult.IdToken -> throw RuntimeException("Only got id_token")
+    ): OpenId4VpUser = when (val result = verifier.validateAuthnResponse(requestBody)) {
+        is VerifiableDCQLPresentationValidationResults -> result.validationResults.toOpenId4VpUser()
+        is Success -> result.vp.toApiItemCredential().toOpenId4VpUser()
+        is SuccessSdJwt -> result.toApiItemCredential().toOpenId4VpUser()
+        is SuccessIso -> result.toApiItemCredentials().toOpenId4VpUser()
+        is Error -> throw RuntimeException(result.reason, result.cause)
+        is ValidationError -> throw RuntimeException("Failed: ${result.field}", result.cause)
+        is VerifiablePresentationValidationResults -> result.toApiItemCredentials().toOpenId4VpUser()
+        is IdToken -> throw RuntimeException("Only got id_token")
     }
 
 }

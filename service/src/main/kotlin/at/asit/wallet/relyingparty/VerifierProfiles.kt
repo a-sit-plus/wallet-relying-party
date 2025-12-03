@@ -18,7 +18,6 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.*
-import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -91,10 +90,9 @@ class VerifierProfiles(private val publicUrl: String) {
 
             override suspend fun transactionGet(
                 responseUrl: String,
-                state: String,
                 requestOptionsCredentials: Set<RequestOptionsCredential>,
                 presentationMechanism: PresentationMechanismEnum,
-            ): String = directPost(state, responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
+            ): String = directPost(responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
 
         },
         object : Profile {
@@ -118,10 +116,9 @@ class VerifierProfiles(private val publicUrl: String) {
 
             override suspend fun transactionGet(
                 responseUrl: String,
-                state: String,
                 requestOptionsCredentials: Set<RequestOptionsCredential>,
                 presentationMechanism: PresentationMechanismEnum,
-            ): String = directPostJwt(state, responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
+            ): String = directPostJwt(responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
         },
 
         object : Profile {
@@ -145,10 +142,9 @@ class VerifierProfiles(private val publicUrl: String) {
 
             override suspend fun transactionGet(
                 responseUrl: String,
-                state: String,
                 requestOptionsCredentials: Set<RequestOptionsCredential>,
                 presentationMechanism: PresentationMechanismEnum,
-            ): String = directPostJwt(state, responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
+            ): String = directPostJwt(responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
         },
 
         object : Profile {
@@ -172,10 +168,9 @@ class VerifierProfiles(private val publicUrl: String) {
 
             override suspend fun transactionGet(
                 responseUrl: String,
-                state: String,
                 requestOptionsCredentials: Set<RequestOptionsCredential>,
                 presentationMechanism: PresentationMechanismEnum,
-            ): String = directPostJwt(state, responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
+            ): String = directPostJwt(responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
         },
 
         object : Profile {
@@ -199,10 +194,9 @@ class VerifierProfiles(private val publicUrl: String) {
 
             override suspend fun transactionGet(
                 responseUrl: String,
-                state: String,
                 requestOptionsCredentials: Set<RequestOptionsCredential>,
                 presentationMechanism: PresentationMechanismEnum,
-            ): String = directPostJwt(state, responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
+            ): String = directPostJwt(responseUrl, requestOptionsCredentials, presentationMechanism, verifier)
         }
     )
 
@@ -230,14 +224,12 @@ class VerifierProfiles(private val publicUrl: String) {
     }.toUriString()
 
     private suspend fun directPost(
-        state: String,
         responseUrl: String,
         requestOptionsCredentials: Set<RequestOptionsCredential>,
         presentationMechanism: PresentationMechanismEnum,
         verifier: OpenId4VpVerifier,
     ): String = verifier.createAuthnRequestAsSignedRequestObject(
         RequestOptions(
-            state = state,
             responseMode = OpenIdConstants.ResponseMode.DirectPost,
             responseUrl = responseUrl,
             credentials = requestOptionsCredentials,
@@ -246,14 +238,12 @@ class VerifierProfiles(private val publicUrl: String) {
     ).getOrThrow().serialize()
 
     private suspend fun directPostJwt(
-        state: String,
         responseUrl: String,
         requestOptionsCredentials: Set<RequestOptionsCredential>,
         presentationMechanism: PresentationMechanismEnum,
         verifier: OpenId4VpVerifier,
     ): String = verifier.createAuthnRequestAsSignedRequestObject(
         RequestOptions(
-            state = state,
             responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
             responseUrl = responseUrl,
             credentials = requestOptionsCredentials,
@@ -298,23 +288,11 @@ class VerifierProfiles(private val publicUrl: String) {
 
 suspend fun Transaction.transactionGet(
     responseUrl: String,
-): String {
-    val requestOptionsCredentials = request.toRequestOptionsCredentials()
-    return profile.transactionGet(
-        responseUrl,
-        uuid4().toString(),
-        if (request.presentationMechanism == PresentationMechanismEnum.DCQL) {
-            requestOptionsCredentials.map {
-                // TODO: unsure how we handle optional attributes with DCQL
-                it.copy(
-                    requestedAttributes = it.requestedOptionalAttributes,
-                    requestedOptionalAttributes = null,
-                )
-            }.toSet()
-        } else requestOptionsCredentials,
-        presentationMechanism = request.presentationMechanism,
-    )
-}
+): String = profile.transactionGet(
+    responseUrl = responseUrl,
+    requestOptionsCredentials = request.toCredentials(),
+    presentationMechanism = request.presentationMechanism,
+)
 
 private fun String.getDnsName() = UriComponentsBuilder.fromUriString(this).build().host ?: "wallet.a-sit.at"
 
@@ -328,7 +306,6 @@ interface Profile {
     fun buildQrCodeUrl(requestUrl: String): String
     suspend fun transactionGet(
         responseUrl: String,
-        state: String,
         requestOptionsCredentials: Set<RequestOptionsCredential>,
         presentationMechanism: PresentationMechanismEnum,
     ): String
