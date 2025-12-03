@@ -135,7 +135,7 @@ data class TransactionProfile(
     val url: String,
 ) {
     override fun toString(): String {
-        return "TransactionResponseQrCode(id='$id'," +
+        return "TransactionProfile(id='$id'," +
                 " name='$name'," +
                 " label='$label'," +
                 " description='$description'," +

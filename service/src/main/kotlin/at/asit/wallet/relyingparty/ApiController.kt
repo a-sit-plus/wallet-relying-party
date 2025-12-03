@@ -54,7 +54,9 @@ class ApiController(
 
     @GetMapping("/api/single/{id}")
     @ResponseBody
-    fun apiSingle(@PathVariable id: String): ResponseEntity<ApiItem> =
+    fun apiSingle(
+        @PathVariable id: String,
+    ): ResponseEntity<ApiItem> =
         transactionStore.getApiItem(id)?.let {
             Napier.i("/api/single/$id returns $it")
             ResponseEntity.ok()
@@ -64,14 +66,18 @@ class ApiController(
 
     @PostMapping("/api/remove")
     @ResponseBody
-    fun removeApiItem(@RequestBody id: String): ResponseEntity<ApiItem> =
+    fun removeApiItem(
+        @RequestBody id: String,
+    ): ResponseEntity<ApiItem> =
         transactionStore.removeApiItem(id).let { ResponseEntity.ok(it) }
             ?: ResponseEntity.notFound().build()
 
     @OptIn(ExperimentalUuidApi::class)
     @PostMapping("/transaction/create", produces = [APPLICATION_JSON_VALUE])
     @ResponseBody
-    fun transactionCreate(@RequestBody request: TransactionRequest): ResponseEntity<TransactionResponse> = runBlocking {
+    fun transactionCreate(
+        @RequestBody request: TransactionRequest,
+    ): ResponseEntity<TransactionResponse> = runBlocking {
         Napier.i("/transaction/create called with $request")
         val profiles = profiles.knownProfiles.map {
             val transactionId = Uuid.random().toString()
@@ -122,7 +128,9 @@ class ApiController(
 
     @GetMapping("/logs/{id}", produces = [APPLICATION_JSON_VALUE])
     @ResponseBody
-    fun transactionLogs(@PathVariable id: String): ResponseEntity<Collection<String>> = runBlocking {
+    fun transactionLogs(
+        @PathVariable id: String,
+    ): ResponseEntity<Collection<String>> = runBlocking {
         MDC.put(MDC_REQUEST_ID, id)
         val logs = AntilogSlf4jAdapter.transactionLogs[id]?.ifEmpty { null }
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
@@ -168,15 +176,20 @@ class ApiController(
             .body(OpenId4VpSuccess(redirectUrlWithId))
     }
 
-    private fun buildTransactionUrl(request: TransactionRequest, transactionId: String, profile: Profile) =
-        runBlocking {
-            transactions[transactionId] = Transaction(transactionId, request, profile)
-            ServletUriComponentsBuilder.fromUriString(publicUrl)
-                .pathSegment("transaction", "get", transactionId)
-                .toUriString()
-        }
+    private fun buildTransactionUrl(
+        request: TransactionRequest,
+        transactionId: String,
+        profile: Profile,
+    ) = runBlocking {
+        transactions[transactionId] = Transaction(transactionId, request, profile)
+        ServletUriComponentsBuilder.fromUriString(publicUrl)
+            .pathSegment("transaction", "get", transactionId)
+            .toUriString()
+    }
 
-    private fun buildPostSuccessUrl(transactionId: String) = runBlocking {
+    private fun buildPostSuccessUrl(
+        transactionId: String,
+    ) = runBlocking {
         ServletUriComponentsBuilder.fromUriString(publicUrl)
             .pathSegment("transaction", "result", transactionId)
             .toUriString()
