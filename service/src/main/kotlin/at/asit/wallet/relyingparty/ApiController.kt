@@ -150,7 +150,7 @@ class ApiController(
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
                 .also { Napier.w("/transaction/result/$id returns NOT_FOUND") }
         val user = catching {
-            validateAuthnResponse(transaction.profile.verifier, requestBody)
+            validateAuthnResponse(transaction.profile.verifier, requestBody, id)
         }.getOrElse {
             Napier.w("/transaction/result/$id extracted got error", it)
             statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})", it)
@@ -185,7 +185,8 @@ class ApiController(
     private suspend fun validateAuthnResponse(
         verifier: OpenId4VpVerifier,
         authnResponse: String,
-    ): OpenId4VpUser = when (val result = verifier.validateAuthnResponse(authnResponse)) {
+        transactionId: String,
+    ): OpenId4VpUser = when (val result = verifier.validateAuthnResponse(authnResponse, externalId = transactionId)) {
         is VerifiableDCQLPresentationValidationResults -> result.validationResults.toOpenId4VpUser()
         is Success -> result.vp.toApiItemCredential().toOpenId4VpUser()
         is SuccessSdJwt -> result.toApiItemCredential().toOpenId4VpUser()
