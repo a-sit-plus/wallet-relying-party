@@ -1,14 +1,8 @@
 package at.asit.wallet.relyingparty
 
+import at.asitplus.catching
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.openid.AuthnResponseResult.Error
-import at.asitplus.wallet.lib.openid.AuthnResponseResult.IdToken
-import at.asitplus.wallet.lib.openid.AuthnResponseResult.Success
-import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
-import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessSdJwt
-import at.asitplus.wallet.lib.openid.AuthnResponseResult.ValidationError
-import at.asitplus.wallet.lib.openid.AuthnResponseResult.VerifiableDCQLPresentationValidationResults
-import at.asitplus.wallet.lib.openid.AuthnResponseResult.VerifiablePresentationValidationResults
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.*
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base64.Base64
@@ -34,7 +28,7 @@ import kotlin.uuid.Uuid
 
 @Controller
 class ApiController(
-    @param:Value("\${app.public-url}")
+    @param:Value($$"${app.public-url}")
     private val publicUrl: String,
     private val transactionStore: TransactionStore,
 ) {
@@ -80,7 +74,7 @@ class ApiController(
     @ResponseBody
     fun transactionCreate(
         @RequestBody request: TransactionRequest,
-    ): ResponseEntity<TransactionResponse> = runBlocking {
+    ): ResponseEntity<TransactionResponse> = run {
         Napier.i("/transaction/create called with $request")
         val profiles = profiles.knownProfiles.map {
             val transactionId = Uuid.random().toString()
@@ -117,15 +111,15 @@ class ApiController(
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
                 .also { Napier.w("/transaction/get/$id returns NOT_FOUND") }
 
-        try {
-            val result = transaction.transactionGet(buildPostSuccessUrl(transaction.id))
-                .also { Napier.i("/transaction/$id returns $it") }
+        catching {
             ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/" + JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST))
-                .body(result)
-        } catch (e: Exception) {
-            Napier.w("/transaction/get/$id error", e)
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, e.localizedMessage)
+                .body(
+                    transaction.transactionGet(buildPostSuccessUrl(transaction.id))
+                        .also { Napier.i("/transaction/$id returns $it") })
+        }.getOrElse {
+            Napier.w("/transaction/get/$id error", it)
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
         }
     }
 
@@ -133,7 +127,7 @@ class ApiController(
     @ResponseBody
     fun transactionLogs(
         @PathVariable id: String,
-    ): ResponseEntity<Collection<String>> = runBlocking {
+    ): ResponseEntity<Collection<String>> = run {
         MDC.put(MDC_REQUEST_ID, id)
         val logs = AntilogSlf4jAdapter.transactionLogs[id]?.ifEmpty { null }
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
@@ -153,16 +147,14 @@ class ApiController(
         MDC.put(MDC_REQUEST_ID, id)
         Napier.i("/transaction/result/$id called with $requestBody")
         val transaction = transactions.remove(id)
-        if (transaction == null) {
-            Napier.w("/transaction/result/$id returns NOT_FOUND")
-            throw ResponseStatusException(HttpStatus.NOT_FOUND)
-        }
-        val user = try {
-            validateAuthnResponse(requestBody, transaction.profile.verifier)
-        } catch (e: Exception) {
-            Napier.w("/transaction/result/$id extracted got error", e)
-            statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})", e)
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, e.localizedMessage, e)
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
+                .also { Napier.w("/transaction/result/$id returns NOT_FOUND") }
+        val user = catching {
+            validateAuthnResponse(transaction.profile.verifier, requestBody)
+        }.getOrElse {
+            Napier.w("/transaction/result/$id extracted got error", it)
+            statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})", it)
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage, it)
         }
         Napier.i("/transaction/result/$id extracted result $user")
         statisticLogger.info("$id success $user (${request.getHeader(HttpHeaders.USER_AGENT)})")
@@ -180,25 +172,20 @@ class ApiController(
         request: TransactionRequest,
         transactionId: String,
         profile: Profile,
-    ) = runBlocking {
-        transactions[transactionId] = Transaction(transactionId, request, profile)
-        ServletUriComponentsBuilder.fromUriString(publicUrl)
-            .pathSegment("transaction", "get", transactionId)
-            .toUriString()
-    }
+    ) = ServletUriComponentsBuilder.fromUriString(publicUrl)
+        .pathSegment("transaction", "get", transactionId)
+        .toUriString()
+        .also { transactions[transactionId] = Transaction(transactionId, request, profile) }
 
-    private fun buildPostSuccessUrl(
-        transactionId: String,
-    ) = runBlocking {
+    private fun buildPostSuccessUrl(transactionId: String) =
         ServletUriComponentsBuilder.fromUriString(publicUrl)
             .pathSegment("transaction", "result", transactionId)
             .toUriString()
-    }
 
     private suspend fun validateAuthnResponse(
-        requestBody: String,
         verifier: OpenId4VpVerifier,
-    ): OpenId4VpUser = when (val result = verifier.validateAuthnResponse(requestBody)) {
+        authnResponse: String,
+    ): OpenId4VpUser = when (val result = verifier.validateAuthnResponse(authnResponse)) {
         is VerifiableDCQLPresentationValidationResults -> result.validationResults.toOpenId4VpUser()
         is Success -> result.vp.toApiItemCredential().toOpenId4VpUser()
         is SuccessSdJwt -> result.toApiItemCredential().toOpenId4VpUser()
