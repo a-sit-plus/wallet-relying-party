@@ -196,25 +196,6 @@ export default { "schemeTypes": [
         { "label": "administrative_number", "value": "administrative_number" }
       ]
     },
-    { "label": "Company Registration (CRA)",
-      "value": "urn:eu.europa.ec.eudi:cr:1",
-      "sd": true,
-      "validRepresentations": [ "SD_JWT" ],
-      "attributes": [
-        { "label": "company_name", "value": "company_name", "isSelected": true },
-        { "label": "company_type", "value": "company_type", "isSelected": true },
-        { "label": "company_status", "value": "company_status", "isSelected": true },
-        { "label": "company_activity", "value": "company_activity", "isSelected": true },
-        { "label": "registration_date", "value": "registration_date", "isSelected": true },
-        { "label": "company_end_date", "value": "company_end_date" },
-        { "label": "company_EUID", "value": "company_EUID", "isSelected": true },
-        { "label": "vat_number", "value": "vat_number" },
-        { "label": "company_contact_data", "value": "company_contact_data" },
-        { "label": "registered_address", "value": "registered_address", "isSelected": true },
-        { "label": "postal_address", "value": "postal_address" },
-        { "label": "branch", "value": "branch" }
-      ]
-    },
     { "label": "Tax ID",
       "value": "urn:eu.europa.ec.eudi:tax:1",
       "sd": false,
@@ -236,26 +217,6 @@ export default { "schemeTypes": [
         { "label": "pid_id", "value": "pid_id" },
         { "label": "document_number", "value": "document_number" },
         { "label": "issuing_jurisdiction", "value": "issuing_jurisdiction" },
-      ]
-    },
-    { "label": "HealthID",
-      "value": "urn:eu.europa.ec.eudi:hiid:1",
-      "sd": false,
-      "validRepresentations": [ "SD_JWT", "ISO_MDOC" ],
-      "attributes": [
-          { "label": "health_insurance_id", "value": "health_insurance_id" },
-          { "label": "patient_id", "value": "patient_id" },
-          { "label": "tax_number", "value": "tax_number" },
-          { "label": "one_time_token", "value": "one_time_token", "isSelected": true },
-          { "label": "wallet_e_prescription_code", "value": "wallet_e_prescription_code" },
-          { "label": "affiliation_country", "value": "affiliation_country", "isSelected": true  },
-          { "label": "issue_date", "value": "issue_date", "isSelected": true  },
-          { "label": "expiry_date", "value": "expiry_date", "isSelected": true  },
-          { "label": "issuing_authority", "value": "issuing_authority", "isSelected": true  },
-          { "label": "document_number", "value": "document_number" },
-          { "label": "administrative_number", "value": "administrative_number" },
-          { "label": "issuing_country", "value": "issuing_country", "isSelected": true  },
-          { "label": "issuing_jurisdiction", "value": "issuing_jurisdiction" }
       ]
     },
     { "label": "European Health Insurance Card (EHIC)",

@@ -2,7 +2,6 @@ package at.asit.wallet.relyingparty
 
 import at.asitplus.wallet.ehic.EhicScheme
 import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.healthid.HealthIdScheme
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
@@ -90,15 +89,6 @@ data class TransactionRequestCredential(
         else null
 
     private fun CredentialScheme.mandatoryAttributes(): Set<String>? = when (this) {
-        is HealthIdScheme -> with(HealthIdScheme.Attributes) {
-            setOf(
-                EXPIRY_DATE,
-                ISSUE_DATE,
-                ISSUING_AUTHORITY,
-                ISSUING_COUNTRY,
-            )
-        }
-
         is EhicScheme -> with(EhicScheme.Attributes) {
             setOf(
                 ISSUING_COUNTRY,
@@ -119,7 +109,6 @@ data class TransactionRequestCredential(
     }
 
     private fun CredentialScheme.isSd(): Boolean = when (this) {
-        is HealthIdScheme -> false
         is EhicScheme -> false
         is TaxIdScheme -> false
         is PowerOfRepresentationScheme -> false

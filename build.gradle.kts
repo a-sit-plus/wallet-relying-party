@@ -1,10 +1,11 @@
 plugins {
-    id("at.asitplus.gradle.conventions") version "20251023"
-    kotlin("jvm") version "2.2.21" apply false
-    kotlin("plugin.serialization") version "2.2.21" apply false
-    kotlin("plugin.spring") version "2.2.21" apply false
-    kotlin("plugin.jpa") version "2.2.21" apply false
-    kotlin("plugin.allopen") version "2.2.21" apply false
+    val kotlinVer = libs.versions.kotlin.get()
+    id("at.asitplus.gradle.conventions") version "20260122"
+    kotlin("jvm") version kotlinVer apply false
+    kotlin("plugin.serialization") version kotlinVer apply false
+    kotlin("plugin.spring") version kotlinVer apply false
+    kotlin("plugin.jpa") version kotlinVer apply false
+    kotlin("plugin.allopen") version kotlinVer apply false
 }
 
 buildscript {

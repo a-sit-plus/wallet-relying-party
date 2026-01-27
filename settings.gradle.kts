@@ -12,6 +12,7 @@ pluginManagement {
     }
 }
 
+rootProject.name = "Wallet Relying Party"
 include("service")
 
 //If we have a working composite build, use it!

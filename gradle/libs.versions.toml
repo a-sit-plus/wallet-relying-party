@@ -1,0 +1,43 @@
+[versions]
+eupid = "3.3.0"
+eupid-sdjwt = "1.3.0"
+mdl = "1.3.0"
+taxid = "1.2.0"
+por = "1.3.0"
+cor = "2.2.0"
+ehic = "1.2.0"
+av = "1.0.0"
+qrcode = "4.5.0"
+vck = "5.11.0-SNAPSHOT"
+
+spring-boot = "3.5.9"
+spring-admin-starter-client = "3.5.6"
+
+kotlin = "2.3.0"
+
+[libraries]
+spring-boot-admin-starter-client = { module = "de.codecentric:spring-boot-admin-starter-client", version.ref = "spring-admin-starter-client" }
+qrcode-kotlin = { module = "io.github.g0dkar:qrcode-kotlin", version.ref = "qrcode" }
+wallet-taxid = { module = "at.asitplus.wallet:taxid", version.ref = "taxid" }
+wallet-eupid = { module = "at.asitplus.wallet:eupidcredential", version.ref = "eupid" }
+wallet-eupid-sdjwt = { module = "at.asitplus.wallet:eupidcredential-sdjwt", version.ref = "eupid-sdjwt" }
+wallet-mdl = { module = "at.asitplus.wallet:mobiledrivinglicence", version.ref = "mdl" }
+wallet-por = { module = "at.asitplus.wallet:powerofrepresentation", version.ref = "por" }
+wallet-cor = { module = "at.asitplus.wallet:certificateofresidence", version.ref = "cor" }
+wallet-ehic = { module = "at.asitplus.wallet:ehic", version.ref = "ehic" }
+wallet-av = { module = "at.asitplus.wallet:ageverification", version.ref = "av" }
+wallet-vck-jvm = { module = "at.asitplus.wallet:vck-jvm", version.ref = "vck" }
+wallet-vck-openid-jvm = { module = "at.asitplus.wallet:vck-openid-jvm", version.ref = "vck" }
+
+[bundles]
+wallet = [
+    "wallet-taxid",
+    "wallet-eupid",
+    "wallet-eupid-sdjwt",
+    "wallet-mdl",
+    "wallet-por",
+    "wallet-cor",
+    "wallet-ehic",
+    "wallet-av",
+    "wallet-vck-jvm"
+]
