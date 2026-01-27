@@ -187,13 +187,13 @@ class ApiController(
         authnResponse: String,
         transactionId: String,
     ): OpenId4VpUser = when (val result = verifier.validateAuthnResponse(authnResponse, externalId = transactionId)) {
-        is VerifiableDCQLPresentationValidationResults -> result.validationResults.toOpenId4VpUser()
-        is Success -> result.vp.toApiItemCredential().toOpenId4VpUser()
-        is SuccessSdJwt -> result.toApiItemCredential().toOpenId4VpUser()
-        is SuccessIso -> result.toApiItemCredentials().toOpenId4VpUser()
+        is VerifiableDCQLPresentationValidationResults -> result.toOpenId4VpUser()
+        is Success -> result.toOpenId4VpUser()
+        is SuccessSdJwt -> result.toOpenId4VpUser()
+        is SuccessIso -> result.toOpenId4VpUser()
+        is VerifiablePresentationValidationResults -> result.toOpenId4VpUser()
         is Error -> throw RuntimeException(result.reason, result.cause)
         is ValidationError -> throw RuntimeException("Failed: ${result.field}", result.cause)
-        is VerifiablePresentationValidationResults -> result.toApiItemCredentials().toOpenId4VpUser()
         is IdToken -> throw RuntimeException("Only got id_token")
     }
 
