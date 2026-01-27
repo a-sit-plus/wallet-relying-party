@@ -8,7 +8,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.wallet.lib.agent.KeyStoreMaterial
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.Validator
 import at.asitplus.wallet.lib.agent.ValidatorMdoc
 import at.asitplus.wallet.lib.agent.ValidatorSdJwt
@@ -37,13 +37,15 @@ import io.ktor.serialization.kotlinx.json.*
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonPrimitive
+import org.springframework.stereotype.Component
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
-import org.springframework.web.util.UriComponentsBuilder
-import java.io.File
-import java.security.KeyStore
 import kotlin.time.Clock
 
-class VerifierProfiles(private val publicUrl: String) {
+@Component
+class VerifierProfiles(
+    private val configuration: AppConfigurationProperties,
+    private val verifierKeyMaterial: KeyMaterial
+) {
 
     private val httpClient = HttpClient {
         install(ContentNegotiation) {
@@ -65,15 +67,6 @@ class VerifierProfiles(private val publicUrl: String) {
             Napier.i("Resolving Key for $iss from $url")
             httpClient.get(url).body<JwtVcIssuerMetadata>().jsonWebKeySet?.keys?.toSet()
         }
-
-    private val verifierKeyMaterial = KeyStoreMaterial(
-        keyStore = KeyStore.getInstance("PKCS12").apply {
-            load(File("verifier.p12").inputStream(), "changeit".toCharArray())
-        },
-        keyAlias = "verifier",
-        privateKeyPassword = "changeit".toCharArray(),
-        certAlias = "verifier",
-    )
 
     val knownProfiles: List<Profile> = listOf(
 
@@ -245,13 +238,13 @@ class VerifierProfiles(private val publicUrl: String) {
 
     private suspend fun x509SanDnsD23(): ClientIdScheme.CertificateSanDns = ClientIdScheme.CertificateSanDns(
         chain = listOf(verifierKeyMaterial.getCertificate()!!),
-        clientIdDnsName = publicUrl.getDnsName(),
-        redirectUri = publicUrl
+        clientIdDnsName = configuration.publicContext.host,
+        redirectUri = configuration.publicContext.toString()
     )
 
     private suspend fun x509Hash(): ClientIdScheme.CertificateHash = ClientIdScheme.CertificateHash(
         chain = listOf(verifierKeyMaterial.getCertificate()!!),
-        redirectUri = publicUrl,
+        redirectUri = configuration.publicContext.toString(),
     )
 
     private fun buildQrCodeUrlByReference(
@@ -341,8 +334,6 @@ suspend fun Transaction.transactionGet(
     requestOptionsCredentials = request.toCredentials(),
     presentationMechanism = request.presentationMechanism,
 )
-
-private fun String.getDnsName() = UriComponentsBuilder.fromUriString(this).build().host ?: "wallet.a-sit.at"
 
 interface Profile {
     val name: String

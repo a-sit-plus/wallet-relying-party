@@ -11,7 +11,6 @@ import jakarta.servlet.http.HttpServletRequest
 import kotlinx.coroutines.runBlocking
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
-import org.springframework.beans.factory.annotation.Value
 import org.springframework.http.HttpHeaders
 import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
@@ -28,14 +27,13 @@ import kotlin.uuid.Uuid
 
 @Controller
 class ApiController(
-    @param:Value($$"${app.public-url}")
-    private val publicUrl: String,
+    private val configuration: AppConfigurationProperties,
     private val transactionStore: TransactionStore,
+    private val profiles: VerifierProfiles
 ) {
     private val statisticLogger = LoggerFactory.getLogger("statistic")
     private val transactions: MutableMap<String, Transaction> = HashMap()
-    private val profiles = VerifierProfiles(publicUrl)
-    private val customerSuccessUrl = ServletUriComponentsBuilder.fromUriString(publicUrl)
+    private val customerSuccessUrl = ServletUriComponentsBuilder.fromUri(configuration.publicContext.toURI())
         .pathSegment("customer-success.html")
         .toUriString()
 
@@ -172,13 +170,13 @@ class ApiController(
         request: TransactionRequest,
         transactionId: String,
         profile: Profile,
-    ) = ServletUriComponentsBuilder.fromUriString(publicUrl)
+    ) = ServletUriComponentsBuilder.fromUri(configuration.publicContext.toURI())
         .pathSegment("transaction", "get", transactionId)
         .toUriString()
         .also { transactions[transactionId] = Transaction(transactionId, request, profile) }
 
     private fun buildPostSuccessUrl(transactionId: String) =
-        ServletUriComponentsBuilder.fromUriString(publicUrl)
+        ServletUriComponentsBuilder.fromUri(configuration.publicContext.toURI())
             .pathSegment("transaction", "result", transactionId)
             .toUriString()
 
