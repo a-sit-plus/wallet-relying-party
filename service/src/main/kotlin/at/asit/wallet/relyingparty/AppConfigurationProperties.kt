@@ -1,6 +1,7 @@
 package at.asit.wallet.relyingparty
 
 import org.springframework.boot.context.properties.ConfigurationProperties
+import org.springframework.web.util.UriComponentsBuilder
 import java.net.URI
 import java.net.URL
 
@@ -11,6 +12,8 @@ data class AppConfigurationProperties(
     /** Key used for signing authn requests */
     val verifierKey: KeyConfiguration = KeyConfiguration(),
 )
+
+fun URL.appendPath(path: String): String = UriComponentsBuilder.fromUri(toURI()).path(path).toUriString()
 
 data class KeyConfiguration(
     val type: KeyType = KeyType.MEMORY,

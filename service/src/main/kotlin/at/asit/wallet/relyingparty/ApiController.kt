@@ -29,13 +29,11 @@ import kotlin.uuid.Uuid
 class ApiController(
     private val configuration: AppConfigurationProperties,
     private val transactionStore: TransactionStore,
-    private val profiles: VerifierProfiles
+    private val profiles: VerifierProfiles,
 ) {
     private val statisticLogger = LoggerFactory.getLogger("statistic")
     private val transactions: MutableMap<String, Transaction> = HashMap()
-    private val customerSuccessUrl = ServletUriComponentsBuilder.fromUri(configuration.publicContext.toURI())
-        .pathSegment("customer-success.html")
-        .toUriString()
+    private val customerSuccessUrl = configuration.publicContext.appendPath(Paths.CustomerSuccessUrl)
 
     data class Transaction(
         val id: String,
@@ -43,23 +41,23 @@ class ApiController(
         val profile: Profile,
     )
 
-    @GetMapping("/api/items")
+    @GetMapping(Paths.Api.ItemsUrl)
     @ResponseBody
     fun apiItems(): List<ApiItem> = transactionStore.getApiItems()
 
-    @GetMapping("/api/single/{id}")
+    @GetMapping("${Paths.Api.SingleUrl}/{id}")
     @ResponseBody
     fun apiSingle(
         @PathVariable id: String,
     ): ResponseEntity<ApiItem> =
         transactionStore.getApiItem(id)?.let {
-            Napier.i("/api/single/$id returns $it")
+            Napier.i("${Paths.Api.SingleUrl}/$id returns $it")
             ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(it)
         } ?: ResponseEntity.notFound().build()
 
-    @PostMapping("/api/remove")
+    @PostMapping(Paths.Api.RemoveUrl)
     @ResponseBody
     fun removeApiItem(
         @RequestBody id: String,
@@ -68,12 +66,12 @@ class ApiController(
             ?: ResponseEntity.notFound().build()
 
     @OptIn(ExperimentalUuidApi::class)
-    @PostMapping("/transaction/create", produces = [APPLICATION_JSON_VALUE])
+    @PostMapping(Paths.Transaction.CreateUrl, produces = [APPLICATION_JSON_VALUE])
     @ResponseBody
     fun transactionCreate(
         @RequestBody request: TransactionRequest,
     ): ResponseEntity<TransactionResponse> = run {
-        Napier.i("/transaction/create called with $request")
+        Napier.i("${Paths.Transaction.CreateUrl} called with $request")
         val profiles = profiles.knownProfiles.map {
             val transactionId = Uuid.random().toString()
             val transactionUrl = buildTransactionUrl(request, transactionId, it)
@@ -90,38 +88,39 @@ class ApiController(
             )
         }
         val response = TransactionResponse(profiles)
-        Napier.i("/transaction/create returns $response")
+        Napier.i("${Paths.Transaction.CreateUrl} returns $response")
         ResponseEntity.ok().body(response)
     }
 
     private fun ByteArray.toDataUrl(): String = "data:image/png;base64," + encodeToString(Base64())
 
-    @GetMapping("/transaction/get/{id}")
+    @GetMapping("${Paths.Transaction.GetUrl}/{id}")
     @ResponseBody
     fun transactionGet(
         @PathVariable id: String,
         request: HttpServletRequest,
     ): ResponseEntity<String> = runBlocking {
-        Napier.i("/transaction/get/$id called")
+        Napier.i("${Paths.Transaction.GetUrl}/$id called")
         statisticLogger.info("$id get (${request.getHeader(HttpHeaders.USER_AGENT)})")
         MDC.put(MDC_REQUEST_ID, id)
         val transaction = transactions[id]
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
-                .also { Napier.w("/transaction/get/$id returns NOT_FOUND") }
+                .also { Napier.w("${Paths.Transaction.GetUrl}/$id returns NOT_FOUND") }
 
         catching {
+            val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
+            val body = transaction.transactionGet(responseUrl)
+                .also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
             ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/" + JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST))
-                .body(
-                    transaction.transactionGet(buildPostSuccessUrl(transaction.id))
-                        .also { Napier.i("/transaction/$id returns $it") })
+                .body(body)
         }.getOrElse {
-            Napier.w("/transaction/get/$id error", it)
+            Napier.w("${Paths.Transaction.GetUrl}/$id error", it)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
         }
     }
 
-    @GetMapping("/logs/{id}", produces = [APPLICATION_JSON_VALUE])
+    @GetMapping("${Paths.LogsUrl}/{id}", produces = [APPLICATION_JSON_VALUE])
     @ResponseBody
     fun transactionLogs(
         @PathVariable id: String,
@@ -136,25 +135,25 @@ class ApiController(
      * Expects OpenID4VP authn response as request body,
      * called from Wallet App upon answering authn request from [transactionGet].
      */
-    @PostMapping("/transaction/result/{id}")
+    @PostMapping("${Paths.Transaction.ResultUrl}/{id}")
     fun transactionPost(
         @PathVariable id: String,
         @RequestBody requestBody: String,
         request: HttpServletRequest,
     ): ResponseEntity<OpenId4VpSuccess> = runBlocking {
         MDC.put(MDC_REQUEST_ID, id)
-        Napier.i("/transaction/result/$id called with $requestBody")
+        Napier.i("${Paths.Transaction.ResultUrl}/$id called with $requestBody")
         val transaction = transactions.remove(id)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
-                .also { Napier.w("/transaction/result/$id returns NOT_FOUND") }
+                .also { Napier.w("${Paths.Transaction.ResultUrl}/$id returns NOT_FOUND") }
         val user = catching {
             validateAuthnResponse(transaction.profile.verifier, requestBody, id)
         }.getOrElse {
-            Napier.w("/transaction/result/$id extracted got error", it)
+            Napier.w("${Paths.Transaction.ResultUrl}/$id extracted got error", it)
             statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})", it)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage, it)
         }
-        Napier.i("/transaction/result/$id extracted result $user")
+        Napier.i("${Paths.Transaction.ResultUrl}/$id extracted result $user")
         statisticLogger.info("$id success $user (${request.getHeader(HttpHeaders.USER_AGENT)})")
         transactionStore.put(id, user)
         val redirectUrlWithId = ServletUriComponentsBuilder
@@ -170,15 +169,8 @@ class ApiController(
         request: TransactionRequest,
         transactionId: String,
         profile: Profile,
-    ) = ServletUriComponentsBuilder.fromUri(configuration.publicContext.toURI())
-        .pathSegment("transaction", "get", transactionId)
-        .toUriString()
+    ) = configuration.publicContext.appendPath("${Paths.Transaction.GetUrl}/$transactionId")
         .also { transactions[transactionId] = Transaction(transactionId, request, profile) }
-
-    private fun buildPostSuccessUrl(transactionId: String) =
-        ServletUriComponentsBuilder.fromUri(configuration.publicContext.toURI())
-            .pathSegment("transaction", "result", transactionId)
-            .toUriString()
 
     private suspend fun validateAuthnResponse(
         verifier: OpenId4VpVerifier,

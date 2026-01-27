@@ -7,6 +7,9 @@ import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
 import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
 import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
+import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary.Mdoc
+import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary.SdJwt
+import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary.VcJws
 import at.asitplus.wallet.lib.agent.validation.common.EntityExpiredError
 import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
@@ -164,9 +167,9 @@ private fun CredentialTimelinessValidationSummary.errorMessage(): String? =
     else null
 
 fun CredentialTimelinessValidationSummary.detailsNotYetValid() = when (this) {
-    is CredentialTimelinessValidationSummary.Mdoc -> details.msoTimelinessValidationSummary?.mdocNotYetValidError?.errorMessage()
-    is CredentialTimelinessValidationSummary.SdJwt -> details.jwsNotYetValidError?.errorMessage()
-    is CredentialTimelinessValidationSummary.VcJws -> details.jwsNotYetValidError?.errorMessage()
+    is Mdoc -> details.msoTimelinessValidationSummary?.mdocNotYetValidError?.errorMessage()
+    is SdJwt -> details.jwsNotYetValidError?.errorMessage()
+    is VcJws -> details.jwsNotYetValidError?.errorMessage()
         ?: details.credentialNotYetValidError?.errorMessage()
 }
 
@@ -174,9 +177,9 @@ private fun EntityNotYetValidError.errorMessage(): String =
     "Not yet valid: ${notBeforeTime.formatted()}"
 
 fun CredentialTimelinessValidationSummary.detailsExpired() = when (this) {
-    is CredentialTimelinessValidationSummary.Mdoc -> details.msoTimelinessValidationSummary?.mdocExpiredError?.errorMessage()
-    is CredentialTimelinessValidationSummary.SdJwt -> details.jwsExpiredError?.errorMessage()
-    is CredentialTimelinessValidationSummary.VcJws -> details.jwsExpiredError?.errorMessage()
+    is Mdoc -> details.msoTimelinessValidationSummary?.mdocExpiredError?.errorMessage()
+    is SdJwt -> details.jwsExpiredError?.errorMessage()
+    is VcJws -> details.jwsExpiredError?.errorMessage()
         ?: details.credentialExpiredError?.errorMessage()
 }
 

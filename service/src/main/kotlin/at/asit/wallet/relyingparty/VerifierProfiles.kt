@@ -74,7 +74,7 @@ class VerifierProfiles(
             override val name = DEFAULT_PROFILE
             override val label = "HAIP (d01)"
             override val description = "x509_san_dns, OpenID4VP d23, direct_post"
-            override val urlPrefix = "haip://"
+            override val urlPrefix = Paths.Schemes.Haip
             override val clientIdScheme = runBlocking { x509SanDnsD23() }
             override val verifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
@@ -107,7 +107,7 @@ class VerifierProfiles(
             override val name = "HAIPd03"
             override val label = "HAIP (d03)"
             override val description = "x509_san_dns, OpenID4VP d23, direct_post.jwt"
-            override val urlPrefix = "haip://"
+            override val urlPrefix = Paths.Schemes.Haip
             override val clientIdScheme = runBlocking { x509SanDnsD23() }
             override val verifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
@@ -140,7 +140,7 @@ class VerifierProfiles(
             override val name = "HAIPd05"
             override val label = "HAIP (d05)"
             override val description = "x509_hash, OpenID4VP 1.0, direct_post.jwt"
-            override val urlPrefix = "haip-vp://"
+            override val urlPrefix = Paths.Schemes.HaipVp
             override val clientIdScheme = runBlocking { x509Hash() }
             override val verifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
@@ -173,7 +173,7 @@ class VerifierProfiles(
             override val name = "MDOCd23"
             override val label = "ISO 18013-7 (d23)"
             override val description = "x509_san_dns, OpenID4VP d23, direct_post.jwt"
-            override val urlPrefix = "mdoc-openid4vp://"
+            override val urlPrefix = Paths.Schemes.MdocOpenId4Vp
             override val clientIdScheme = runBlocking { x509SanDnsD23() }
             override val verifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
@@ -206,7 +206,7 @@ class VerifierProfiles(
             override val name = "EUDIW"
             override val label = "EUDIW Ref."
             override val description = "x509_san_dns, OpenID4VP d23, direct_post.jwt"
-            override val urlPrefix = "openid4vp://"
+            override val urlPrefix = Paths.Schemes.OpenId4Vp
             override val clientIdScheme = runBlocking { x509SanDnsD23() }
             override val verifier = OpenId4VpVerifier(
                 keyMaterial = verifierKeyMaterial,
