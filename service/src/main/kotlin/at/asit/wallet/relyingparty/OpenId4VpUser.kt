@@ -82,12 +82,10 @@ fun ApiItemCredential.getClaim(claim: String) = allFields?.entries
 
 fun VerifiablePresentationValidationResults.toOpenId4VpUser() = toApiItemCredentials().toOpenId4VpUser()
 
-fun VerifiablePresentationValidationResults.toApiItemCredentials(): Collection<ApiItemCredential> =
-    validationResults.flatMap {
-        it.toApiItemCredentials()
-    }
+fun VerifiablePresentationValidationResults.toApiItemCredentials() =
+    validationResults.flatMap { it.toApiItemCredentials() }
 
-fun AuthnResponseResult.toApiItemCredentials() = when (this) {
+fun AuthnResponseResult.toApiItemCredentials(): Collection<ApiItemCredential> = when (this) {
     is Error -> toApiItemCredentials()
     is IdToken -> toApiItemCredentials()
     is Success -> toApiItemCredentials()
@@ -98,54 +96,47 @@ fun AuthnResponseResult.toApiItemCredentials() = when (this) {
     is VerifiableDCQLPresentationValidationResults -> toApiItemCredentials()
 }
 
-fun VerifiableDCQLPresentationValidationResults.toApiItemCredentials() = validationResults.toApiItemCredentials()
+fun VerifiableDCQLPresentationValidationResults.toApiItemCredentials(): Collection<ApiItemCredential> =
+    allValidationResults.toApiItemCredentials()
 
-fun Map<DCQLCredentialQueryIdentifier, AuthnResponseResult>.toApiItemCredentials(): Collection<ApiItemCredential> =
-    values.flatMap {
-        it.toApiItemCredentials()
-    }
+fun Map<DCQLCredentialQueryIdentifier, List<AuthnResponseResult>>.toApiItemCredentials(): Collection<ApiItemCredential> =
+    values.flatten().flatMap { it.toApiItemCredentials() }
 
-fun Error.toApiItemCredentials(): List<ApiItemCredential> = listOf(
-    ApiItemCredential(
-        error = reason + cause.let { ": " + it.message },
-    )
+fun Error.toApiItemCredentials(): Collection<ApiItemCredential> = listOf(
+    ApiItemCredential(error = reason + cause.let { ": " + it.message })
 )
 
-fun IdToken.toApiItemCredentials(): List<ApiItemCredential> = listOf(
-    ApiItemCredential(
-        error = "Got IdToken: ${this.idToken}"
-    )
+fun IdToken.toApiItemCredentials(): Collection<ApiItemCredential> = listOf(
+    ApiItemCredential(error = "Got IdToken: ${this.idToken}")
 )
 
-fun ValidationError.toApiItemCredentials() = listOf(
-    ApiItemCredential(
-        error = field + cause.let { ": " + it.message }
-    )
+fun ValidationError.toApiItemCredentials(): Collection<ApiItemCredential> = listOf(
+    ApiItemCredential(error = field + cause.let { ": " + it.message })
 )
 
 fun VerifiableDCQLPresentationValidationResults.toOpenId4VpUser(): OpenId4VpUser =
-    this.validationResults.toApiItemCredentials().toOpenId4VpUser()
+    this.allValidationResults.toApiItemCredentials().toOpenId4VpUser()
 
-fun Success.toApiItemCredentials() = vp.toApiItemCredentials()
+fun Success.toApiItemCredentials(): Collection<ApiItemCredential> = vp.toApiItemCredentials()
 
 fun Success.toOpenId4VpUser() = vp.toApiItemCredentials().toOpenId4VpUser()
 
-fun VerifiablePresentationParsed.toApiItemCredentials(): List<ApiItemCredential> =
+fun VerifiablePresentationParsed.toApiItemCredentials(): Collection<ApiItemCredential> =
     freshVerifiableCredentials.takeIf { it.isNotEmpty() }?.let {
         it.map { it.vcJws.vc.credentialSubject }
             .filterIsInstance<EuPidCredential>()
-            .map { it.toApiItemCredentials() }
+            .map { it.toApiItemCredential() }
     } ?: notVerifiablyFreshVerifiableCredentials.takeIf { it.isNotEmpty() }?.let {
         it.map { it.freshnessSummary }
-            .map { it.toApiItemCredentials() }
+            .map { it.toApiItemCredential() }
     } ?: invalidVerifiableCredentials.takeIf { it.isNotEmpty() }?.let {
         it.map { ApiItemCredential(error = "Structure invalid: $it") }
     } ?: listOf(ApiItemCredential(error = "No result"))
 
-fun CredentialFreshnessSummary.VcJws.toApiItemCredentials(): ApiItemCredential =
+fun CredentialFreshnessSummary.VcJws.toApiItemCredential(): ApiItemCredential =
     ApiItemCredential(error = errorMessage())
 
-private fun EuPidCredential.toApiItemCredentials() =
+private fun EuPidCredential.toApiItemCredential(): ApiItemCredential =
     ApiItemCredential(
         jwtCredential = runCatching { vckJsonSerializer.encodeToJsonElement(this) }.getOrNull(),
         credentialType = EuPidScheme.vcType,
@@ -153,7 +144,7 @@ private fun EuPidCredential.toApiItemCredentials() =
 
 fun SuccessSdJwt.toOpenId4VpUser() = toApiItemCredentials().toOpenId4VpUser()
 
-fun SuccessSdJwt.toApiItemCredentials() = listOf(
+fun SuccessSdJwt.toApiItemCredentials(): Collection<ApiItemCredential> = listOf(
     ApiItemCredential(
         allFields = reconstructed,
         credentialType = verifiableCredentialSdJwt.verifiableCredentialType,
@@ -195,9 +186,9 @@ private fun kotlin.time.Instant.formatted(): String =
 
 fun SuccessIso.toOpenId4VpUser() = toApiItemCredentials().toOpenId4VpUser()
 
-fun SuccessIso.toApiItemCredentials(): List<ApiItemCredential> = documents.map { it.toApiItemCredentials() }
+fun SuccessIso.toApiItemCredentials(): Collection<ApiItemCredential> = documents.map { it.toApiItemCredential() }
 
-private fun IsoDocumentParsed.toApiItemCredentials(): ApiItemCredential = ApiItemCredential(
+private fun IsoDocumentParsed.toApiItemCredential(): ApiItemCredential = ApiItemCredential(
     allFields = buildJsonObject {
         validItems.forEach {
             put(it.elementIdentifier, it.elementValue.toJsonElement())
