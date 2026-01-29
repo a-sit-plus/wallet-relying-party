@@ -6,7 +6,6 @@ import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
-import at.asitplus.wallet.lib.openid.RequestOptionsCredential
 import at.asitplus.wallet.por.PowerOfRepresentationDataElements
 import at.asitplus.wallet.por.PowerOfRepresentationScheme
 import at.asitplus.wallet.taxid.TaxIdScheme
@@ -25,7 +24,7 @@ data class TransactionRequest(
     val attributes: Collection<String>? = null,
     val credentials: List<TransactionRequestCredential>? = null,
 ) {
-    fun toRequestOptionsCredential() = RequestOptionsCredential(
+    fun toRequestOptionsCredential() = at.asitplus.wallet.lib.RequestOptionsCredential(
         credentialScheme = resolveCredentialType(),
         representation = CredentialRepresentation.entries.firstOrNull { it.name == representation }
             ?: CredentialRepresentation.SD_JWT,
@@ -33,7 +32,8 @@ data class TransactionRequest(
     )
 
     @Transient
-    val requestOptionsCredentials = credentials?.let { credentials.map { it.toRequestOptionsCredential() }.toSet() }
+    val requestOptionsCredentials = credentials
+        ?.let { credentials.map { it.toRequestOptionsCredential() }.toSet() }
         ?: setOf(toRequestOptionsCredential())
 
     private fun resolveCredentialType(): CredentialScheme = credentialType?.let {
@@ -59,7 +59,7 @@ data class TransactionRequestCredential(
     fun toRequestOptionsCredential() = resolveCredentialType().let { scheme ->
         (CredentialRepresentation.entries.firstOrNull { it.name == representation }
             ?: CredentialRepresentation.SD_JWT).let { representation ->
-            RequestOptionsCredential(
+            at.asitplus.wallet.lib.RequestOptionsCredential(
                 credentialScheme = scheme,
                 representation = representation,
                 requestedOptionalAttributes = scheme.optionalAttributes(representation),

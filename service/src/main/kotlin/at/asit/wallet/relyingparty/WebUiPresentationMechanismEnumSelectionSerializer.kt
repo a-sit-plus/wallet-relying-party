@@ -12,12 +12,14 @@ object WebUiPresentationMechanismEnumSelectionSerializer :
             when (it) {
                 PresentationMechanismEnum.PresentationExchange -> "presentation_definition"
                 PresentationMechanismEnum.DCQL -> "dcql_query"
+                PresentationMechanismEnum.DeviceRequest -> "device_request"
             }
         },
         decodeAs = {
             when (it) {
                 "presentation_definition" -> PresentationMechanismEnum.PresentationExchange
                 "dcql_query" -> PresentationMechanismEnum.DCQL
+                "device_request" -> PresentationMechanismEnum.DeviceRequest
                 else -> throw IllegalArgumentException("Unsupported presentation mechanism identifier.")
             }
         }

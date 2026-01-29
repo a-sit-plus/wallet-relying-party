@@ -8,11 +8,8 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.Validator
-import at.asitplus.wallet.lib.agent.ValidatorMdoc
-import at.asitplus.wallet.lib.agent.ValidatorSdJwt
-import at.asitplus.wallet.lib.agent.VerifierAgent
+import at.asitplus.wallet.lib.RequestOptionsCredential
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.StatusListJwt
@@ -22,10 +19,9 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.ClientIdScheme
+import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
-import at.asitplus.wallet.lib.openid.RequestOptions
-import at.asitplus.wallet.lib.openid.RequestOptionsCredential
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -44,7 +40,7 @@ import kotlin.time.Clock
 @Component
 class VerifierProfiles(
     private val configuration: AppConfigurationProperties,
-    private val verifierKeyMaterial: KeyMaterial
+    private val verifierKeyMaterial: KeyMaterial,
 ) {
 
     private val httpClient = HttpClient {
@@ -266,7 +262,7 @@ class VerifierProfiles(
         presentationMechanism: PresentationMechanismEnum,
         verifier: OpenId4VpVerifier,
     ): String = verifier.createAuthnRequestAsSignedRequestObject(
-        RequestOptions(
+        OpenId4VpRequestOptions(
             state = transactionId,
             responseMode = OpenIdConstants.ResponseMode.DirectPost,
             responseUrl = responseUrl,
@@ -282,7 +278,7 @@ class VerifierProfiles(
         presentationMechanism: PresentationMechanismEnum,
         verifier: OpenId4VpVerifier,
     ): String = verifier.createAuthnRequestAsSignedRequestObject(
-        RequestOptions(
+        OpenId4VpRequestOptions(
             state = transactionId,
             responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
             responseUrl = responseUrl,
