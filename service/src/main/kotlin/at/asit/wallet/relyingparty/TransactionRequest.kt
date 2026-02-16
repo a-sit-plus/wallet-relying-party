@@ -2,6 +2,7 @@ package at.asit.wallet.relyingparty
 
 import at.asitplus.wallet.ehic.EhicScheme
 import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
@@ -59,7 +60,7 @@ data class TransactionRequestCredential(
     fun toRequestOptionsCredential() = resolveCredentialType().let { scheme ->
         (CredentialRepresentation.entries.firstOrNull { it.name == representation }
             ?: CredentialRepresentation.SD_JWT).let { representation ->
-            at.asitplus.wallet.lib.RequestOptionsCredential(
+            RequestOptionsCredential(
                 credentialScheme = scheme,
                 representation = representation,
                 requestedOptionalAttributes = scheme.optionalAttributes(representation),
@@ -130,6 +131,8 @@ data class TransactionProfile(
     val prefix: String,
     val png: String,
     val url: String,
+    val dcApiUrl: String? = null,
+    val supportedOptions: Set<SupportedOptions>,
 ) {
     override fun toString(): String {
         return "TransactionProfile(id='$id'," +
@@ -138,6 +141,8 @@ data class TransactionProfile(
                 " description='$description'," +
                 " prefix='$prefix'," +
                 " png='${png.take(16)}...'," +
-                " url='$url')"
+                " url='$url'," +
+                " dcApiUrl='$dcApiUrl'," +
+                " supportedOptions='$supportedOptions')"
     }
 }

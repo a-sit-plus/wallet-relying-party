@@ -3,7 +3,10 @@ export default {
         request: {},
         config: {},
         singleColumn: { default: false },
-        qrButtonText: { default: "Refresh Request" }
+        qrButtonText: { default: "Refresh Request" },
+        // Optional active profile or name coming from the login options tabs
+        activeProfile: { default: null },
+        activeProfileName: { default: null }
     },
     emits: [
         'updateSchemeType',
@@ -23,7 +26,7 @@ export default {
     </legend>
     <div :class="singleColumn ? '' : 'col-lg-7 overflow-hidden'">
         <fieldset class="row mb-3">
-            <legend class="col-form-label col-sm-4 pt-0 fw-bold">Presentation Mechanism</legend>
+            <legend class="col-form-label col-sm-4 pt-0 fw-bold">Presentation Mechanism (Unsupported for DC API)</legend>
             <div class="col-sm-8">
                 <div v-for="presentationMechanism in config.presentationMechanisms"
                      :key="presentationMechanism.value"
@@ -39,6 +42,7 @@ export default {
                 </div>
             </div>
         </fieldset>
+        
     </div>
 </div>
 <div class="row border-top pt-2"

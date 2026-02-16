@@ -79,12 +79,15 @@
             :result="reqResult"
             :changed="reqChanged"
             :error="error"
+            :dcapi-selection="selections[activeProfileName] || {}"
+            @update:dcapi-selection="selections[activeProfileName] = $event"
             @generate-qr-code="generateQrCode"
-            @invoke-d-c-a-p-i="invokeDCAPI"></login-options-comp>
+            @invoke-d-c-a-p-i="invokeDCAPI"
+            @profile-tab-changed="activeProfileName = $event"></login-options-comp>
 
     <accordion-comp title="Request Details">
         <request-details-comp
-                :request="reqSelection" :config="config"
+                :request="reqSelection" :config="config" :active-profile="activeProfile" :active-profile-name="activeProfileName"
                 @update-scheme-type="updateSchemeType"
                 @update-representation="updateRepresentation"
                 @update-presentation-mechanism-identifier="updatePresentationMechanismIdentifier"

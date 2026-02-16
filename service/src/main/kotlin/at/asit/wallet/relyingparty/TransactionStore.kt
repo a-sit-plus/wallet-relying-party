@@ -29,7 +29,7 @@ class TransactionStore {
     }
 
     @OptIn(InternalAPI::class)
-    fun put(id: String, user: OpenId4VpUser): Boolean? = lock.withLock {
+    fun put(id: String, user: User): Boolean? = lock.withLock {
         removeExpiredEntries()
         user.toApiItem()?.let { entries.add(Entry(id, it, Clock.System.now().plus(lifetime))) }
     }

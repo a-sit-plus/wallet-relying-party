@@ -1,7 +1,20 @@
 package at.asit.wallet.relyingparty
 
 import at.asitplus.catching
+import at.asitplus.dcapi.DCAPIResponse
+import at.asitplus.dcapi.DigitalCredentialInterface
+import at.asitplus.dcapi.IsoMdocResponse
+import at.asitplus.dcapi.OpenId4VpResponse
+import at.asitplus.dcapi.OpenId4VpResponseSigned
+import at.asitplus.dcapi.OpenId4VpResponseUnsigned
+import at.asitplus.signum.indispensable.CryptoPrivateKey
+import at.asitplus.signum.indispensable.ECCurve
+import at.asitplus.signum.indispensable.asn1.encodeToPEM
+import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.iso.Iso180137AnnexCVerifier
+import at.asitplus.wallet.lib.iso.Iso180137AnnexCResponseResult
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.*
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import io.github.aakira.napier.Napier
@@ -9,6 +22,11 @@ import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.coroutines.runBlocking
+import org.multipaz.crypto.AsymmetricKey
+import org.multipaz.crypto.EcCurve
+import org.multipaz.crypto.EcPrivateKey
+import org.multipaz.crypto.EcPublicKey
+import org.multipaz.crypto.Hpke
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 import org.springframework.http.HttpHeaders
@@ -49,21 +67,20 @@ class ApiController(
     @ResponseBody
     fun apiSingle(
         @PathVariable id: String,
-    ): ResponseEntity<ApiItem> =
-        transactionStore.getApiItem(id)?.let {
-            Napier.i("${Paths.Api.SingleUrl}/$id returns $it")
-            ResponseEntity.ok()
-                .contentType(MediaType.APPLICATION_JSON)
-                .body(it)
-        } ?: ResponseEntity.notFound().build()
+    ): ResponseEntity<ApiItem> = transactionStore.getApiItem(id)?.let {
+        Napier.i("${Paths.Api.SingleUrl}/$id returns $it")
+        ResponseEntity.ok()
+            .contentType(MediaType.APPLICATION_JSON)
+            .body(it)
+    } ?: ResponseEntity.noContent().build()
 
     @PostMapping(Paths.Api.RemoveUrl)
     @ResponseBody
     fun removeApiItem(
         @RequestBody id: String,
-    ): ResponseEntity<ApiItem> =
-        transactionStore.removeApiItem(id).let { ResponseEntity.ok(it) }
-            ?: ResponseEntity.notFound().build()
+    ): ResponseEntity<ApiItem> = transactionStore.removeApiItem(id).let {
+        ResponseEntity.ok(it)
+    } ?: ResponseEntity.notFound().build()
 
     @OptIn(ExperimentalUuidApi::class)
     @PostMapping(Paths.Transaction.CreateUrl, produces = [APPLICATION_JSON_VALUE])
@@ -75,6 +92,8 @@ class ApiController(
         val profiles = profiles.knownProfiles.map {
             val transactionId = Uuid.random().toString()
             val transactionUrl = buildTransactionUrl(request, transactionId, it)
+            val dcApiUrl = it.supportedOptions.any { it.isDcApi }.takeIf { it }
+                ?.let { configuration.publicContext.appendPath("${Paths.Transaction.GetDcApiUrl}/$transactionId") }
             val qrCodeUrl = it.buildQrCodeUrl(transactionUrl)
             val qrCodeBytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
             TransactionProfile(
@@ -85,6 +104,8 @@ class ApiController(
                 prefix = it.urlPrefix,
                 png = qrCodeBytes.toDataUrl(),
                 url = qrCodeUrl,
+                dcApiUrl = dcApiUrl,
+                supportedOptions = it.supportedOptions
             )
         }
         val response = TransactionResponse(profiles)
@@ -100,14 +121,18 @@ class ApiController(
         @PathVariable id: String,
         request: HttpServletRequest,
     ): ResponseEntity<String> = runBlocking {
+        MDC.put(MDC_REQUEST_ID, id)
         Napier.i("${Paths.Transaction.GetUrl}/$id called")
         statisticLogger.info("$id get (${request.getHeader(HttpHeaders.USER_AGENT)})")
-        MDC.put(MDC_REQUEST_ID, id)
         val transaction = transactions[id]
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
                 .also { Napier.w("${Paths.Transaction.GetUrl}/$id returns NOT_FOUND") }
 
         catching {
+            if (transaction.profile.supportedOptions.none { it.isDevice }) {
+                throw IllegalStateException("Profile does not support QR or same-device flow")
+            }
+
             val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
             val body = transaction.transactionGet(responseUrl)
                 .also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
@@ -116,7 +141,37 @@ class ApiController(
                 .body(body)
         }.getOrElse {
             Napier.w("${Paths.Transaction.GetUrl}/$id error", it)
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage)
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.clientReason(HttpStatus.BAD_REQUEST))
+        }
+    }
+
+    @GetMapping("${Paths.Transaction.GetDcApiUrl}/{id}", produces = [APPLICATION_JSON_VALUE])
+    @ResponseBody
+    fun transactionGetDcApi(
+        @PathVariable id: String,
+        @RequestParam(name = "dcApiSignedOid4vp", required = false, defaultValue = "true") dcApiSignedOid4vp: Boolean,
+        request: HttpServletRequest,
+    ): ResponseEntity<String> = runBlocking {
+        MDC.put(MDC_REQUEST_ID, id)
+        Napier.i("/transaction/get/dcapi/$id called (dcApiSignedOid4vp=$dcApiSignedOid4vp)")
+        statisticLogger.info("$id get-dcapi (${request.getHeader(HttpHeaders.USER_AGENT)})")
+        val transaction = transactions[id]
+            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
+                .also { Napier.w("/transaction/get/dcapi/$id returns NOT_FOUND") }
+
+        catching {
+            if (transaction.profile.supportedOptions.none { it.isDcApi }) {
+                throw IllegalStateException("Profile does not support DC API flow")
+            }
+            val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
+            val body = transaction.transactionGetDcApi(responseUrl, dcApiSignedOid4vp)
+                .also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
+            ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(body)
+        }.getOrElse {
+            Napier.w("/transaction/get/dcapi/$id error", it)
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.clientReason(HttpStatus.BAD_REQUEST))
         }
     }
 
@@ -126,10 +181,10 @@ class ApiController(
         @PathVariable id: String,
     ): ResponseEntity<Collection<String>> = run {
         MDC.put(MDC_REQUEST_ID, id)
-        val logs = AntilogSlf4jAdapter.transactionLogs[id]?.ifEmpty { null }
-            ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
-        ResponseEntity.ok(logs)
-    }
+        AntilogSlf4jAdapter.transactionLogs[id].takeIf { it != null }.let {
+            ResponseEntity.ok(it)
+        }
+    } ?: ResponseEntity.noContent().build()
 
     /**
      * Expects OpenID4VP authn response as request body,
@@ -147,11 +202,41 @@ class ApiController(
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
                 .also { Napier.w("${Paths.Transaction.ResultUrl}/$id returns NOT_FOUND") }
         val user = catching {
-            validateAuthnResponse(transaction.profile.verifier, requestBody, id)
+            val parsedResponse =
+                catching { vckJsonSerializer.decodeFromString<DigitalCredentialInterface>(requestBody) }.getOrNull()
+            if (parsedResponse.isMdocResponse(transaction)) {
+                validateMdocResponse(
+                    verifier = transaction.profile.iso180137Verifier ?: throw IllegalStateException("Missing verifier"),
+                    response = (parsedResponse as IsoMdocResponse).data,
+                    transactionId = id,
+                    expectedOrigin = configuration.publicContext.toString()
+                )
+            } else if (parsedResponse.isOpenId4VpResponse(transaction)) {
+                val dcApiSignedOid4vpRequired = transaction.profile.dcApiSignedOid4vpRequired
+                require(dcApiSignedOid4vpRequired != null)
+                if (dcApiSignedOid4vpRequired) {
+                    check(parsedResponse is OpenId4VpResponseSigned) { "Expected signed response" }
+                } else {
+                    check(parsedResponse is OpenId4VpResponseUnsigned) { "Expected unsigned response" }
+                }
+                validateAuthnResponse(
+                    verifier = transaction.profile.oid4vpVerifier ?: throw IllegalStateException("Missing verifier"),
+                    authnResponse = parsedResponse as OpenId4VpResponse,
+                    transactionId = id
+                )
+            } else if (transaction.profile.supportedOptions.any { it.isDevice }) {
+                validateAuthnResponse(
+                    verifier = transaction.profile.oid4vpVerifier ?: throw IllegalStateException("Missing verifier"),
+                    authnResponse = requestBody,
+                    transactionId = id
+                )
+            } else {
+                throw IllegalStateException("Unsupported response")
+            }
         }.getOrElse {
             Napier.w("${Paths.Transaction.ResultUrl}/$id extracted got error", it)
             statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})", it)
-            throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.localizedMessage, it)
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.clientReason(HttpStatus.BAD_REQUEST), it)
         }
         Napier.i("${Paths.Transaction.ResultUrl}/$id extracted result $user")
         statisticLogger.info("$id success $user (${request.getHeader(HttpHeaders.USER_AGENT)})")
@@ -165,6 +250,16 @@ class ApiController(
             .body(OpenId4VpSuccess(redirectUrlWithId))
     }
 
+    private fun DigitalCredentialInterface?.isMdocResponse(
+        transaction: Transaction,
+    ): Boolean =
+        transaction.profile.supportedOptions.contains(SupportedOptions.ISO_MDOC_DC_API) && this is IsoMdocResponse
+
+    private fun DigitalCredentialInterface?.isOpenId4VpResponse(
+        transaction: Transaction,
+    ): Boolean = transaction.profile.supportedOptions.contains(SupportedOptions.OID4VP_DC_API) &&
+            (this is OpenId4VpResponseSigned || this is OpenId4VpResponseUnsigned)
+
     private fun buildTransactionUrl(
         request: TransactionRequest,
         transactionId: String,
@@ -172,22 +267,78 @@ class ApiController(
     ) = configuration.publicContext.appendPath("${Paths.Transaction.GetUrl}/$transactionId")
         .also { transactions[transactionId] = Transaction(transactionId, request, profile) }
 
+    // TODO replace with signum implementation when available
+    private suspend fun decryptHpke(
+        enc: ByteArray,
+        ciphertext: ByteArray,
+        responseEncryptionKeySignum: CryptoPrivateKey.EC.WithPublicKey,
+        cborEncodedSessionTranscript: ByteArray,
+    ): ByteArray {
+        val ecCurve = when (responseEncryptionKeySignum.curve) {
+            ECCurve.SECP_256_R_1 -> EcCurve.P256
+            ECCurve.SECP_384_R_1 -> EcCurve.P384
+            ECCurve.SECP_521_R_1 -> EcCurve.P521
+        }
+
+        val privateKeyPem = responseEncryptionKeySignum.encodeToPEM().getOrThrow()
+        val publicKeyPem = responseEncryptionKeySignum.publicKey.encodeToPEM().getOrThrow()
+        val ecPublicKey = EcPublicKey.fromPem(publicKeyPem, ecCurve)
+        val ecPrivateKey = EcPrivateKey.fromPem(privateKeyPem, ecPublicKey)
+
+        val responseEncryptionKey = AsymmetricKey.anonymous(
+            privateKey = ecPrivateKey,
+            algorithm = ecCurve.defaultKeyAgreementAlgorithm
+        )
+
+        val decrypter = Hpke.getDecrypter(
+            cipherSuite = Hpke.CipherSuite.DHKEM_P256_HKDF_SHA256_HKDF_SHA256_AES_128_GCM,
+            receiverPrivateKey = responseEncryptionKey,
+            encapsulatedKey = enc,
+            info = cborEncodedSessionTranscript,
+        )
+        return decrypter.decrypt(
+            ciphertext = ciphertext,
+            aad = ByteArray(0),
+        )
+    }
+
+    private suspend fun validateMdocResponse(
+        verifier: Iso180137AnnexCVerifier,
+        response: DCAPIResponse,
+        transactionId: String,
+        expectedOrigin: String,
+    ): User = when (val result = verifier.validateResponse(response, transactionId, ::decryptHpke, expectedOrigin)) {
+        is Iso180137AnnexCResponseResult.Success -> result.toUser()
+        is Iso180137AnnexCResponseResult.SuccessIso -> result.toUser()
+        is Iso180137AnnexCResponseResult.Error -> throw RuntimeException(result.reason, result.cause)
+        is Iso180137AnnexCResponseResult.ValidationError -> throw RuntimeException("Failed:", result.cause)
+    }
+
     private suspend fun validateAuthnResponse(
         verifier: OpenId4VpVerifier,
         authnResponse: String,
         transactionId: String,
-    ): OpenId4VpUser = when (val result = verifier.validateAuthnResponse(authnResponse, externalId = transactionId)) {
-        is VerifiableDCQLPresentationValidationResults -> result.toOpenId4VpUser()
-        is Success -> result.toOpenId4VpUser()
-        is SuccessSdJwt -> result.toOpenId4VpUser()
-        is SuccessIso -> result.toOpenId4VpUser()
-        is VerifiablePresentationValidationResults -> result.toOpenId4VpUser()
+    ): User = validateResponseResult(verifier.validateAuthnResponse(authnResponse, externalId = transactionId))
+
+    private suspend fun validateAuthnResponse(
+        verifier: OpenId4VpVerifier,
+        authnResponse: OpenId4VpResponse,
+        transactionId: String,
+    ): User = validateResponseResult(verifier.validateAuthnResponse(authnResponse, externalId = transactionId))
+
+    private fun validateResponseResult(result: AuthnResponseResult): User = when (result) {
+        is VerifiableDCQLPresentationValidationResults -> result.toUser()
+        is Success -> result.toUser()
+        is SuccessSdJwt -> result.toUser()
+        is SuccessIso -> result.toUser()
+        is VerifiablePresentationValidationResults -> result.toUser()
         is Error -> throw RuntimeException(result.reason, result.cause)
         is ValidationError -> throw RuntimeException("Failed: ${result.field}", result.cause)
         is IdToken -> throw RuntimeException("Only got id_token")
     }
-
 }
 
-fun AuthenticatedPrincipal.toApiItem() = if (this is OpenId4VpUser) this.apiItem else null
+fun AuthenticatedPrincipal.toApiItem() = if (this is User) this.apiItem else null
 
+private fun Throwable.clientReason(status: HttpStatus): String =
+    if (this is ClientFacingException) localizedMessage ?: message ?: status.reasonPhrase else status.reasonPhrase

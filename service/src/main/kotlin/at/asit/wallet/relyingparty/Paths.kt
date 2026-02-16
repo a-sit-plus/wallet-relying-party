@@ -15,6 +15,7 @@ object Paths {
         const val CreateUrl = "/transaction/create"
         const val ResultUrl = "/transaction/result"
         const val GetUrl = "/transaction/get"
+        const val GetDcApiUrl = "/transaction/get/dcapi"
     }
 
     object Schemes {

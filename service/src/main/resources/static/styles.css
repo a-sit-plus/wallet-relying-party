@@ -51,3 +51,14 @@
 body {
   background-color: #f3f3f3;
 }
+
+.options-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.option-card {
+  flex: 1 1 320px;
+  min-width: 280px;
+}

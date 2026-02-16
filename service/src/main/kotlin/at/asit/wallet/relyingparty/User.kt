@@ -17,6 +17,7 @@ import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.vckJsonSerializer
+import at.asitplus.wallet.lib.iso.Iso180137AnnexCResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.*
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
@@ -33,17 +34,17 @@ import java.security.MessageDigest
 import java.time.Instant
 
 @Serializable
-class OpenId4VpUser(
+class User(
     val apiItem: ApiItem,
 ) : AuthenticatedPrincipal {
 
     override fun getName(): String = "${apiItem.firstname} ${apiItem.lastname} (${apiItem.id})"
 
-    override fun toString(): String = "OpenId4VpUser(apiItem=$apiItem)"
+    override fun toString(): String = "User(apiItem=$apiItem)"
 
 }
 
-fun Collection<ApiItemCredential>.toOpenId4VpUser() = OpenId4VpUser(
+fun Collection<ApiItemCredential>.toUser() = User(
     apiItem = ApiItem(
         id = Json.encodeToString(this).sha256(),
         firstname = firstNotNullOfOrNull { it.getGivenName() } ?: "N/A",
@@ -80,7 +81,7 @@ fun ApiItemCredential.getClaim(claim: String) = allFields?.entries
         }
     }
 
-fun VerifiablePresentationValidationResults.toOpenId4VpUser() = toApiItemCredentials().toOpenId4VpUser()
+fun VerifiablePresentationValidationResults.toUser() = toApiItemCredentials().toUser()
 
 fun VerifiablePresentationValidationResults.toApiItemCredentials() =
     validationResults.flatMap { it.toApiItemCredentials() }
@@ -93,14 +94,8 @@ fun AuthnResponseResult.toApiItemCredentials(): Collection<ApiItemCredential> = 
     is SuccessSdJwt -> toApiItemCredentials()
     is ValidationError -> toApiItemCredentials()
     is VerifiablePresentationValidationResults -> toApiItemCredentials()
-    is VerifiableDCQLPresentationValidationResults -> toApiItemCredentials()
+    is VerifiableDCQLPresentationValidationResults -> this.allValidationResults.toApiItemCredentials()
 }
-
-fun VerifiableDCQLPresentationValidationResults.toApiItemCredentials(): Collection<ApiItemCredential> =
-    allValidationResults.toApiItemCredentials()
-
-fun Map<DCQLCredentialQueryIdentifier, List<AuthnResponseResult>>.toApiItemCredentials(): Collection<ApiItemCredential> =
-    values.flatten().flatMap { it.toApiItemCredentials() }
 
 fun Error.toApiItemCredentials(): Collection<ApiItemCredential> = listOf(
     ApiItemCredential(error = reason + cause.let { ": " + it.message })
@@ -114,14 +109,18 @@ fun ValidationError.toApiItemCredentials(): Collection<ApiItemCredential> = list
     ApiItemCredential(error = field + cause.let { ": " + it.message })
 )
 
-fun VerifiableDCQLPresentationValidationResults.toOpenId4VpUser(): OpenId4VpUser =
-    this.allValidationResults.toApiItemCredentials().toOpenId4VpUser()
+fun VerifiableDCQLPresentationValidationResults.toUser(): User =
+    this.allValidationResults.toApiItemCredentials().toUser()
+
+fun Map<DCQLCredentialQueryIdentifier, List<AuthnResponseResult>>.toApiItemCredentials(): Collection<ApiItemCredential> =
+    values.flatten().flatMap { it.toApiItemCredentials() }
 
 fun Success.toApiItemCredentials(): Collection<ApiItemCredential> = vp.toApiItemCredentials()
 
-fun Success.toOpenId4VpUser() = vp.toApiItemCredentials().toOpenId4VpUser()
+fun Success.toUser() = vp.toApiItemCredentials().toUser()
+fun Iso180137AnnexCResponseResult.Success.toUser() = vp.toApiItemCredentials().toUser()
 
-fun VerifiablePresentationParsed.toApiItemCredentials(): Collection<ApiItemCredential> =
+fun VerifiablePresentationParsed.toApiItemCredentials(): List<ApiItemCredential> =
     freshVerifiableCredentials.takeIf { it.isNotEmpty() }?.let {
         it.map { it.vcJws.vc.credentialSubject }
             .filterIsInstance<EuPidCredential>()
@@ -142,7 +141,7 @@ private fun EuPidCredential.toApiItemCredential(): ApiItemCredential =
         credentialType = EuPidScheme.vcType,
     )
 
-fun SuccessSdJwt.toOpenId4VpUser() = toApiItemCredentials().toOpenId4VpUser()
+fun SuccessSdJwt.toUser() = toApiItemCredentials().toUser()
 
 fun SuccessSdJwt.toApiItemCredentials(): Collection<ApiItemCredential> = listOf(
     ApiItemCredential(
@@ -184,9 +183,12 @@ private fun kotlin.time.Instant.formatted(): String =
         time(LocalTime.Format { hour(); char(':'); minute(); char(':'); second() })
     })
 
-fun SuccessIso.toOpenId4VpUser() = toApiItemCredentials().toOpenId4VpUser()
+fun SuccessIso.toUser() = toApiItemCredentials().toUser()
+fun Iso180137AnnexCResponseResult.SuccessIso.toUser() = toApiItemCredentials().toUser()
 
 fun SuccessIso.toApiItemCredentials(): Collection<ApiItemCredential> = documents.map { it.toApiItemCredential() }
+fun Iso180137AnnexCResponseResult.SuccessIso.toApiItemCredentials(): List<ApiItemCredential> =
+    documents.map { it.toApiItemCredential() }
 
 private fun IsoDocumentParsed.toApiItemCredential(): ApiItemCredential = ApiItemCredential(
     allFields = buildJsonObject {

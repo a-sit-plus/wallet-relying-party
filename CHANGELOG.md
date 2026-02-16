@@ -1,5 +1,11 @@
 # Changelog
 
+TSP-next:
+- DC API:
+    - Support verification of DC API responses
+    - Support combined requests
+    - Support OID4VP unsigned, signed (encrypted and unencrypted) and ISO 18013-7 requests
+
 Version 5.11.0:
  - Update to VC-K 5.11.0
  - First public release

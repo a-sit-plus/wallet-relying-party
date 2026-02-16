@@ -1,4 +1,4 @@
-import {createApp, ref} from 'vue'
+import {createApp, ref, watch, computed, nextTick} from 'vue'
 
 // --- STATIC --------------------------------------------------------
 
@@ -9,6 +9,7 @@ const URLs = {
     resultUrl: 'api/single/',
     logUrl: 'logs/',
     successPageUrl: 'customer-success.html?id=',
+    postUrl: 'transaction/result/'
 }
 
 const createBasicSetup = function (config) {
@@ -20,9 +21,18 @@ const createBasicSetup = function (config) {
         presentationMechanismIdentifier: "dcql_query",
         credentials: [],
     })
-    const error = ref({message: null})
+    const selections = ref({})
+    const credentialRequestOptions = ref({})
+    const error = ref({type: null, message: null})
     const reqResult = ref({
         profiles: null,
+    })
+    const activeProfileName = ref(null)
+    const activeProfile = computed(() => {
+        if (!reqResult.value?.profiles || !activeProfileName.value) {
+            return null
+        }
+        return reqResult.value.profiles.find(profile => profile.name === activeProfileName.value) || null
     })
     const reqChanged = ref({
         oldRequestJSON: null,
@@ -32,6 +42,98 @@ const createBasicSetup = function (config) {
     let resultInterval = null
 
     // --- FUNCTIONS -----------------------------------------------
+
+    function clearError() {
+        error.value.type = null
+        error.value.message = null
+    }
+
+    function setError(type, message = null) {
+        error.value.type = type
+        error.value.message = message
+    }
+
+    async function parseErrorResponse(response) {
+        const contentType = response.headers.get('content-type') || ''
+        let errorBody = "Unknown error"
+
+        try {
+            if (contentType.includes('json')) {
+                errorBody = await response.json()
+            } else {
+                errorBody = await response.text()
+            }
+        } catch (parseError) {
+            console.warn('Failed to parse error response', parseError)
+        }
+
+        if (typeof errorBody === 'string' && errorBody.trim()) {
+            return errorBody
+        }
+        if (errorBody && typeof errorBody === 'object') {
+            return errorBody.detail || errorBody.error || errorBody.message || JSON.stringify(errorBody)
+        }
+        return response.statusText
+    }
+
+    function validateDcApiSelection(selection) {
+        const errors = [];
+        if (!selection || typeof selection.signedOid4vp !== 'boolean') {
+            errors.push("Please select an OpenID4VP mode for the Digital Credentials API request.");
+        }
+        return errors;
+    }
+
+    async function prefetchCredentialRequestOptions(profile, selection) {
+        console.log('prefetchCredentialRequestOptions for profile', profile.name, 'with selection', selection)
+        if (!profile || !profile.url) {
+            if (profile) credentialRequestOptions.value[profile.name] = null
+            return
+        }
+
+        try {
+            // clear previous error
+            clearError()
+            const requestUrl = new URL(profile.dcApiUrl || profile.url)
+
+            if (!selection || typeof selection.signedOid4vp !== 'boolean') {
+                credentialRequestOptions.value[profile.name] = null
+                return
+            }
+
+            const validationErrors = validateDcApiSelection(selection);
+            if (validationErrors.length > 0) {
+                credentialRequestOptions.value[profile.name] = null;
+                setError("GENERIC", validationErrors.join(" "));
+                return;
+            }
+
+            requestUrl.searchParams.set('dcApiSignedOid4vp', String(selection.signedOid4vp))
+            console.log("Going to pre-fetch from requestUri", requestUrl.toString())
+
+            const response = await fetch(requestUrl);
+            if (!response.ok) {
+                const errorMessage = await parseErrorResponse(response)
+
+                if (response.status === 400 && typeof errorMessage === 'string' && errorMessage.startsWith("Wrong representation")) {
+                    setError("INCOMPATIBLE_PRESENTATION_TYPE");
+                    credentialRequestOptions.value[profile.name] = null;
+                    return;
+                } else {
+                    throw new Error('Network response was not ok: ' + errorMessage);
+                }
+            }
+
+            const options = await response.json();
+
+            credentialRequestOptions.value[profile.name] = options
+            console.log('pre-fetched options for profile', profile.name, options)
+        } catch (err) {
+            console.log('error in pre-fetch: ', err)
+            setError("GENERIC", "Error in pre-fetching DC API options: " + err)
+            credentialRequestOptions.value[profile.name] = null
+        }
+    }
 
     async function updateProfile(profile) {
         console.log('updateProfile', profile)
@@ -66,6 +168,7 @@ const createBasicSetup = function (config) {
             simple: profile.simple,
             credentials: credentials,
             profileLabel: profile.label,
+            profileName: profile.name,
             presentationMechanismIdentifier: "dcql_query",
         }
         console.log('updateProfile result', reqSelection.value)
@@ -165,88 +268,70 @@ const createBasicSetup = function (config) {
         return JSON.stringify(request)
     }
 
-    function parseJwt(token) {
-        const parts = token.split('.');
-
-        if (parts.length !== 3) {
-            throw new Error('Invalid JWT token');
-        }
-
-        // Source: https://stackoverflow.com/a/38552302
-        const content = parts[1].replace(/-/g, '+').replace(/_/g, '/')
-        const payload = decodeURIComponent(atob(content).split('').map(function (c) {
-            return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-        }).join(''))
-
-        return JSON.parse(payload)
-    }
-
-    async function invokeDCAPI() {
+    async function invokeDCAPI(url, selection) {
         try {
-            if (!document.getElementsByName("DCQL")[0].checked) {
-                const confirmed = confirm("Presentation Mechanism will be set to DCQL for Digital Credentials API")
-                if (!confirmed) {
-                    return;
-                }
-                document.getElementsByName("DCQL")[0].click()
-                await generateQrCode()
+            clearError()
+
+            const validationErrors = validateDcApiSelection(selection);
+            if (validationErrors.length > 0) {
+                setError("GENERIC", validationErrors.join(" "));
+                return;
             }
 
             if (reqResult.value == null || reqResult.value.profiles == null)
                 return;
 
-            const urlString = reqResult.value.profiles[0].url
-            const requestUri = new URLSearchParams(urlString).get("request_uri")
+            const requestUrl = new URL(url)
+            const segments = requestUrl.pathname.split('/').filter(Boolean);
+            const id = segments.pop();
 
-            const query = await fetch(requestUri)
-                .then(async (response) => {
-                    if (!response.ok) {
-                        throw new Error('Network response was not ok ' + response.statusText);
-                    }
-                    const responseText = (await response.text())
-                    const jwtResponse = parseJwt(responseText);
+            const profile = reqResult.value.profiles.find(p => p.url === url || p.dcApiUrl === url);
+            if (!profile) {
+                throw new Error("Profile not found for url: " + url);
+            }
 
-                    if (!('dcql_query' in jwtResponse)) {
-                        throw new Error('Object does not have a query' + jwtResponse);
-                    }
+            const credentialRequestOptionsToUse = credentialRequestOptions.value[profile.name];
 
-                    return {
-                        dcql_query: jwtResponse.dcql_query,
-                        nonce: jwtResponse.nonce
-                    }
-                });
+            if (!credentialRequestOptionsToUse) {
+                setError("GENERIC", "Credential request options not ready. They might still be loading. Please try again shortly.");
+                console.error("Credential request options not found for profile:", profile.name);
+                return;
+            }
 
-            const requestData = {
-                responseType: "vp_token",
-                response_mode: "dc_api",
-                nonce: query.nonce,
-                dcql_query: query.dcql_query
-            };
+            console.log(`Credential request options: `, credentialRequestOptionsToUse)
 
-            const protocolName = "openid4vp"
-            const providers = [{
-                protocol: protocolName,
-                request: JSON.stringify(requestData)
-            }];
+            const walletResponse = await navigator.credentials.get(credentialRequestOptionsToUse);
 
-            const walletResponse = await navigator.credentials.get({
-                digital: {
-                    providers: providers,
-                }
-            });
-
-            if (walletResponse.constructor.name == 'DigitalCredential') {
+            let backendRequest = {};
+            if (walletResponse.constructor.name === 'DigitalCredential') {
                 const data = walletResponse.data
                 const protocol = walletResponse.protocol
                 console.log("Response Data: " + data + " Protocol: " + protocol)
-            } else if (walletResponse.constructor.name == 'IdentityCredential') {
-                const data = walletResponse.token
-                console.log("Response Data: " + data)
+                backendRequest = {protocol: protocol, data: data, origin: location.origin}
             } else {
-                throw new Error("Unknown response type")
+                throw new Error("Digital Credentials response not understood")
             }
+
+            const serverResponse = await fetch(URLs.postUrl + id, {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(backendRequest)
+            });
+
+            let serverResponseJson = await serverResponse.json();
+            console.log(`Server Response: `, serverResponseJson)
+
+            if (!serverResponse.ok) {
+                throw new Error('Network response was not ok: ' + serverResponseJson.error);
+            }
+
+            clearError()
         } catch (err) {
-            console.log('error: ', error)
+            console.log('error: ', err)
+            setError("GENERIC", "Error in DC API: " + err)
         }
     }
 
@@ -257,7 +342,7 @@ const createBasicSetup = function (config) {
             const validationErrors = validate()
             if (validationErrors.length > 0) {
                 reqResult.value = null
-                error.value.message = "Validation Error: " + validationErrors.join(", ")
+                setError("GENERIC", "Validation Error: " + validationErrors.join(", "))
                 return
             }
 
@@ -272,11 +357,23 @@ const createBasicSetup = function (config) {
             })
             if (response.ok) {
                 const data = await response.json()
-                console.log(`generateQrCode: got ${data}`)
+                console.log('generateQrCode: got ', data)
                 reqResult.value = {
                     profiles: data.profiles
                 }
-                error.value.message = null
+
+                const newSelections = {}
+                const newCredentialRequestOptions = {}
+                for (const profile of data.profiles) {
+                    newSelections[profile.name] = {
+                        signedOid4vp: true, // Default to signed for initial pre-fetch
+                    }
+                    newCredentialRequestOptions[profile.name] = null
+                }
+                selections.value = newSelections
+                credentialRequestOptions.value = newCredentialRequestOptions
+
+                clearError()
                 resetRequestChanged()
             } else {
                 const data = (await response.text())
@@ -286,7 +383,7 @@ const createBasicSetup = function (config) {
         } catch (err) {
             console.log(`error: ${err}`)
             reqResult.value = null
-            error.value.message = "Error generating request: " + err
+            setError("GENERIC", "Error generating request: " + err)
         }
     }
 
@@ -295,13 +392,18 @@ const createBasicSetup = function (config) {
             if (reqResult.value == null || reqResult.value.profiles == null)
                 return;
             for (const item of reqResult.value.profiles) {
-                console.log('loadResult for ' + item.id);
                 let response = await fetch(URLs.resultUrl + item.id);
                 if (response.ok) {
-                    const data = await response.json();
-                    console.log('loadResult got: ', data);
-                    // navigate to success page
-                    window.location.href = URLs.successPageUrl + item.id
+                    try {
+                        const data = await response.json();
+                        if (data != null) {
+                            console.log('loadResult got: ', data);
+                            // navigate to the success page
+                            window.location.href = URLs.successPageUrl + item.id
+                        }
+                    } catch (error) {
+                        // do nothing
+                    }
                 }
                 let logResponse = await fetch(URLs.logUrl + item.id);
                 if (logResponse.ok) {
@@ -346,6 +448,36 @@ const createBasicSetup = function (config) {
         }
     }
 
+    watch([selections, activeProfile], async () => {
+        const profile = activeProfile.value
+        if (!profile) return
+        if (!selections.value[profile.name]) return
+        if (!(profile.supportedOptions?.includes('OID4VP_DC_API') || profile.supportedOptions?.includes('ISO_MDOC_DC_API'))) {
+            return
+        }
+        await prefetchCredentialRequestOptions(profile, selections.value[profile.name])
+    }, {deep: true})
+
+    watch(activeProfile, (profile) => {
+        clearError()
+        if (!(profile?.supportedOptions?.includes('OID4VP_DC_API') || profile?.supportedOptions?.includes('ISO_MDOC_DC_API'))) {
+            return
+        }
+        const currentSelection = selections.value[profile.name] || {}
+        if (typeof currentSelection.signedOid4vp !== 'boolean') {
+            selections.value[profile.name] = {
+                ...currentSelection,
+                signedOid4vp: true,
+            }
+        }
+    })
+
+    watch(() => error.value.type, async (type) => {
+        if (!type) return
+        await nextTick()
+        document.getElementById('error-alert')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
+
     updateProfile(config.profiles[0])
 
     // --- RETURNS -------------------------------------------------
@@ -353,7 +485,10 @@ const createBasicSetup = function (config) {
     return {
         config,
         reqSelection,
+        selections,
         reqResult,
+        activeProfileName,
+        activeProfile,
         error,
         reqChanged,
         updateProfile,

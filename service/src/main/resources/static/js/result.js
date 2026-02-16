@@ -82,8 +82,17 @@ const createBasicSetup = function() {
     try {
       console.log('updateItemById')
       let response = await fetch(config.singleUrl + id)
-      const item = await response.json()
-      console.log('authentication: ', item)
+      if (response.ok) {
+        try {
+          const item = await response.json()
+          if (item != null) {
+            console.log('authentication: ', item)
+            updateItems([item])
+          }
+        } catch (error) {
+          // do nothing
+        }
+      }
       let logResponse = await fetch(config.logUrl + id);
       if (logResponse.ok) {
         try {
@@ -93,7 +102,6 @@ const createBasicSetup = function() {
           // do nothing
         }
       }
-      updateItems([item])
       updateTime()
     } catch (error) {
       console.log('error: ', error)
