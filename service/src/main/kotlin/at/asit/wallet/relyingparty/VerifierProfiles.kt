@@ -5,6 +5,7 @@ import at.asit.wallet.relyingparty.ApiController.Transaction
 import at.asitplus.dcapi.request.IsoMdocRequest
 import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
 import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest
+import at.asitplus.dcapi.request.verifier.DigitalCredentialRequestOptions
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters

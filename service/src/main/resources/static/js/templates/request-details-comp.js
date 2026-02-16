@@ -2,6 +2,9 @@ export default {
     props: {
         request: {},
         config: {},
+        certOptions: { default: null },
+        certPreviews: { default: null },
+        showCertificates: { default: false },
         singleColumn: { default: false },
         qrButtonText: { default: "Refresh Request" },
         // Optional active profile or name coming from the login options tabs
@@ -12,6 +15,8 @@ export default {
         'updateSchemeType',
         'updateRepresentation',
         'updatePresentationMechanismIdentifier',
+        'updateIncludeWrpac',
+        'updateIncludeWrprc',
         'updateAttribute',
         'addCredential',
         'removeCredential',
@@ -19,6 +24,57 @@ export default {
     ],
     template: `
 
+
+<div class="row border-top pt-2" v-if="showCertificates">
+    <legend class="">
+        Verifier Certificates
+    </legend>
+    <div :class="singleColumn ? '' : 'col-lg-7 overflow-hidden'">
+        <fieldset class="row mb-3">
+            <legend class="col-form-label col-sm-4 pt-0 fw-bold">Include</legend>
+            <div class="col-sm-8">
+                <div class="form-check">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           name="includeWrpac"
+                           :disabled="!(certOptions && certOptions.some(item => item.id === 'wrpac'))"
+                           :checked="request.includeWrpac"
+                           @click="$emit('updateIncludeWrpac', !request.includeWrpac)">
+                    <label class="form-check-label">
+                        WRPAC - <span class="text-primary">x509_hash</span>
+                        <span v-if="!(certOptions && certOptions.some(item => item.id === 'wrpac'))" class="text-muted">(not available)</span>
+                    </label>
+                </div>
+                <div class="form-check">
+                    <input class="form-check-input"
+                           type="checkbox"
+                           name="includeWrprc"
+                           :disabled="!(certPreviews && certPreviews.some(item => item.id === 'wrprc'))"
+                           :checked="request.includeWrprc"
+                           @click="$emit('updateIncludeWrprc', !request.includeWrprc)">
+                    <label class="form-check-label">
+                        WRPRC - <span class="text-primary">wrprc+jws</span>
+                        <span v-if="!(certPreviews && certPreviews.some(item => item.id === 'wrprc'))" class="text-muted">(not available)</span>
+                    </label>
+                </div>
+            </div>
+        </fieldset>
+    </div>
+</div>
+<div class="row border-top pt-2" v-if="showCertificates && certPreviews && certPreviews.length">
+    <legend class="">
+        Certificate Preview
+    </legend>
+    <div :class="singleColumn ? '' : 'col-lg-7 overflow-hidden'">
+        <div v-for="item in certPreviews"
+             v-if="(item.id === 'wrpac' && request.includeWrpac) || (item.id === 'wrprc' && request.includeWrprc)"
+             :key="item.id"
+             class="mb-3">
+            <div class="fw-bold mb-1">{{ item.label }} <span class="text-muted">({{ item.type }})</span></div>
+            <textarea class="form-control" rows="5" readonly>{{ item.content }}</textarea>
+        </div>
+    </div>
+</div>
 
 <div class="row border-top pt-2">
     <legend class="">

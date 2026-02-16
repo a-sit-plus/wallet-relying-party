@@ -1,0 +1,248 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Verifier Certificates</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="p-3 text-bg-primary">
+    <div class="container">
+        <div class="d-flex flex-wrap align-items-center justify-content-center justify-content-lg-start d-flex mb-2 mb-lg-0 me-md-auto text-white fs-3 fw-bold">
+            <a class="link-light text-decoration-none" href="index.html">A-SIT Demo Wallet Service Provider</a>
+            <div class="ms-auto btn btn-light fs-4">
+                <a href="https://wallet.a-sit.at/"><img style="height: 1em" src="images/ASIT Logo.png" alt="A-SIT"></a>
+            </div>
+        </div>
+    </div>
+</header>
+
+<div class="container px-4 py-5">
+    <div class="mb-3">
+        <a class="btn btn-outline-primary btn-sm" href="/custom.html">Back to Custom Request</a>
+    </div>
+    <h2 class="mb-3">Certificates</h2>
+    <p class="text-muted">Upload or remove verifier certificates used by the custom request flow.</p>
+
+    <div id="statusAlert" class="alert alert-info d-none"></div>
+    <div id="errorAlert" class="alert alert-danger d-none"></div>
+
+    <div class="row g-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">WRPAC (x509_hash)</h5>
+                    <p class="small text-muted mb-3">Requires PEM chain and PKCS12 keystore.</p>
+                    <form id="wrpacForm">
+                        <div class="mb-3">
+                            <label class="form-label">Certificate Chain (PEM)</label>
+                            <textarea id="chainPem" class="form-control" rows="6" required></textarea>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">PKCS12 Keystore (.p12/.pfx)</label>
+                            <input id="keyStore" type="file" class="form-control" accept=".p12,.pfx,application/x-pkcs12" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label">Thumbprint (optional)</label>
+                            <input id="thumbprint" type="text" class="form-control">
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">Save WRPAC</button>
+                            <button type="button" id="deleteWrpac" class="btn btn-outline-danger">Delete WRPAC</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h5 class="card-title">WRPRC (wrprc+jws)</h5>
+                    <p class="small text-muted mb-3">Paste the signed WRPRC JWS payload.</p>
+                    <form id="wrprcForm">
+                        <div class="mb-3">
+                            <label class="form-label">WRPRC JWS</label>
+                            <textarea id="wrprcJws" class="form-control" rows="10" required></textarea>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="submit" class="btn btn-primary">Save WRPRC</button>
+                            <button type="button" id="deleteWrprc" class="btn btn-outline-danger">Delete WRPRC</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mt-4">
+        <div class="col">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="card-title mb-0">Current Certificates</h5>
+                        <button id="refreshPreview" class="btn btn-outline-secondary btn-sm">Refresh</button>
+                    </div>
+                    <div id="availability" class="small text-muted mb-3"></div>
+                    <div id="previews"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const api = {
+        options: "api/wrp/cert-options",
+        previews: "api/wrp/certs",
+        availability: "api/wrp/availability",
+        wrpac: "api/wrp/wrpac",
+        wrprc: "api/wrp/wrprc",
+    };
+
+    const statusAlert = document.getElementById("statusAlert");
+    const errorAlert = document.getElementById("errorAlert");
+
+    function showStatus(message) {
+        statusAlert.textContent = message;
+        statusAlert.classList.remove("d-none");
+        errorAlert.classList.add("d-none");
+    }
+
+    function showError(message) {
+        errorAlert.textContent = message;
+        errorAlert.classList.remove("d-none");
+        statusAlert.classList.add("d-none");
+    }
+
+    function clearAlerts() {
+        statusAlert.classList.add("d-none");
+        errorAlert.classList.add("d-none");
+    }
+
+    async function refreshData() {
+        const [availabilityResp, previewsResp] = await Promise.all([
+            fetch(api.availability),
+            fetch(api.previews),
+        ]);
+
+        if (!availabilityResp.ok || !previewsResp.ok) {
+            throw new Error("Could not load certificate state");
+        }
+
+        const availability = await availabilityResp.json();
+        const previews = await previewsResp.json();
+
+        document.getElementById("availability").textContent =
+            `WRPAC: ${availability.hasWrpac ? "available" : "not available"}, WRPRC: ${availability.hasWrprc ? "available" : "not available"}`;
+
+        const previewsContainer = document.getElementById("previews");
+        previewsContainer.innerHTML = "";
+        if (!previews.length) {
+            previewsContainer.innerHTML = `<div class="text-muted">No certificates available.</div>`;
+            return;
+        }
+
+        previews.forEach(item => {
+            const wrapper = document.createElement("div");
+            wrapper.className = "mb-3";
+            wrapper.innerHTML = `
+                <div class="fw-bold mb-1">${item.label} <span class="text-muted">(${item.type})</span></div>
+                <textarea class="form-control" rows="5" readonly></textarea>
+            `;
+            wrapper.querySelector("textarea").value = item.content;
+            previewsContainer.appendChild(wrapper);
+        });
+    }
+
+    document.getElementById("wrpacForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        clearAlerts();
+        try {
+            const keyStoreFile = document.getElementById("keyStore").files[0];
+            if (!keyStoreFile) {
+                throw new Error("Please choose a PKCS12 keystore file.");
+            }
+            const formData = new FormData();
+            formData.append("chainPem", document.getElementById("chainPem").value);
+            formData.append("keyStore", keyStoreFile);
+            formData.append("thumbprint", document.getElementById("thumbprint").value || "");
+
+            const response = await fetch(api.wrpac, {
+                method: "POST",
+                body: formData,
+            });
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+            showStatus("WRPAC saved.");
+            await refreshData();
+        } catch (error) {
+            showError(`Saving WRPAC failed: ${error.message || error}`);
+        }
+    });
+
+    document.getElementById("wrprcForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        clearAlerts();
+        try {
+            const response = await fetch(api.wrprc, {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({jws: document.getElementById("wrprcJws").value}),
+            });
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+            showStatus("WRPRC saved.");
+            await refreshData();
+        } catch (error) {
+            showError(`Saving WRPRC failed: ${error.message || error}`);
+        }
+    });
+
+    document.getElementById("deleteWrpac").addEventListener("click", async () => {
+        clearAlerts();
+        try {
+            const response = await fetch(api.wrpac, {method: "DELETE"});
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+            showStatus("WRPAC deleted.");
+            await refreshData();
+        } catch (error) {
+            showError(`Deleting WRPAC failed: ${error.message || error}`);
+        }
+    });
+
+    document.getElementById("deleteWrprc").addEventListener("click", async () => {
+        clearAlerts();
+        try {
+            const response = await fetch(api.wrprc, {method: "DELETE"});
+            if (!response.ok) {
+                throw new Error(await response.text());
+            }
+            showStatus("WRPRC deleted.");
+            await refreshData();
+        } catch (error) {
+            showError(`Deleting WRPRC failed: ${error.message || error}`);
+        }
+    });
+
+    document.getElementById("refreshPreview").addEventListener("click", async () => {
+        clearAlerts();
+        try {
+            await refreshData();
+            showStatus("Refreshed certificate state.");
+        } catch (error) {
+            showError(`Refresh failed: ${error.message || error}`);
+        }
+    });
+
+    refreshData().catch(error => showError(`Loading certificates failed: ${error.message || error}`));
+</script>
+</body>
+</html>

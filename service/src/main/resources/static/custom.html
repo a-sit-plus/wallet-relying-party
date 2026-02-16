@@ -76,6 +76,30 @@
     </title-comp>
 
     <div class="row mb-3">
+        <div class="col">
+            <div class="alert alert-light border">
+                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <strong>Certificate Setup</strong>
+                        <div class="small text-muted">
+                            Configure WRPAC/WRPRC on the certificates page.
+                            WRPAC:
+                            <span :class="certOptions.some(item => item.id === 'wrpac') ? 'text-success' : 'text-muted'">
+                                {{ certOptions.some(item => item.id === 'wrpac') ? 'available' : 'not available' }}
+                            </span>,
+                            WRPRC:
+                            <span :class="certPreviews.some(item => item.id === 'wrprc') ? 'text-success' : 'text-muted'">
+                                {{ certPreviews.some(item => item.id === 'wrprc') ? 'available' : 'not available' }}
+                            </span>
+                        </div>
+                    </div>
+                    <a class="btn btn-outline-primary btn-sm" href="/certificates.html">Open Certificates</a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row mb-3">
         <ul class="nav nav-tabs">
             <li v-for="item in config.profiles"
                 :key="item.label"
@@ -87,9 +111,12 @@
         <div class="bg-white border rounded py-3">
             <request-details-comp-rich
                 :request="reqSelection" :config="config" :active-profile="activeProfile" :active-profile-name="activeProfileName"
+                :cert-options="certOptions" :cert-previews="certPreviews" :show-certificates="true"
                 @update-scheme-type="updateSchemeType"
                 @update-representation="updateRepresentation"
                 @update-presentation-mechanism-identifier="updatePresentationMechanismIdentifier"
+                @update-include-wrpac="updateIncludeWrpac"
+                @update-include-wrprc="updateIncludeWrprc"
                 @update-attribute="updateAttribute"
                 @add-credential="addCredential"
                 @remove-credential="removeCredential"

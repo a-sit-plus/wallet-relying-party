@@ -26,6 +26,8 @@ const createBasicSetup = function (config) {
         dcqlQueryError: null,
         deviceRequest: null,
         deviceRequestError: null,
+        includeWrpac: false,
+        includeWrprc: false,
     })
     const selections = ref({})
     const credentialRequestOptions = ref({})
@@ -48,6 +50,8 @@ const createBasicSetup = function (config) {
         oldRequestedCredentialsJSON: null,
         changed: false,
     })
+    const certOptions = ref([])
+    const certPreviews = ref([])
 
     let resultInterval = null
     let requestQueriesPromise = null
@@ -220,6 +224,8 @@ const createBasicSetup = function (config) {
             profileLabel: profile.label,
             profileName: profile.name,
             presentationMechanismIdentifier: "dcql_query",
+            includeWrpac: reqSelection.value.includeWrpac || false,
+            includeWrprc: reqSelection.value.includeWrprc || false,
         }
         console.log('updateProfile result', reqSelection.value)
 
@@ -238,6 +244,18 @@ const createBasicSetup = function (config) {
     async function updatePresentationMechanismIdentifier(presentationMechanismIdentifier) {
         console.log('updatePresentationMechanismIdentifier', presentationMechanismIdentifier)
         reqSelection.value.presentationMechanismIdentifier = presentationMechanismIdentifier
+        handleRequestChanged()
+    }
+
+    async function updateIncludeWrpac(includeWrpac) {
+        console.log('updateIncludeWrpac', includeWrpac)
+        reqSelection.value.includeWrpac = includeWrpac
+        handleRequestChanged()
+    }
+
+    async function updateIncludeWrprc(includeWrprc) {
+        console.log('updateIncludeWrprc', includeWrprc)
+        reqSelection.value.includeWrprc = includeWrprc
         handleRequestChanged()
     }
 
@@ -336,6 +354,8 @@ const createBasicSetup = function (config) {
             presentationDefinition: presentationDefinition,
             dcqlQuery: dcqlQuery,
             deviceRequest: deviceRequest,
+            includeWrpac: reqSelection.value.includeWrpac,
+            includeWrprc: reqSelection.value.includeWrprc,
         }
 
         return JSON.stringify(request)
@@ -603,11 +623,49 @@ const createBasicSetup = function (config) {
     })
 
     updateProfile(config.profiles[0])
+    loadCertificateOptions()
+    loadCertificatePreviews()
+
+    async function loadCertificateOptions() {
+        try {
+            const response = await fetch("api/wrp/cert-options")
+            if (response.ok) {
+                certOptions.value = await response.json()
+                syncCertificateSelection()
+            }
+        } catch (err) {
+            console.log('loadCertificateOptions error: ', err)
+        }
+    }
+    async function loadCertificatePreviews() {
+        try {
+            const response = await fetch("api/wrp/certs")
+            if (response.ok) {
+                certPreviews.value = await response.json()
+                syncCertificateSelection()
+            }
+        } catch (err) {
+            console.log('loadCertificatePreviews error: ', err)
+        }
+    }
+
+    function syncCertificateSelection() {
+        const hasWrpac = certOptions.value.some(item => item.id === "wrpac")
+        const hasWrprc = certPreviews.value.some(item => item.id === "wrprc")
+        if (!hasWrpac && reqSelection.value.includeWrpac) {
+            reqSelection.value.includeWrpac = false
+        }
+        if (!hasWrprc && reqSelection.value.includeWrprc) {
+            reqSelection.value.includeWrprc = false
+        }
+    }
 
     // --- RETURNS -------------------------------------------------
 
     return {
         config,
+        certOptions,
+        certPreviews,
         reqSelection,
         selections,
         reqResult,
@@ -619,6 +677,8 @@ const createBasicSetup = function (config) {
         updateSchemeType,
         updateRepresentation,
         updatePresentationMechanismIdentifier,
+        updateIncludeWrpac,
+        updateIncludeWrprc,
         addCredential,
         removeCredential,
         updatePresentationDefinition,
