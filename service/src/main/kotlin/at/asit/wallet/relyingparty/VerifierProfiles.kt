@@ -67,72 +67,6 @@ class VerifierProfiles(
     val knownProfiles: List<Profile> = listOf(
 
         object : Profile {
-            override val name = DEFAULT_PROFILE
-            override val label = "HAIP (d01)"
-            override val description = "x509_san_dns, OpenID4VP d23, direct_post"
-            override val urlPrefix = Paths.Schemes.Haip
-            override val clientIdScheme = runBlocking { x509SanDnsD23() }
-            override val verifier = OpenId4VpVerifier(
-                keyMaterial = verifierKeyMaterial,
-                clientIdScheme = clientIdScheme,
-                verifier = VerifierAgent(
-                    identifier = clientIdScheme.clientId,
-                    validatorSdJwt = potentialValidatorSdJwt(),
-                    validatorMdoc = potentialValidatorMdoc()
-                ),
-            )
-
-            override fun buildQrCodeUrl(requestUrl: String) =
-                buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme)
-
-            override suspend fun transactionGet(
-                transactionId: String,
-                responseUrl: String,
-                requestOptionsCredentials: Set<RequestOptionsCredential>,
-                presentationMechanism: PresentationMechanismEnum,
-            ): String = directPost(
-                transactionId,
-                responseUrl,
-                requestOptionsCredentials,
-                presentationMechanism,
-                verifier
-            )
-
-        },
-        object : Profile {
-            override val name = "HAIPd03"
-            override val label = "HAIP (d03)"
-            override val description = "x509_san_dns, OpenID4VP d23, direct_post.jwt"
-            override val urlPrefix = Paths.Schemes.Haip
-            override val clientIdScheme = runBlocking { x509SanDnsD23() }
-            override val verifier = OpenId4VpVerifier(
-                keyMaterial = verifierKeyMaterial,
-                clientIdScheme = clientIdScheme,
-                verifier = VerifierAgent(
-                    identifier = clientIdScheme.clientId,
-                    validatorSdJwt = potentialValidatorSdJwt(),
-                    validatorMdoc = potentialValidatorMdoc()
-                ),
-            )
-
-            override fun buildQrCodeUrl(requestUrl: String) =
-                buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme)
-
-            override suspend fun transactionGet(
-                transactionId: String,
-                responseUrl: String,
-                requestOptionsCredentials: Set<RequestOptionsCredential>,
-                presentationMechanism: PresentationMechanismEnum,
-            ): String = directPostJwt(
-                transactionId,
-                responseUrl,
-                requestOptionsCredentials,
-                presentationMechanism,
-                verifier
-            )
-        },
-
-        object : Profile {
             override val name = "HAIPd05"
             override val label = "HAIP (d05)"
             override val description = "x509_hash, OpenID4VP 1.0, direct_post.jwt"
@@ -255,22 +189,6 @@ class VerifierProfiles(
             .forEach { queryParam(it.key, it.value) }
     }.toUriString()
 
-    private suspend fun directPost(
-        transactionId: String,
-        responseUrl: String,
-        requestOptionsCredentials: Set<RequestOptionsCredential>,
-        presentationMechanism: PresentationMechanismEnum,
-        verifier: OpenId4VpVerifier,
-    ): String = verifier.createAuthnRequestAsSignedRequestObject(
-        OpenId4VpRequestOptions(
-            state = transactionId,
-            responseMode = OpenIdConstants.ResponseMode.DirectPost,
-            responseUrl = responseUrl,
-            credentials = requestOptionsCredentials,
-            presentationMechanism = presentationMechanism,
-        )
-    ).getOrThrow().serialize()
-
     private suspend fun directPostJwt(
         transactionId: String,
         responseUrl: String,
@@ -348,4 +266,3 @@ interface Profile {
 }
 
 
-const val DEFAULT_PROFILE = "HAIPd01"
