@@ -1,6 +1,6 @@
 # Changelog
 
-TSP-next:
+Version 5.12.0 (unreleased):
 - DC API:
     - Support verification of DC API responses
     - Support combined requests
