@@ -1,5 +1,8 @@
 # Changelog
 
+Version 5.12.0 (unreleased):
+  - tbd
+
 Version 5.11.0:
  - Update to VC-K 5.11.0
  - First public release
