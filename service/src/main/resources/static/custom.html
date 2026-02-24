@@ -77,23 +77,13 @@
 
     <div class="row mb-3">
         <div class="col">
-            <div class="alert alert-light border">
-                <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <div>
-                        <strong>Certificate Setup</strong>
-                        <div class="small text-muted">
-                            Configure WRPAC/WRPRC on the certificates page.
-                            WRPAC:
-                            <span :class="certOptions.some(item => item.id === 'wrpac') ? 'text-success' : 'text-muted'">
-                                {{ certOptions.some(item => item.id === 'wrpac') ? 'available' : 'not available' }}
-                            </span>,
-                            WRPRC:
-                            <span :class="certPreviews.some(item => item.id === 'wrprc') ? 'text-success' : 'text-muted'">
-                                {{ certPreviews.some(item => item.id === 'wrprc') ? 'available' : 'not available' }}
-                            </span>
-                        </div>
-                    </div>
-                    <a class="btn btn-outline-primary btn-sm" href="/certificates.html">Open Certificates</a>
+            <div class="alert alert-light border d-flex flex-wrap gap-2 justify-content-between align-items-center">
+                <div class="small text-muted">
+                    Registration and certificate setup moved to a dedicated page.
+                </div>
+                <div class="d-flex gap-2">
+                    <a class="btn btn-outline-primary btn-sm" href="/registration.html">Open Registration Menu</a>
+                    <a class="btn btn-outline-secondary btn-sm" href="/certificates.html">Open Certificates</a>
                 </div>
             </div>
         </div>

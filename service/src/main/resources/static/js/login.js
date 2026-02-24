@@ -52,6 +52,58 @@ const createBasicSetup = function (config) {
     })
     const certOptions = ref([])
     const certPreviews = ref([])
+    const registrationState = ref({
+        status: "unregistered",
+        wrpIdentifier: null,
+        serviceUri: null,
+        hasWrpac: false,
+        hasWrprc: false,
+        wrpRegistration: {
+            displayName: "A-SIT EUDI Relying Party",
+            tradeName: "A-SIT EUDI Relying Party",
+            country: "AT",
+            isPsb: false,
+            isIntermediary: false,
+            supportUri: "http://localhost:8080/",
+            privacyPolicyUri: "http://localhost:8080/privacy",
+            entitlement: ["urn:eudi:entitlement:age-verification"],
+            providerType: 5,
+            supervisoryAuthorityIdentifierType: "NATIONAL",
+            supervisoryAuthorityIdentifier: "",
+        },
+        serviceRegistration: {
+            serviceName: "Terminal Service Point",
+            serviceUri: "http://localhost:8080/custom.html",
+            purpose: "Age verification 18+",
+            credentials: [
+                {
+                    credentialType: "AgeVerification",
+                    format: "vc+sd-jwt",
+                    claims: ["/age_over_18"],
+                }
+            ],
+        },
+    })
+    const registrationEndpointBaseUrl = ref(
+        (typeof window !== "undefined" && window.localStorage?.getItem("registrationEndpointBaseUrl")) || "http://localhost:5000"
+    )
+    const registrarEmail = ref((() => {
+        if (typeof window === "undefined") return "asit-demo@wrp.test"
+        const stored = window.localStorage?.getItem("registrarEmail")
+        if (!stored || !stored.trim()) return "asit-demo@wrp.test"
+        if (stored.trim().toLowerCase() === "demo@wrp.test") {
+            try {
+                window.localStorage?.setItem("registrarEmail", "asit-demo@wrp.test")
+            } catch (_ignored) {
+                // ignore persistence errors in restricted browser modes
+            }
+            return "asit-demo@wrp.test"
+        }
+        return stored
+    })())
+    const registrarPassword = ref(
+        (typeof window !== "undefined" && window.localStorage?.getItem("registrarPassword")) || "demo123"
+    )
 
     let resultInterval = null
     let requestQueriesPromise = null
@@ -619,10 +671,20 @@ const createBasicSetup = function (config) {
     watch(() => error.value.type, async (type) => {
         if (!type) return
         await nextTick()
-        document.getElementById('error-alert')?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+        document.getElementById('error-alert')?.scrollIntoView({behavior: 'smooth', block: 'start'})
+    })
+
+    watch(registrationEndpointBaseUrl, (value) => {
+        if (typeof window === "undefined") return
+        try {
+            window.localStorage?.setItem("registrationEndpointBaseUrl", value || "")
+        } catch (_ignored) {
+            // ignore persistence errors in restricted browser modes
+        }
     })
 
     updateProfile(config.profiles[0])
+    loadRegistrationState()
     loadCertificateOptions()
     loadCertificatePreviews()
 
@@ -637,6 +699,7 @@ const createBasicSetup = function (config) {
             console.log('loadCertificateOptions error: ', err)
         }
     }
+
     async function loadCertificatePreviews() {
         try {
             const response = await fetch("api/wrp/certs")
@@ -660,12 +723,326 @@ const createBasicSetup = function (config) {
         }
     }
 
+    async function loadRegistrationState() {
+        try {
+            const response = await fetch("api/wrp/registration")
+            if (response.ok) {
+                registrationState.value = await response.json()
+            }
+        } catch (err) {
+            console.log('loadRegistrationState error: ', err)
+        }
+    }
+
+    async function refreshRegistrationStateFromRegistrar(options = {}) {
+        try {
+            const response = await fetch("api/wrp/registration/refresh", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    endpointBaseUrl: options.endpointBaseUrl ?? registrationEndpointBaseUrl.value,
+                    registrarEmail: options.registrarEmail ?? registrarEmail.value,
+                    registrarPassword: options.registrarPassword ?? registrarPassword.value,
+                }),
+                signal: options.signal,
+            })
+            if (!response.ok) {
+                throw new Error(await parseErrorResponse(response))
+            }
+            registrationState.value = await response.json()
+            return true
+        } catch (err) {
+            if (err?.name === "AbortError") {
+                return false
+            }
+            if (options.suppressGlobalError) {
+                options.onError?.("Refresh registration failed: " + err)
+            } else {
+                setError("GENERIC", "Refresh registration failed: " + err)
+            }
+            return false
+        }
+    }
+
+    async function resetRegistrationForTerminalServicePoint(options = {}) {
+        clearError()
+        try {
+            const response = await fetch("api/wrp/registration/reset", {
+                method: "POST",
+            })
+            if (!response.ok) {
+                throw new Error(await parseErrorResponse(response))
+            }
+            await loadRegistrationState()
+            return true
+        } catch (err) {
+            if (options.suppressGlobalError) {
+                options.onError?.("Reset registration failed: " + err)
+            } else {
+                setError("GENERIC", "Reset registration failed: " + err)
+            }
+            return false
+        }
+    }
+
+    watch(registrarEmail, (value) => {
+        if (typeof window === "undefined") return
+        try {
+            window.localStorage?.setItem("registrarEmail", value || "")
+        } catch (_ignored) {
+            // ignore persistence errors in restricted browser modes
+        }
+    })
+    watch(registrarPassword, (value) => {
+        if (typeof window === "undefined") return
+        try {
+            window.localStorage?.setItem("registrarPassword", value || "")
+        } catch (_ignored) {
+            // ignore persistence errors in restricted browser modes
+        }
+    })
+
+    async function registerWrpForTerminalServicePoint(wrpPayload, options = {}) {
+        clearError()
+        try {
+            const response = await fetch("api/wrp/registration/wrp", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(wrpPayload),
+                signal: options.signal,
+            })
+            if (!response.ok) {
+                throw new Error(await parseErrorResponse(response))
+            }
+            await loadRegistrationState()
+            return true
+        } catch (err) {
+            if (err?.name === "AbortError") {
+                return false
+            }
+            if (options.suppressGlobalError) {
+                options.onError?.("Register WRP failed: " + err)
+            } else {
+                setError("GENERIC", "Register WRP failed: " + err)
+            }
+            return false
+        }
+    }
+
+    async function registerServiceForTerminalServicePoint(servicePayload, options = {}) {
+        clearError()
+        try {
+            const response = await fetch("api/wrp/registration/service", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify(servicePayload),
+                signal: options.signal,
+            })
+            if (!response.ok) {
+                throw new Error(await parseErrorResponse(response))
+            }
+            await loadRegistrationState()
+            return true
+        } catch (err) {
+            if (err?.name === "AbortError") {
+                return false
+            }
+            if (options.suppressGlobalError) {
+                options.onError?.("Register service failed: " + err)
+            } else {
+                setError("GENERIC", "Register service failed: " + err)
+            }
+            return false
+        }
+    }
+
+    async function loadWrprcFromUrl(url, options = {}) {
+        clearError()
+        try {
+            const response = await fetch("api/wrp/registration/load-wrprc", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    url,
+                    endpointBaseUrl: options.endpointBaseUrl ?? registrationEndpointBaseUrl.value,
+                    registrarEmail: options.registrarEmail ?? registrarEmail.value,
+                    registrarPassword: options.registrarPassword ?? registrarPassword.value,
+                }),
+            })
+            if (!response.ok) {
+                throw new Error(await parseErrorResponse(response))
+            }
+            await Promise.all([
+                loadRegistrationState(),
+                loadCertificatePreviews(),
+            ])
+        } catch (err) {
+            if (options.suppressGlobalError) {
+                options.onError?.("Fetch Existing WRPRC failed: " + err)
+            } else {
+                setError("GENERIC", "Fetch Existing WRPRC failed: " + err)
+            }
+            return false
+        }
+        return true
+    }
+
+    async function loadWrpacFromUrl(url, options = {}) {
+        clearError()
+        try {
+            const response = await fetch("api/wrp/registration/load-wrpac", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    url,
+                    endpointBaseUrl: options.endpointBaseUrl ?? registrationEndpointBaseUrl.value,
+                    registrarEmail: options.registrarEmail ?? registrarEmail.value,
+                    registrarPassword: options.registrarPassword ?? registrarPassword.value,
+                }),
+            })
+            if (!response.ok) {
+                throw new Error(await parseErrorResponse(response))
+            }
+            await Promise.all([
+                loadRegistrationState(),
+                loadCertificateOptions(),
+                loadCertificatePreviews(),
+            ])
+            return true
+        } catch (err) {
+            if (options.suppressGlobalError) {
+                options.onError?.("Fetch Existing WRPAC failed: " + err)
+            } else {
+                setError("GENERIC", "Fetch Existing WRPAC failed: " + err)
+            }
+            return false
+        }
+    }
+
+    async function issueWrpacForTerminalServicePoint(options = {}) {
+        clearError()
+        try {
+            const response = await fetch("api/wrp/registration/issue-wrpac", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    endpointBaseUrl: options.endpointBaseUrl ?? registrationEndpointBaseUrl.value,
+                    registrarEmail: options.registrarEmail ?? registrarEmail.value,
+                    registrarPassword: options.registrarPassword ?? registrarPassword.value,
+                    wrpacProviderUrl: options.wrpacProviderUrl,
+                    wrpacProviderUser: options.wrpacProviderUser,
+                    wrpacProviderPassword: options.wrpacProviderPassword,
+                }),
+                signal: options.signal,
+            })
+            if (!response.ok) {
+                throw new Error(await parseErrorResponse(response))
+            }
+            await Promise.all([
+                loadRegistrationState(),
+                loadCertificateOptions(),
+                loadCertificatePreviews(),
+            ])
+            return true
+        } catch (err) {
+            if (err?.name === "AbortError") {
+                return false
+            }
+            if (options.suppressGlobalError) {
+                options.onError?.("Issue WRPAC failed: " + err)
+            } else {
+                setError("GENERIC", "Issue WRPAC failed: " + err)
+            }
+            return false
+        }
+    }
+
+    async function issueWrprcForTerminalServicePoint(options = {}) {
+        clearError()
+        try {
+            const response = await fetch("api/wrp/registration/issue-wrprc", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({
+                    endpointBaseUrl: options.endpointBaseUrl ?? registrationEndpointBaseUrl.value,
+                    registrarEmail: options.registrarEmail ?? registrarEmail.value,
+                    registrarPassword: options.registrarPassword ?? registrarPassword.value,
+                    maxAttempts: options.maxAttempts,
+                    pollIntervalMs: options.pollIntervalMs,
+                }),
+                signal: options.signal,
+            })
+            if (!response.ok) {
+                throw new Error(await parseErrorResponse(response))
+            }
+            await Promise.all([
+                loadRegistrationState(),
+                loadCertificatePreviews(),
+            ])
+            return true
+        } catch (err) {
+            if (err?.name === "AbortError") {
+                return false
+            }
+            if (options.suppressGlobalError) {
+                options.onError?.("Issue WRPRC failed: " + err)
+            } else {
+                setError("GENERIC", "Issue WRPRC failed: " + err)
+            }
+            return false
+        }
+    }
+
+    function buildRegistrationEndpoints() {
+        const base = (registrationEndpointBaseUrl.value || "").trim().replace(/\/+$/, "")
+        const state = registrationState.value || {}
+        const wrpIdentifier = state.wrpIdentifier ? encodeURIComponent(state.wrpIdentifier) : null
+        const serviceUri = state.serviceUri ? encodeURIComponent(state.serviceUri) : null
+        return {
+            base,
+            registerWrpUrl: base ? `${base}/api/rp/wrps` : "",
+            registerServiceUrl: base && wrpIdentifier ? `${base}/api/rp/wrps/${wrpIdentifier}/services` : "",
+            wrpacUrl: base && wrpIdentifier ? `${base}/api/rp/wrps/${wrpIdentifier}/wrpac` : "",
+            wrprcUrl: base && wrpIdentifier && serviceUri ? `${base}/api/rp/wrps/${wrpIdentifier}/wrprc?serviceUri=${serviceUri}` : "",
+        }
+    }
+
+    async function saveWrprcForTesting(jws, options = {}) {
+        clearError()
+        try {
+            const response = await fetch("api/wrp/wrprc", {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({jws}),
+            })
+            if (!response.ok) {
+                throw new Error(await parseErrorResponse(response))
+            }
+            await Promise.all([
+                loadRegistrationState(),
+                loadCertificatePreviews(),
+            ])
+            return true
+        } catch (err) {
+            if (options.suppressGlobalError) {
+                options.onError?.("Upload WRPRC failed: " + err)
+            } else {
+                setError("GENERIC", "Upload WRPRC failed: " + err)
+            }
+            return false
+        }
+    }
+
     // --- RETURNS -------------------------------------------------
 
     return {
         config,
         certOptions,
         certPreviews,
+        registrationState,
+        registrationEndpointBaseUrl,
+        registrarEmail,
+        registrarPassword,
         reqSelection,
         selections,
         reqResult,
@@ -690,6 +1067,19 @@ const createBasicSetup = function (config) {
         resetRequestChanged,
         compareRequestChanged,
         invokeDCAPI,
+        registerWrpForTerminalServicePoint,
+        registerServiceForTerminalServicePoint,
+        resetRegistrationForTerminalServicePoint,
+        loadCertificateOptions,
+        loadCertificatePreviews,
+        loadRegistrationState,
+        refreshRegistrationStateFromRegistrar,
+        loadWrpacFromUrl,
+        loadWrprcFromUrl,
+        issueWrpacForTerminalServicePoint,
+        issueWrprcForTerminalServicePoint,
+        saveWrprcForTesting,
+        buildRegistrationEndpoints,
     }
 }
 

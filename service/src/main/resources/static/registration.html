@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="de" xmlns:v-bind="http://www.w3.org/1999/xhtml">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Registration & Certificates</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+            crossorigin="anonymous"></script>
+
+    <script type="importmap">
+        {
+          "imports": {
+            "login": "./js/login.js",
+            "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js",
+            "header-comp": "./js/templates/header-comp.js",
+            "title-comp": "./js/templates/title-comp.js",
+            "main-config": "./js/login-config.js"
+          }
+        }
+    </script>
+
+    <script type="module">
+        import {createBasicSetup} from 'login'
+        import {createApp, ref, watch, computed, onMounted} from 'vue'
+        import HeaderComp from 'header-comp'
+        import TitleComp from 'title-comp'
+        import config from "main-config"
+
+        createApp({
+            setup: function () {
+                const app = createBasicSetup(config);
+                const wrpLocalError = ref("");
+                const serviceLocalError = ref("");
+                const certLocalError = ref("");
+                const uploadMenuOpen = ref(false);
+                const wrpRegistrationPolling = ref(false);
+                const serviceRegistrationPolling = ref(false);
+                const wrpacIssuing = ref(false);
+                const wrprcIssuing = ref(false);
+                const wrpAbortController = ref(null);
+                const serviceAbortController = ref(null);
+                const wrpacProviderUrl = ref(
+                    (typeof window !== "undefined" && window.localStorage?.getItem("wrpacProviderUrl")) || "http://localhost:8081/access-cert/csr"
+                );
+                const wrpacProviderUser = ref(
+                    (typeof window !== "undefined" && window.localStorage?.getItem("wrpacProviderUser")) || "user"
+                );
+                const wrpacProviderPassword = ref(
+                    (typeof window !== "undefined" && window.localStorage?.getItem("wrpacProviderPassword")) || "password"
+                );
+
+                const wrpForm = ref({
+                    displayName: "A-SIT EUDI Relying Party",
+                    tradeName: "A-SIT EUDI Relying Party",
+                    country: "AT",
+                    isPsb: false,
+                    isIntermediary: false,
+                    supportUri: "http://localhost:8080/",
+                    privacyPolicyUri: "http://localhost:8080/privacy",
+                    entitlement: ["urn:eudi:entitlement:age-verification"],
+                    providerType: 5,
+                    supervisoryAuthorityIdentifierType: "NATIONAL",
+                    supervisoryAuthorityIdentifier: "",
+                });
+                const serviceForm = ref({
+                    serviceName: "Terminal Service Point",
+                    serviceUri: "http://localhost:8080/custom.html",
+                    purpose: "Age verification 18+",
+                    credentialType: "AgeVerification",
+                    format: "vc+sd-jwt",
+                    claims: ["/age_over_18"],
+                });
+                const uploadWrpacChainPem = ref("");
+                const uploadWrpacThumbprint = ref("");
+                const uploadWrprcInput = ref("");
+                const registrationEndpointBaseUrl = app.registrationEndpointBaseUrl;
+                const registrarEmail = app.registrarEmail;
+                const registrarPassword = app.registrarPassword;
+                const certPreviews = app.certPreviews;
+
+                const claimOptions = ["/age_over_18", "/age_in_years", "/given_name", "/family_name", "/birthdate"];
+                const credentialOptions = [
+                    {value: "AgeVerification", label: "Age Verification"},
+                    {value: "PID", label: "PID"},
+                    {value: "mDL", label: "mDL"},
+                ];
+                const formatOptions = [
+                    {value: "vc+sd-jwt", label: "vc+sd-jwt"},
+                    {value: "mdoc", label: "mdoc"},
+                    {value: "jwt_vc_json", label: "jwt_vc_json"},
+                ];
+
+                const registrationEndpoints = computed(() => app.buildRegistrationEndpoints());
+                const wrpacLoadUrl = computed(() => registrationEndpoints.value.wrpacUrl || "");
+                const wrprcLoadUrl = computed(() => registrationEndpoints.value.wrprcUrl || "");
+                const canIssueWrpac = computed(() => !!app.registrationState.value?.wrpIdentifier);
+                const canIssueWrprc = computed(() => {
+                    const state = app.registrationState.value || {};
+                    return !!state.wrpIdentifier && !!state.serviceUri;
+                });
+                const wrpacPreview = computed(() => certPreviews.value?.find(item => item.id === "wrpac") || null);
+                const wrprcPreview = computed(() => certPreviews.value?.find(item => item.id === "wrprc") || null);
+                const wrpInfo = computed(() => {
+                    const state = app.registrationState.value || {};
+                    const wrpId = state.wrpIdentifier || "not registered";
+                    const wrpac = state.hasWrpac ? "available" : "missing";
+                    return `WRP ID: ${wrpId} | WRPAC: ${wrpac}`;
+                });
+                const serviceInfo = computed(() => {
+                    const state = app.registrationState.value || {};
+                    const serviceUri = state.serviceRegistration?.serviceUri || state.serviceUri || "not registered";
+                    const wrprc = state.hasWrprc ? "available" : "missing";
+                    return `Service URI: ${serviceUri} | WRPRC: ${wrprc}`;
+                });
+                const wrpApprovalPendingHint = computed(() => {
+                    const state = app.registrationState.value || {};
+                    return (state.status || "") === "wrp_pending";
+                });
+                const wrpStatusLabel = computed(() => {
+                    if (wrpRegistrationPolling.value) return "polling";
+                    const status = app.registrationState.value?.status || "unregistered";
+                    if (status === "wrp_pending") return "pending";
+                    if (status === "wrp_registered" || status === "service_pending" || status === "service_registered") return "registered";
+                    return "unregistered";
+                });
+                const wrpStatusClass = computed(() => {
+                    if (wrpStatusLabel.value === "registered") return "badge bg-success";
+                    if (wrpStatusLabel.value === "pending" || wrpStatusLabel.value === "polling") return "badge bg-warning text-dark";
+                    return "badge bg-secondary";
+                });
+                const serviceStatusLabel = computed(() => {
+                    if (serviceRegistrationPolling.value) return "polling";
+                    const status = app.registrationState.value?.status || "unregistered";
+                    if (status === "service_registered") return "registered";
+                    if (status === "service_pending") return "pending";
+                    return "unregistered";
+                });
+                const serviceStatusClass = computed(() => {
+                    if (serviceStatusLabel.value === "registered") return "badge bg-success";
+                    if (serviceStatusLabel.value === "pending" || serviceStatusLabel.value === "polling") return "badge bg-warning text-dark";
+                    return "badge bg-secondary";
+                });
+                const registrationStatusLabel = computed(() => {
+                    if (wrpRegistrationPolling.value || serviceRegistrationPolling.value) return "polling";
+                    return app.registrationState.value?.status || "unregistered";
+                });
+                const registrationStatusClass = computed(() => {
+                    if (registrationStatusLabel.value === "service_registered") return "badge bg-success";
+                    if (registrationStatusLabel.value === "wrp_registered") return "badge bg-info text-dark";
+                    if (registrationStatusLabel.value === "wrp_pending" || registrationStatusLabel.value === "service_pending") return "badge bg-warning text-dark";
+                    if (registrationStatusLabel.value === "polling") return "badge bg-warning text-dark";
+                    return "badge bg-secondary";
+                });
+
+                watch(() => app.registrationState.value, (state) => {
+                    if (!state) return;
+                    if (state.wrpRegistration) {
+                        wrpForm.value = {
+                            ...wrpForm.value,
+                            displayName: state.wrpRegistration.displayName || wrpForm.value.displayName,
+                            tradeName: state.wrpRegistration.tradeName || wrpForm.value.tradeName,
+                            country: state.wrpRegistration.country || wrpForm.value.country,
+                            isPsb: !!(state.wrpRegistration.isPsb ?? state.wrpRegistration.psb),
+                            isIntermediary: !!(state.wrpRegistration.isIntermediary ?? state.wrpRegistration.intermediary),
+                            supportUri: state.wrpRegistration.supportUri || wrpForm.value.supportUri,
+                            privacyPolicyUri: state.wrpRegistration.privacyPolicyUri || wrpForm.value.privacyPolicyUri,
+                            entitlement: state.wrpRegistration.entitlement?.length ? state.wrpRegistration.entitlement : wrpForm.value.entitlement,
+                            providerType: Number.isInteger(state.wrpRegistration.providerType) ? state.wrpRegistration.providerType : wrpForm.value.providerType,
+                            supervisoryAuthorityIdentifierType: state.wrpRegistration.supervisoryAuthorityIdentifierType || wrpForm.value.supervisoryAuthorityIdentifierType,
+                            supervisoryAuthorityIdentifier: state.wrpRegistration.supervisoryAuthorityIdentifier || wrpForm.value.supervisoryAuthorityIdentifier,
+                        };
+                    }
+                    if (state.serviceRegistration) {
+                        const firstCredential = state.serviceRegistration.credentials?.[0] || {};
+                        serviceForm.value = {
+                            ...serviceForm.value,
+                            serviceName: state.serviceRegistration.serviceName || serviceForm.value.serviceName,
+                            serviceUri: state.serviceRegistration.serviceUri || serviceForm.value.serviceUri,
+                            purpose: state.serviceRegistration.purpose || serviceForm.value.purpose,
+                            credentialType: firstCredential.credentialType || serviceForm.value.credentialType,
+                            format: firstCredential.format || serviceForm.value.format,
+                            claims: firstCredential.claims?.length ? firstCredential.claims : serviceForm.value.claims,
+                        };
+                    }
+                }, {immediate: true, deep: true});
+
+                function clearLocalErrors() {
+                    wrpLocalError.value = "";
+                    serviceLocalError.value = "";
+                    certLocalError.value = "";
+                }
+
+                async function registerWrp() {
+                    clearLocalErrors();
+                    if (!wrpForm.value.displayName.trim()) {
+                        wrpLocalError.value = "Display name is required.";
+                        return;
+                    }
+                    if (wrpRegistrationPolling.value) return;
+                    const controller = new AbortController();
+                    wrpAbortController.value = controller;
+                    wrpRegistrationPolling.value = true;
+                    const ok = await app.registerWrpForTerminalServicePoint({
+                        endpointBaseUrl: registrationEndpointBaseUrl.value.trim(),
+                        registrarEmail: registrarEmail.value.trim(),
+                        registrarPassword: registrarPassword.value,
+                        displayName: wrpForm.value.displayName.trim(),
+                        tradeName: wrpForm.value.tradeName.trim(),
+                        country: wrpForm.value.country.trim(),
+                        isPsb: !!wrpForm.value.isPsb,
+                        isIntermediary: !!wrpForm.value.isIntermediary,
+                        supportUri: wrpForm.value.supportUri.trim(),
+                        privacyPolicyUri: wrpForm.value.privacyPolicyUri.trim(),
+                        entitlement: wrpForm.value.entitlement,
+                        providerType: Number(wrpForm.value.providerType),
+                        supervisoryAuthorityIdentifierType: wrpForm.value.supervisoryAuthorityIdentifierType.trim(),
+                        supervisoryAuthorityIdentifier: wrpForm.value.supervisoryAuthorityIdentifier.trim(),
+                    }, {
+                        signal: controller.signal, suppressGlobalError: true, onError: (message) => {
+                            wrpLocalError.value = message || "";
+                        }
+                    });
+                    if (ok) await pollRegistrationProgress(controller.signal, () => !!app.registrationState.value?.wrpIdentifier);
+                    wrpAbortController.value = null;
+                    wrpRegistrationPolling.value = false;
+                }
+
+                async function registerService() {
+                    clearLocalErrors();
+                    if (!serviceForm.value.serviceUri.trim()) {
+                        serviceLocalError.value = "Service URI is required.";
+                        return;
+                    }
+                    if (serviceRegistrationPolling.value) return;
+                    const controller = new AbortController();
+                    serviceAbortController.value = controller;
+                    serviceRegistrationPolling.value = true;
+                    const ok = await app.registerServiceForTerminalServicePoint({
+                        endpointBaseUrl: registrationEndpointBaseUrl.value.trim(),
+                        registrarEmail: registrarEmail.value.trim(),
+                        registrarPassword: registrarPassword.value,
+                        serviceName: serviceForm.value.serviceName.trim(),
+                        serviceUri: serviceForm.value.serviceUri.trim(),
+                        purpose: serviceForm.value.purpose.trim(),
+                        credentials: [{
+                            credentialType: serviceForm.value.credentialType,
+                            format: serviceForm.value.format,
+                            claims: serviceForm.value.claims,
+                        }],
+                    }, {
+                        signal: controller.signal, suppressGlobalError: true, onError: (message) => {
+                            serviceLocalError.value = message || "";
+                        }
+                    });
+                    if (ok) await pollRegistrationProgress(controller.signal, () => !!app.registrationState.value?.serviceUri);
+                    serviceAbortController.value = null;
+                    serviceRegistrationPolling.value = false;
+                }
+
+                async function pollRegistrationProgress(signal, condition) {
+                    for (let i = 0; i < 20; i++) {
+                        if (signal?.aborted) return false;
+                        await app.refreshRegistrationStateFromRegistrar({
+                            endpointBaseUrl: registrationEndpointBaseUrl.value.trim(),
+                            registrarEmail: registrarEmail.value.trim(),
+                            registrarPassword: registrarPassword.value,
+                            signal,
+                            suppressGlobalError: true,
+                        });
+                        await app.loadRegistrationState();
+                        if (condition()) return true;
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
+                    return condition();
+                }
+
+                function cancelWrpPolling() {
+                    if (wrpAbortController.value) wrpAbortController.value.abort();
+                    wrpAbortController.value = null;
+                    wrpRegistrationPolling.value = false;
+                }
+
+                function cancelServicePolling() {
+                    if (serviceAbortController.value) serviceAbortController.value.abort();
+                    serviceAbortController.value = null;
+                    serviceRegistrationPolling.value = false;
+                }
+
+                async function loadWrpac() {
+                    clearLocalErrors();
+                    if (!wrpacLoadUrl.value) {
+                        certLocalError.value = "WRPAC URL not available yet. Register WRP first.";
+                        return;
+                    }
+                    await app.loadWrpacFromUrl(wrpacLoadUrl.value, {
+                        endpointBaseUrl: registrationEndpointBaseUrl.value.trim(),
+                        registrarEmail: registrarEmail.value.trim(),
+                        registrarPassword: registrarPassword.value,
+                        suppressGlobalError: true,
+                        onError: (message) => {
+                            certLocalError.value = message || "";
+                        },
+                    });
+                }
+
+                async function issueWrpac() {
+                    clearLocalErrors();
+                    if (wrpacIssuing.value) return;
+                    wrpacIssuing.value = true;
+                    await app.issueWrpacForTerminalServicePoint({
+                        endpointBaseUrl: registrationEndpointBaseUrl.value.trim(),
+                        registrarEmail: registrarEmail.value.trim(),
+                        registrarPassword: registrarPassword.value,
+                        wrpacProviderUrl: wrpacProviderUrl.value.trim(),
+                        wrpacProviderUser: wrpacProviderUser.value.trim(),
+                        wrpacProviderPassword: wrpacProviderPassword.value,
+                        suppressGlobalError: true,
+                        onError: (message) => {
+                            certLocalError.value = message || "";
+                        },
+                    });
+                    wrpacIssuing.value = false;
+                }
+
+                async function issueWrprc() {
+                    clearLocalErrors();
+                    if (wrprcIssuing.value) return;
+                    wrprcIssuing.value = true;
+                    await app.issueWrprcForTerminalServicePoint({
+                        endpointBaseUrl: registrationEndpointBaseUrl.value.trim(),
+                        registrarEmail: registrarEmail.value.trim(),
+                        registrarPassword: registrarPassword.value,
+                        maxAttempts: 30,
+                        pollIntervalMs: 2000,
+                        suppressGlobalError: true,
+                        onError: (message) => {
+                            certLocalError.value = message || "";
+                        },
+                    });
+                    wrprcIssuing.value = false;
+                }
+
+                async function loadWrprc() {
+                    clearLocalErrors();
+                    if (!wrprcLoadUrl.value) {
+                        certLocalError.value = "WRPRC URL not available yet. Register WRP and Service first.";
+                        return;
+                    }
+                    await app.loadWrprcFromUrl(wrprcLoadUrl.value, {
+                        endpointBaseUrl: registrationEndpointBaseUrl.value.trim(),
+                        registrarEmail: registrarEmail.value.trim(),
+                        registrarPassword: registrarPassword.value,
+                        suppressGlobalError: true,
+                        onError: (message) => {
+                            certLocalError.value = message || "";
+                        },
+                    });
+                }
+
+                async function uploadWrpacForTesting() {
+                    clearLocalErrors();
+                    if (!uploadWrpacChainPem.value.trim()) {
+                        certLocalError.value = "WRPAC PEM chain is required.";
+                        return;
+                    }
+                    const keyStoreInput = document.getElementById("uploadWrpacKeystore");
+                    const keyStoreFile = keyStoreInput?.files?.[0];
+                    if (!keyStoreFile) {
+                        certLocalError.value = "WRPAC PKCS12 keystore file is required.";
+                        return;
+                    }
+                    try {
+                        const formData = new FormData();
+                        formData.append("chainPem", uploadWrpacChainPem.value.trim());
+                        formData.append("keyStore", keyStoreFile);
+                        formData.append("thumbprint", uploadWrpacThumbprint.value.trim());
+                        const response = await fetch("api/wrp/wrpac", {method: "POST", body: formData});
+                        if (!response.ok) throw new Error(await response.text());
+                        await Promise.all([app.loadRegistrationState(), app.loadCertificateOptions(), app.loadCertificatePreviews()]);
+                    } catch (err) {
+                        certLocalError.value = "Upload WRPAC failed: " + err;
+                    }
+                }
+
+                async function resetWrpacForTesting() {
+                    clearLocalErrors();
+                    try {
+                        const response = await fetch("api/wrp/wrpac", {method: "DELETE"});
+                        if (!response.ok) throw new Error(await response.text());
+                        await Promise.all([app.loadRegistrationState(), app.loadCertificateOptions(), app.loadCertificatePreviews()]);
+                    } catch (err) {
+                        certLocalError.value = "Reset WRPAC failed: " + err;
+                    }
+                }
+
+                async function uploadWrprcForTesting() {
+                    clearLocalErrors();
+                    if (!uploadWrprcInput.value.trim()) {
+                        certLocalError.value = "WRPRC JWS is required.";
+                        return;
+                    }
+                    await app.saveWrprcForTesting(uploadWrprcInput.value.trim(), {
+                        suppressGlobalError: true,
+                        onError: (message) => {
+                            certLocalError.value = message || "";
+                        }
+                    });
+                }
+
+                async function resetWrprcForTesting() {
+                    clearLocalErrors();
+                    try {
+                        const response = await fetch("api/wrp/wrprc", {method: "DELETE"});
+                        if (!response.ok) throw new Error(await response.text());
+                        await Promise.all([app.loadRegistrationState(), app.loadCertificateOptions(), app.loadCertificatePreviews()]);
+                    } catch (err) {
+                        certLocalError.value = "Reset WRPRC failed: " + err;
+                    }
+                }
+
+                onMounted(async () => {
+                    await app.refreshRegistrationStateFromRegistrar({
+                        endpointBaseUrl: registrationEndpointBaseUrl.value.trim(),
+                        registrarEmail: registrarEmail.value.trim(),
+                        registrarPassword: registrarPassword.value,
+                        suppressGlobalError: true,
+                    });
+                    await app.loadRegistrationState();
+                });
+
+                watch(wrpacProviderUrl, (value) => {
+                    if (typeof window === "undefined") return;
+                    try {
+                        window.localStorage?.setItem("wrpacProviderUrl", value || "");
+                    } catch (_ignored) {
+                    }
+                });
+                watch(wrpacProviderUser, (value) => {
+                    if (typeof window === "undefined") return;
+                    try {
+                        window.localStorage?.setItem("wrpacProviderUser", value || "");
+                    } catch (_ignored) {
+                    }
+                });
+                watch(wrpacProviderPassword, (value) => {
+                    if (typeof window === "undefined") return;
+                    try {
+                        window.localStorage?.setItem("wrpacProviderPassword", value || "");
+                    } catch (_ignored) {
+                    }
+                });
+
+                return {
+                    wrpLocalError,
+                    serviceLocalError,
+                    certLocalError,
+                    uploadMenuOpen,
+                    wrpForm,
+                    serviceForm,
+                    uploadWrpacChainPem,
+                    uploadWrpacThumbprint,
+                    uploadWrprcInput,
+                    registrationEndpointBaseUrl,
+                    registrarEmail,
+                    registrarPassword,
+                    certPreviews,
+                    registrationEndpoints,
+                    wrpacLoadUrl,
+                    wrprcLoadUrl,
+                    canIssueWrpac,
+                    canIssueWrprc,
+                    wrpacPreview,
+                    wrprcPreview,
+                    wrpApprovalPendingHint,
+                    wrpInfo,
+                    serviceInfo,
+                    wrpStatusLabel,
+                    wrpStatusClass,
+                    serviceStatusLabel,
+                    serviceStatusClass,
+                    registrationStatusLabel,
+                    registrationStatusClass,
+                    wrpRegistrationPolling,
+                    serviceRegistrationPolling,
+                    wrpacIssuing,
+                    wrprcIssuing,
+                    wrpacProviderUrl,
+                    wrpacProviderUser,
+                    wrpacProviderPassword,
+                    claimOptions,
+                    credentialOptions,
+                    formatOptions,
+                    registerWrp,
+                    registerService,
+                    cancelWrpPolling,
+                    cancelServicePolling,
+                    issueWrpac,
+                    issueWrprc,
+                    loadWrpac,
+                    loadWrprc,
+                    uploadWrpacForTesting,
+                    resetWrpacForTesting,
+                    uploadWrprcForTesting,
+                    resetWrprcForTesting,
+                };
+            },
+            components: {HeaderComp, TitleComp}
+        }).mount('#app');
+    </script>
+</head>
+<body id="app">
+<header-comp></header-comp>
+
+<div class="container px-4 py-5 position-relative">
+    <title-comp title="Registration & Certificates" icon="bi-shield-check">
+        <p>Register WRP/service and load certificates for local testing endpoints.</p>
+    </title-comp>
+
+    <div class="row mb-3">
+        <div class="col">
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-2">
+                        <div>
+                            <span :class="registrationStatusClass">{{ registrationStatusLabel }}</span>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <a class="btn btn-outline-secondary btn-sm" href="/custom.html">Back to Custom Request</a>
+                        </div>
+                    </div>
+
+                    <div class="row g-2">
+                        <div class="col-md-8">
+                            <label class="form-label small mb-1">Registration Endpoint Base URL</label>
+                            <input class="form-control form-control-sm" v-model="registrationEndpointBaseUrl"
+                                   placeholder="http://localhost:5000">
+                        </div>
+                        <div class="col-md-4"></div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">Registrar Email</label>
+                            <input class="form-control form-control-sm" v-model="registrarEmail"
+                                   placeholder="asit-demo@wrp.test">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small mb-1">Registrar Password</label>
+                            <input type="password" class="form-control form-control-sm" v-model="registrarPassword"
+                                   placeholder="demo123">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <h6 class="mb-0">Register WRP</h6>
+                        <span :class="wrpStatusClass">{{ wrpStatusLabel }}</span>
+                    </div>
+                    <div class="small text-muted mb-3">{{ wrpInfo }}</div>
+                    <div v-if="wrpLocalError" class="alert alert-danger py-2 mb-3 small">{{ wrpLocalError }}</div>
+                    <div v-if="wrpApprovalPendingHint" class="small text-warning mb-3">
+                        WRP request is pending admin approval. An identifier may already exist, but registration is not
+                        approved yet.
+                    </div>
+                    <template v-if="!wrpRegistrationPolling">
+                        <div class="row g-2">
+                            <div class="col-md-4"><label class="form-label small mb-1">Display Name</label><input
+                                    class="form-control form-control-sm" v-model="wrpForm.displayName"></div>
+                            <div class="col-md-4"><label class="form-label small mb-1">Trade Name</label><input
+                                    class="form-control form-control-sm" v-model="wrpForm.tradeName"></div>
+                            <div class="col-md-4"><label class="form-label small mb-1">Country</label><input
+                                    class="form-control form-control-sm" v-model="wrpForm.country"></div>
+                            <div class="col-md-8"><label class="form-label small mb-1">Support URI</label><input
+                                    class="form-control form-control-sm" v-model="wrpForm.supportUri"></div>
+                            <div class="col-md-4"><label class="form-label small mb-1">Privacy Policy URI</label><input
+                                    class="form-control form-control-sm" v-model="wrpForm.privacyPolicyUri"></div>
+                            <div class="col-md-4"><label class="form-label small mb-1">Provider Type</label><input
+                                    type="number" class="form-control form-control-sm"
+                                    v-model.number="wrpForm.providerType"></div>
+                            <div class="col-md-4"><label class="form-label small mb-1">SA Identifier Type</label><input
+                                    class="form-control form-control-sm"
+                                    v-model="wrpForm.supervisoryAuthorityIdentifierType"></div>
+                            <div class="col-md-4"><label class="form-label small mb-1">SA Identifier</label><input
+                                    class="form-control form-control-sm"
+                                    v-model="wrpForm.supervisoryAuthorityIdentifier"
+                                    placeholder="auto-generated if empty"></div>
+                            <div class="col-md-8"><label class="form-label small mb-1">Entitlements (comma
+                                separated)</label><input class="form-control form-control-sm"
+                                                         :value="wrpForm.entitlement.join(', ')"
+                                                         @input="wrpForm.entitlement = $event.target.value.split(',').map(v => v.trim()).filter(v => v)">
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-check mt-4"><input class="form-check-input" type="checkbox"
+                                                                    v-model="wrpForm.isPsb" id="isPsb"><label
+                                        class="form-check-label small" for="isPsb">PSB</label></div>
+                            </div>
+                            <div class="col-md-2">
+                                <div class="form-check mt-4"><input class="form-check-input" type="checkbox"
+                                                                    v-model="wrpForm.isIntermediary"
+                                                                    id="isIntermediary"><label
+                                        class="form-check-label small" for="isIntermediary">Intermediary</label></div>
+                            </div>
+                            <div class="col-12">
+                                <button class="btn btn-primary btn-sm w-100" @click="registerWrp">Register WRP</button>
+                            </div>
+                        </div>
+                    </template>
+                    <template v-else>
+                        <div class="alert alert-info py-2 d-flex justify-content-between align-items-center mb-0"><span>Register WRP request is polling...</span>
+                            <button class="btn btn-outline-danger btn-sm" @click="cancelWrpPolling">Cancel</button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm mb-3">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <h6 class="mb-0">Register Service</h6>
+                        <span :class="serviceStatusClass">{{ serviceStatusLabel }}</span>
+                    </div>
+                    <div class="small text-muted mb-3">{{ serviceInfo }}</div>
+                    <div v-if="serviceLocalError" class="alert alert-danger py-2 mb-3 small">{{ serviceLocalError }}
+                    </div>
+                    <template v-if="!serviceRegistrationPolling">
+                        <div class="row g-2">
+                            <div class="col-md-6"><label class="form-label small mb-1">Service Name</label><input
+                                    class="form-control form-control-sm" v-model="serviceForm.serviceName"></div>
+                            <div class="col-md-6"><label class="form-label small mb-1">Service URI</label><input
+                                    class="form-control form-control-sm" v-model="serviceForm.serviceUri"></div>
+                            <div class="col-md-6"><label class="form-label small mb-1">Purpose</label><input
+                                    class="form-control form-control-sm" v-model="serviceForm.purpose"></div>
+                            <div class="col-md-3"><label class="form-label small mb-1">Credential</label><select
+                                    class="form-select form-select-sm" v-model="serviceForm.credentialType">
+                                <option v-for="item in credentialOptions" :key="item.value" :value="item.value">{{
+                                    item.label }}
+                                </option>
+                            </select></div>
+                            <div class="col-md-3"><label class="form-label small mb-1">Format</label><select
+                                    class="form-select form-select-sm" v-model="serviceForm.format">
+                                <option v-for="item in formatOptions" :key="item.value" :value="item.value">{{
+                                    item.label }}
+                                </option>
+                            </select></div>
+                            <div class="col-md-6">
+                                <label class="form-label small mb-1">Claims</label>
+                                <div class="border rounded p-2 small" style="max-height: 120px; overflow-y: auto;">
+                                    <div class="form-check" v-for="claim in claimOptions" :key="claim">
+                                        <input class="form-check-input" type="checkbox" :value="claim"
+                                               v-model="serviceForm.claims">
+                                        <label class="form-check-label">{{ claim }}</label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-12">
+                                <button class="btn btn-primary btn-sm w-100" @click="registerService">Register Service
+                                </button>
+                                <div class="small text-muted mt-2">If WRPAC is still missing, registration will fail
+                                    with a clear precondition error.
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                    <template v-else>
+                        <div class="alert alert-info py-2 d-flex justify-content-between align-items-center mb-0"><span>Register Service request is polling...</span>
+                            <button class="btn btn-outline-danger btn-sm" @click="cancelServicePolling">Cancel</button>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <h6 class="mb-3">Certificate Handling</h6>
+                    <div v-if="certLocalError" class="alert alert-danger py-2 mb-3 small">{{ certLocalError }}</div>
+                    <div class="row g-2 align-items-end mb-3">
+                        <div class="col-md-6"><label class="form-label small mb-1">WRPAC Provider CSR URL</label><input
+                                class="form-control form-control-sm" v-model="wrpacProviderUrl"
+                                placeholder="http://localhost:8081/access-cert/csr"></div>
+                        <div class="col-md-3"><label class="form-label small mb-1">Provider User</label><input
+                                class="form-control form-control-sm" v-model="wrpacProviderUser" placeholder="user">
+                        </div>
+                        <div class="col-md-3"><label class="form-label small mb-1">Provider Password</label><input
+                                type="password" class="form-control form-control-sm" v-model="wrpacProviderPassword"
+                                placeholder="password"></div>
+                        <div class="col-md-4">
+                            <button class="btn btn-primary btn-sm w-100" :disabled="wrpacIssuing || !canIssueWrpac"
+                                    @click="issueWrpac">
+                                {{ wrpacIssuing ? "Issuing WRPAC..." : "Issue WRPAC (CSR + PoP)" }}
+                            </button>
+                        </div>
+                        <div class="col-md-8 small text-muted">
+                            Runs CSR generation, registrar PoP token request and provider issuance flow in one step.
+                        </div>
+                        <div class="col-md-4">
+                            <button class="btn btn-primary btn-sm w-100" :disabled="wrprcIssuing || !canIssueWrprc"
+                                    @click="issueWrprc">
+                                {{ wrprcIssuing ? "Issuing WRPRC..." : "Issue WRPRC (poll)" }}
+                            </button>
+                        </div>
+                        <div class="col-md-8 small text-muted">
+                            Polls registrar WRPRC endpoint until certificate is available (or timeout).
+                        </div>
+                    </div>
+
+                    <div class="border-top pt-3 mb-3">
+                        <h6 class="mb-2">Certificates (embedded view)</h6>
+                        <div class="small mb-2">
+                            WRPAC: <strong>{{ wrpacPreview ? "available" : "missing" }}</strong>,
+                            WRPRC: <strong>{{ wrprcPreview ? "available" : "missing" }}</strong>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small mb-1">WRPAC</label>
+                            <textarea class="form-control form-control-sm" rows="5"
+                                      :value="wrpacPreview ? wrpacPreview.content : ''" readonly
+                                      placeholder="No WRPAC loaded yet"></textarea>
+                        </div>
+                        <div class="mb-2">
+                            <label class="form-label small mb-1">WRPRC</label>
+                            <textarea class="form-control form-control-sm" rows="5"
+                                      :value="wrprcPreview ? wrprcPreview.content : ''" readonly
+                                      placeholder="No WRPRC loaded yet"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="border-top pt-3">
+                        <button class="btn btn-outline-secondary btn-sm mb-2" @click="uploadMenuOpen = !uploadMenuOpen">
+                            Upload / Reset Certificates for Testing
+                        </button>
+                        <div v-if="uploadMenuOpen" class="small">
+                            <div class="row g-4">
+                                <div class="col-lg-6">
+                                    <div class="border rounded p-3 h-100">
+                                        <h6 class="mb-2">WRPAC (x509_hash)</h6>
+                                        <p class="small text-muted mb-2">Upload PEM chain + PKCS12 keystore.</p>
+                                        <div class="mb-2">
+                                            <label class="form-label small mb-1">Certificate Chain (PEM)</label>
+                                            <textarea class="form-control form-control-sm" rows="5"
+                                                      v-model="uploadWrpacChainPem"
+                                                      placeholder="Paste WRPAC chain PEM"></textarea>
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="form-label small mb-1">PKCS12 Keystore (.p12/.pfx)</label>
+                                            <input id="uploadWrpacKeystore" type="file"
+                                                   class="form-control form-control-sm"
+                                                   accept=".p12,.pfx,application/x-pkcs12">
+                                        </div>
+                                        <div class="mb-2">
+                                            <label class="form-label small mb-1">Thumbprint (optional)</label>
+                                            <input class="form-control form-control-sm" v-model="uploadWrpacThumbprint"
+                                                   placeholder="Optional thumbprint">
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-outline-primary btn-sm"
+                                                    @click="uploadWrpacForTesting">Upload WRPAC
+                                            </button>
+                                            <button class="btn btn-outline-danger btn-sm" @click="resetWrpacForTesting">
+                                                Reset WRPAC
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-lg-6">
+                                    <div class="border rounded p-3 h-100">
+                                        <h6 class="mb-2">WRPRC (wrprc+jws)</h6>
+                                        <p class="small text-muted mb-2">Paste WRPRC JWS for local testing.</p>
+                                        <div class="mb-2">
+                                            <label class="form-label small mb-1">WRPRC JWS</label>
+                                            <textarea class="form-control form-control-sm" rows="5"
+                                                      v-model="uploadWrprcInput"
+                                                      placeholder="Paste WRPRC JWS for testing"></textarea>
+                                        </div>
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-outline-primary btn-sm"
+                                                    @click="uploadWrprcForTesting">Upload WRPRC
+                                            </button>
+                                            <button class="btn btn-outline-danger btn-sm" @click="resetWrprcForTesting">
+                                                Reset WRPRC
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

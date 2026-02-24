@@ -18,11 +18,49 @@ import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate as JcaX509Certificate
 
 @Serializable
+data class WrpRegistrationData(
+    val displayName: String = "A-SIT EUDI Relying Party",
+    val tradeName: String = "A-SIT EUDI Relying Party",
+    val country: String = "AT",
+    val isPsb: Boolean = false,
+    val isIntermediary: Boolean = false,
+    val supportUri: String = "http://localhost:8080/",
+    val privacyPolicyUri: String = "http://localhost:8080/privacy",
+    val entitlement: List<String> = listOf("urn:eudi:entitlement:age-verification"),
+    val providerType: Int = 5,
+    val supervisoryAuthorityIdentifierType: String = "NATIONAL",
+    val supervisoryAuthorityIdentifier: String = "",
+)
+
+@Serializable
+data class ServiceCredentialSelection(
+    val credentialType: String,
+    val format: String,
+    val claims: List<String> = emptyList(),
+)
+
+@Serializable
+data class ServiceRegistrationData(
+    val serviceName: String = "Terminal Service Point",
+    val serviceUri: String = "http://localhost:8080/custom.html",
+    val purpose: String = "Age verification 18+",
+    val credentials: List<ServiceCredentialSelection> = listOf(
+        ServiceCredentialSelection(
+            credentialType = "AgeVerification",
+            format = "vc+sd-jwt",
+            claims = listOf("/age_over_18")
+        )
+    )
+)
+
+@Serializable
 data class WrpStoredState(
     val wrpIdentifier: String? = null,
     val requestStatus: String? = null,
     val serviceUri: String? = null,
     val wrpacThumbprint: String? = null,
+    val wrpRegistration: WrpRegistrationData = WrpRegistrationData(),
+    val serviceRegistration: ServiceRegistrationData = ServiceRegistrationData(),
 )
 
 data class WrpCertificatePreview(
@@ -66,11 +104,56 @@ class WrpCertificateStore(
         Files.writeString(statePath, json.encodeToString(state), StandardCharsets.UTF_8)
     }
 
+    fun saveRegistrationState(
+        wrpIdentifier: String? = null,
+        serviceUri: String? = null,
+        requestStatus: String? = null,
+        wrpRegistration: WrpRegistrationData? = null,
+        serviceRegistration: ServiceRegistrationData? = null
+    ) {
+        val current = loadState()
+        val normalizedWrp = wrpIdentifier?.trim()?.takeIf { it.isNotEmpty() } ?: current.wrpIdentifier
+        val normalizedService = serviceUri?.trim()?.takeIf { it.isNotEmpty() } ?: current.serviceUri
+        val derivedStatus = when {
+            normalizedWrp.isNullOrBlank() -> "unregistered"
+            normalizedService.isNullOrBlank() -> "wrp_registered"
+            else -> "service_registered"
+        }
+        val status = requestStatus?.trim()?.ifBlank { null } ?: derivedStatus
+        saveState(
+            current.copy(
+                wrpIdentifier = normalizedWrp,
+                serviceUri = normalizedService,
+                requestStatus = status,
+                wrpRegistration = wrpRegistration ?: current.wrpRegistration,
+                serviceRegistration = serviceRegistration ?: current.serviceRegistration
+            )
+        )
+    }
+
+    fun clearRegistrationState() {
+        val current = loadState()
+        saveState(
+            current.copy(
+                wrpIdentifier = null,
+                serviceUri = null,
+                requestStatus = "unregistered",
+            )
+        )
+    }
+
     fun saveWrpac(chainPem: String, keyStoreBytes: ByteArray, thumbprint: String) {
         Files.writeString(wrpacChainPath, chainPem, StandardCharsets.UTF_8)
         Files.write(wrpacKeyStorePath, keyStoreBytes)
         val current = loadState()
         saveState(current.copy(wrpacThumbprint = thumbprint))
+    }
+
+    fun saveWrpacChainOnly(chainPem: String, thumbprint: String = "") {
+        Files.writeString(wrpacChainPath, chainPem, StandardCharsets.UTF_8)
+        Files.deleteIfExists(wrpacKeyStorePath)
+        val current = loadState()
+        saveState(current.copy(wrpacThumbprint = thumbprint.ifBlank { current.wrpacThumbprint }))
     }
 
     fun saveWrprc(jws: String) {
@@ -96,7 +179,7 @@ class WrpCertificateStore(
     fun loadWrprcJws(): String? =
         if (Files.exists(wrprcPath)) Files.readString(wrprcPath) else null
 
-    fun hasWrpac(): Boolean = Files.exists(wrpacChainPath) && Files.exists(wrpacKeyStorePath)
+    fun hasWrpac(): Boolean = Files.exists(wrpacChainPath)
 
     fun hasWrprc(): Boolean = Files.exists(wrprcPath)
 
