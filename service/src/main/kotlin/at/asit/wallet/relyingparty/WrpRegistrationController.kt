@@ -149,7 +149,7 @@ data class RemoteWrprcPayload(
 
 @RestController
 @RequestMapping("/api/wrp")
-class WrpCertificateController(
+class WrpRegistrationController(
     private val store: WrpCertificateStore,
 ) {
     private val httpClient: HttpClient = HttpClient.newBuilder()
@@ -359,7 +359,7 @@ class WrpCertificateController(
             val localServiceStatus = when (remoteServiceStatus?.uppercase()) {
                 "PENDING" -> "service_pending"
                 "APPROVED" -> "service_registered"
-                else -> "service_registered"
+                else -> "unknown"
             }
             store.saveRegistrationState(
                 serviceUri = serviceUri,
@@ -631,23 +631,37 @@ class WrpCertificateController(
             return registrationState()
         }
 
-        val registrarClient = createRegistrarClient()
-        loginToRegistrar(
-            client = registrarClient,
-            baseUrl = remoteBaseUrl,
-            email = request.registrarEmail?.trim().orEmpty(),
-            password = request.registrarPassword?.trim().orEmpty(),
-        )
-        val wrpsBody = fetchText(registrarClient, "${remoteBaseUrl.trimEnd('/')}/api/rp/wrps")
-        val parsed = runCatching { json.parseToJsonElement(wrpsBody) }.getOrNull()
-            ?: throw ResponseStatusException(HttpStatus.BAD_GATEWAY, "remote registrar returned invalid WRP list JSON")
-        val wrpNode = findWrpNodeByIdentifier(parsed, wrpIdentifier)
+        val wrpNode = try {
+            val registrarClient = createRegistrarClient()
+            loginToRegistrar(
+                client = registrarClient,
+                baseUrl = remoteBaseUrl,
+                email = request.registrarEmail?.trim().orEmpty(),
+                password = request.registrarPassword?.trim().orEmpty(),
+            )
+            val wrpsBody = fetchText(registrarClient, "${remoteBaseUrl.trimEnd('/')}/api/rp/wrps")
+            val parsed = runCatching { json.parseToJsonElement(wrpsBody) }.getOrNull()
+                ?: throw ResponseStatusException(HttpStatus.BAD_GATEWAY, "remote registrar returned invalid WRP list JSON")
+            findWrpNodeByIdentifier(parsed, wrpIdentifier)
+        } catch (ex: ResponseStatusException) {
+            val reason = ex.reason ?: ex.message.orEmpty()
+            if (reason.contains("required endpoint not reachable", ignoreCase = true)) {
+                store.saveState(
+                    current.copy(
+                        requestStatus = "unknown",
+                    )
+                )
+                return registrationState()
+            }
+            throw ex
+        }
 
         if (wrpNode == null) {
-            // Keep local registration context if remote lookup is temporarily inconsistent.
+            // WRP entry is not present in the current registrar response snapshot.
+            // Keep local linkage and mark status unknown until a later refresh confirms state.
             store.saveState(
                 current.copy(
-                    requestStatus = if (current.wrpIdentifier.isNullOrBlank()) "unregistered" else "wrp_pending",
+                    requestStatus = "unknown",
                 )
             )
             return registrationState()
@@ -677,10 +691,11 @@ class WrpCertificateController(
 
         val remoteServiceNode = findServiceNodeByUri(wrpNode, currentServiceUri)
         if (remoteServiceNode == null) {
-            // Service may still be propagating/pending remotely; keep local URI and pending state.
+            // Service entry is not present in the current registrar response snapshot.
+            // Keep local linkage and mark status unknown until a later refresh confirms state.
             store.saveState(
                 current.copy(
-                    requestStatus = "service_pending",
+                    requestStatus = "unknown",
                 )
             )
             return registrationState()
@@ -690,7 +705,7 @@ class WrpCertificateController(
         val localServiceStatus = when (remoteServiceStatus?.uppercase()) {
             "PENDING" -> "service_pending"
             "APPROVED" -> "service_registered"
-            else -> "service_registered"
+            else -> "unknown"
         }
         store.saveRegistrationState(requestStatus = localServiceStatus)
         return registrationState()

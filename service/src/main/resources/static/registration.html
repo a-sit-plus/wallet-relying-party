@@ -126,11 +126,13 @@
                     const status = app.registrationState.value?.status || "unregistered";
                     if (status === "wrp_pending") return "pending";
                     if (status === "wrp_registered" || status === "service_pending" || status === "service_registered") return "registered";
+                    if (status === "unknown") return "unknown";
                     return "unregistered";
                 });
                 const wrpStatusClass = computed(() => {
                     if (wrpStatusLabel.value === "registered") return "badge bg-success";
                     if (wrpStatusLabel.value === "pending" || wrpStatusLabel.value === "polling") return "badge bg-warning text-dark";
+                    if (wrpStatusLabel.value === "unknown") return "badge bg-dark";
                     return "badge bg-secondary";
                 });
                 const serviceStatusLabel = computed(() => {
@@ -138,11 +140,13 @@
                     const status = app.registrationState.value?.status || "unregistered";
                     if (status === "service_registered") return "registered";
                     if (status === "service_pending") return "pending";
+                    if (status === "unknown") return "unknown";
                     return "unregistered";
                 });
                 const serviceStatusClass = computed(() => {
                     if (serviceStatusLabel.value === "registered") return "badge bg-success";
                     if (serviceStatusLabel.value === "pending" || serviceStatusLabel.value === "polling") return "badge bg-warning text-dark";
+                    if (serviceStatusLabel.value === "unknown") return "badge bg-dark";
                     return "badge bg-secondary";
                 });
                 const registrationStatusLabel = computed(() => {
@@ -154,6 +158,7 @@
                     if (registrationStatusLabel.value === "wrp_registered") return "badge bg-info text-dark";
                     if (registrationStatusLabel.value === "wrp_pending" || registrationStatusLabel.value === "service_pending") return "badge bg-warning text-dark";
                     if (registrationStatusLabel.value === "polling") return "badge bg-warning text-dark";
+                    if (registrationStatusLabel.value === "unknown") return "badge bg-dark";
                     return "badge bg-secondary";
                 });
 
@@ -424,13 +429,20 @@
                 }
 
                 onMounted(async () => {
-                    await app.refreshRegistrationStateFromRegistrar({
-                        endpointBaseUrl: registrationEndpointBaseUrl.value.trim(),
-                        registrarEmail: registrarEmail.value.trim(),
-                        registrarPassword: registrarPassword.value,
-                        suppressGlobalError: true,
-                    });
-                    await app.loadRegistrationState();
+                    for (let i = 0; i < 5; i++) {
+                        await app.refreshRegistrationStateFromRegistrar({
+                            endpointBaseUrl: registrationEndpointBaseUrl.value.trim(),
+                            registrarEmail: registrarEmail.value.trim(),
+                            registrarPassword: registrarPassword.value,
+                            suppressGlobalError: true,
+                        });
+                        await app.loadRegistrationState();
+                        const status = (app.registrationState.value?.status || "").toLowerCase();
+                        if (status !== "wrp_pending" && status !== "service_pending") {
+                            break;
+                        }
+                        await new Promise(resolve => setTimeout(resolve, 1000));
+                    }
                 });
 
                 watch(wrpacProviderUrl, (value) => {

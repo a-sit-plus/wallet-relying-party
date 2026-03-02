@@ -1,5 +1,8 @@
 package at.asit.wallet.relyingparty
 
+import com.sun.net.httpserver.HttpServer
+import org.junit.jupiter.api.Assertions.assertEquals
+import org.junit.jupiter.api.Assertions.assertNull
 import org.junit.jupiter.api.Assertions.assertNotNull
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeEach
@@ -13,6 +16,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.get
+import java.net.InetSocketAddress
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -197,6 +201,211 @@ class WrpRegistrationControllerTest {
         }.andReturn()
 
         assertNotNull(result.response.contentAsString)
+    }
+
+    @Test
+    fun `refresh returns unknown when registrar is unreachable`() {
+        val result = mockMvc.post("/api/wrp/registration/refresh") {
+            contentType = MediaType.APPLICATION_JSON
+            content = """
+                {
+                  "endpointBaseUrl": "http://localhost:1",
+                  "registrarEmail": "asit-demo@wrp.test",
+                  "registrarPassword": "demo123"
+                }
+            """.trimIndent()
+        }.andExpect {
+            status { isOk() }
+        }.andReturn()
+
+        val saveStateInvocation = Mockito.mockingDetails(store).invocations
+            .lastOrNull { it.method.name == "saveState" }
+        assertNotNull(saveStateInvocation)
+        val saved = saveStateInvocation!!.arguments[0] as WrpStoredState
+        assertEquals("unknown", saved.requestStatus)
+        assertNotNull(result.response.contentAsString)
+    }
+
+    @Test
+    fun `refresh maps missing remote wrp node to unknown`() {
+        val initialState = WrpStoredState(
+            wrpIdentifier = "WRP-TEST-1",
+            serviceUri = "http://localhost:8080/custom.html",
+            requestStatus = "wrp_pending",
+            wrpRegistration = WrpRegistrationData(),
+            serviceRegistration = ServiceRegistrationData(serviceUri = "http://localhost:8080/custom.html"),
+        )
+        Mockito.`when`(store.loadState()).thenReturn(initialState)
+
+        val registrar = HttpServer.create(InetSocketAddress(0), 0)
+        registrar.createContext("/rp/login") { exchange ->
+            val body = "ok"
+            val bytes = body.toByteArray()
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        registrar.createContext("/api/rp/wrps") { exchange ->
+            val body = """{"ok":true,"registration":{"wrpIdentifier":"WRP-OTHER-1","status":"APPROVED"}}"""
+            val bytes = body.toByteArray()
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        registrar.start()
+
+        try {
+            val baseUrl = "http://localhost:${registrar.address.port}"
+            mockMvc.post("/api/wrp/registration/refresh") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """
+                    {
+                      "endpointBaseUrl": "$baseUrl",
+                      "registrarEmail": "asit-demo@wrp.test",
+                      "registrarPassword": "demo123"
+                    }
+                """.trimIndent()
+            }.andExpect {
+                status { isOk() }
+            }
+
+            val saveStateInvocation = Mockito.mockingDetails(store).invocations
+                .lastOrNull { it.method.name == "saveState" }
+            assertNotNull(saveStateInvocation)
+            val saved = saveStateInvocation!!.arguments[0] as WrpStoredState
+            assertEquals("WRP-TEST-1", saved.wrpIdentifier)
+            assertEquals("http://localhost:8080/custom.html", saved.serviceUri)
+            assertEquals("unknown", saved.requestStatus)
+        } finally {
+            registrar.stop(0)
+        }
+    }
+
+    @Test
+    fun `refresh maps unknown remote service status to unknown`() {
+        val initialState = WrpStoredState(
+            wrpIdentifier = "WRP-TEST-1",
+            serviceUri = "http://localhost:8080/custom.html",
+            requestStatus = "service_pending",
+            wrpRegistration = WrpRegistrationData(),
+            serviceRegistration = ServiceRegistrationData(serviceUri = "http://localhost:8080/custom.html"),
+        )
+        Mockito.`when`(store.loadState()).thenReturn(initialState)
+
+        val registrar = HttpServer.create(InetSocketAddress(0), 0)
+        registrar.createContext("/rp/login") { exchange ->
+            val body = "ok"
+            val bytes = body.toByteArray()
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        registrar.createContext("/api/rp/wrps") { exchange ->
+            val body = """
+                {
+                  "wrps": [
+                    {
+                      "wrpIdentifier": "WRP-TEST-1",
+                      "status": "APPROVED",
+                      "services": [
+                        {
+                          "serviceUri": "http://localhost:8080/custom.html",
+                          "status": "UNRECOGNIZED"
+                        }
+                      ]
+                    }
+                  ]
+                }
+            """.trimIndent()
+            val bytes = body.toByteArray()
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        registrar.start()
+
+        try {
+            val baseUrl = "http://localhost:${registrar.address.port}"
+            mockMvc.post("/api/wrp/registration/refresh") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """
+                    {
+                      "endpointBaseUrl": "$baseUrl",
+                      "registrarEmail": "asit-demo@wrp.test",
+                      "registrarPassword": "demo123"
+                    }
+                """.trimIndent()
+            }.andExpect {
+                status { isOk() }
+            }
+
+            val saveRegistrationInvocation = Mockito.mockingDetails(store).invocations
+                .lastOrNull { it.method.name == "saveRegistrationState" }
+            assertNotNull(saveRegistrationInvocation)
+            assertTrue(saveRegistrationInvocation!!.arguments.contains("unknown"))
+        } finally {
+            registrar.stop(0)
+        }
+    }
+
+    @Test
+    fun `refresh maps missing remote service node to unknown`() {
+        val initialState = WrpStoredState(
+            wrpIdentifier = "WRP-TEST-1",
+            serviceUri = "http://localhost:8080/custom.html",
+            requestStatus = "service_pending",
+            wrpRegistration = WrpRegistrationData(),
+            serviceRegistration = ServiceRegistrationData(serviceUri = "http://localhost:8080/custom.html"),
+        )
+        Mockito.`when`(store.loadState()).thenReturn(initialState)
+
+        val registrar = HttpServer.create(InetSocketAddress(0), 0)
+        registrar.createContext("/rp/login") { exchange ->
+            val body = "ok"
+            val bytes = body.toByteArray()
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        registrar.createContext("/api/rp/wrps") { exchange ->
+            val body = """
+                {
+                  "wrps": [
+                    {
+                      "wrpIdentifier": "WRP-TEST-1",
+                      "status": "APPROVED",
+                      "services": []
+                    }
+                  ]
+                }
+            """.trimIndent()
+            val bytes = body.toByteArray()
+            exchange.responseHeaders.add("Content-Type", "application/json")
+            exchange.sendResponseHeaders(200, bytes.size.toLong())
+            exchange.responseBody.use { it.write(bytes) }
+        }
+        registrar.start()
+
+        try {
+            val baseUrl = "http://localhost:${registrar.address.port}"
+            mockMvc.post("/api/wrp/registration/refresh") {
+                contentType = MediaType.APPLICATION_JSON
+                content = """
+                    {
+                      "endpointBaseUrl": "$baseUrl",
+                      "registrarEmail": "asit-demo@wrp.test",
+                      "registrarPassword": "demo123"
+                    }
+                """.trimIndent()
+            }.andExpect {
+                status { isOk() }
+            }
+
+            val saveStateInvocation = Mockito.mockingDetails(store).invocations
+                .lastOrNull { it.method.name == "saveState" }
+            assertNotNull(saveStateInvocation)
+            val saved = saveStateInvocation!!.arguments[0] as WrpStoredState
+            assertEquals("unknown", saved.requestStatus)
+        } finally {
+            registrar.stop(0)
+        }
     }
 
     @Test
