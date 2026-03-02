@@ -23,6 +23,8 @@
             "success-alert-comp": "./js/templates/success-alert-comp.js",
             "login-options-comp": "./js/templates/login-options-comp.js",
             "request-details-comp": "./js/templates/request-details-comp.js",
+            "request-details-comp-rich": "./js/templates/request-details-comp-rich.js",
+            "accordion-comp": "./js/templates/accordion-comp.js",
             "main-config": "./js/login-config.js"
           }
         }
@@ -37,6 +39,8 @@
         import SuccessAlertComp from 'success-alert-comp'
         import LoginOptionsComp from 'login-options-comp'
         import RequestDetailsComp from 'request-details-comp'
+        import RequestDetailsCompRich from 'request-details-comp-rich'
+        import AccordionComp from 'accordion-comp'
         import config from "main-config"
 
         createApp({
@@ -48,12 +52,14 @@
                 return app
             },
             components: {
+                AccordionComp,
                 HeaderComp,
                 TitleComp,
                 ErrorAlertComp,
                 SuccessAlertComp,
                 LoginOptionsComp,
-                RequestDetailsComp
+                RequestDetailsComp,
+                RequestDetailsCompRich
             }
         }).mount('#app');
     </script>
@@ -79,16 +85,19 @@
             </li>
         </ul>
         <div class="bg-white border rounded py-3">
-        <request-details-comp
+            <request-details-comp-rich
                 :request="reqSelection" :config="config" :active-profile="activeProfile" :active-profile-name="activeProfileName"
                 @update-scheme-type="updateSchemeType"
-                    @update-representation="updateRepresentation"
-                    @update-presentation-mechanism-identifier="updatePresentationMechanismIdentifier"
-                    @update-attribute="updateAttribute"
-                    @add-credential="addCredential"
-                    @remove-credential="removeCredential"
-                    @generate-qr-code="generateQrCode"
-            ></request-details-comp>
+                @update-representation="updateRepresentation"
+                @update-presentation-mechanism-identifier="updatePresentationMechanismIdentifier"
+                @update-attribute="updateAttribute"
+                @add-credential="addCredential"
+                @remove-credential="removeCredential"
+                @update-presentation-definition="updatePresentationDefinition"
+                @update-dcql-query="updateDcqlQuery"
+                @update-device-request="updateDeviceRequest"
+                @generate-qr-code="generateQrCode"
+            ></request-details-comp-rich>
         </div>
     </div>
 

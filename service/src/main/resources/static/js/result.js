@@ -25,13 +25,13 @@ const createBasicSetup = function() {
     const seconds = Math.floor((difference - minutes*60*1000) / 1000)
 
     var textMinutes
-    if (minutes == 0)
+    if (minutes == 0) {
       textMinutes = ''
-    else if (minutes == 1)
+    } else if (minutes == 1) {
       textMinutes = minutes + ' minute'
-    else if (minutes > 0)
+    } else if (minutes > 0) {
       textMinutes = minutes + ' minutes'
-
+    }
     var textSeconds = seconds + ' seconds'
 
     return textMinutes + ' ' + textSeconds

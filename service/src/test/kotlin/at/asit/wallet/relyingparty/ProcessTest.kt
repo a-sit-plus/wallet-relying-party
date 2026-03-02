@@ -1,11 +1,14 @@
 package at.asit.wallet.relyingparty
 
+import at.asitplus.catching
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
+import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import com.benasher44.uuid.uuid4
@@ -59,17 +62,26 @@ class ProcessTest {
 
     private suspend fun runProcess(presentationMechanism: PresentationMechanismEnum) {
         val givenName = uuid4().toString()
+        val requestBuilder = CredentialPresentationRequestBuilder(
+            listOf(
+                TransactionRequestCredential(
+                    credentialType = AtomicAttribute2023.sdJwtType,
+                    representation = ConstantIndex.CredentialRepresentation.SD_JWT.name,
+                    attributes = listOf(AtomicAttribute2023.CLAIM_GIVEN_NAME),
+                )
+            ).map {
+                it.toRequestOptionsCredential()
+            }
+        )
         val transactionResult = mockMvc.post("/transaction/create") {
             content = Json.encodeToString(
                 TransactionRequest(
                     presentationMechanism = presentationMechanism,
-                    credentials = listOf(
-                        TransactionRequestCredential(
-                            credentialType = AtomicAttribute2023.sdJwtType,
-                            representation = ConstantIndex.CredentialRepresentation.SD_JWT.name,
-                            attributes = listOf(AtomicAttribute2023.CLAIM_GIVEN_NAME),
-                        )
-                    )
+                    presentationDefinition = requestBuilder.toPresentationExchangeRequest().presentationDefinition,
+                    dcqlQuery = requestBuilder.toDCQLRequest()?.dcqlQuery,
+                    deviceRequest = catching {
+                        requestBuilder.toIso180137AnnexCDeviceRequest()
+                    }.getOrNull(),
                 )
             )
             contentType = MediaType.APPLICATION_JSON

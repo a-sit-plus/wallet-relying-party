@@ -2,9 +2,11 @@ package at.asit.wallet.relyingparty
 
 
 import at.asit.wallet.relyingparty.ApiController.Transaction
+import at.asitplus.KmmResult
 import at.asitplus.dcapi.request.IsoMdocRequest
 import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
 import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest
+import at.asitplus.iso.DeviceRequest
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.JwtVcIssuerMetadata
@@ -12,10 +14,10 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
@@ -26,7 +28,6 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.ClientIdScheme
-import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
@@ -115,27 +116,26 @@ class VerifierProfiles(
             override suspend fun transactionGet(
                 transactionId: String,
                 responseUrl: String,
-                requestOptionsCredentials: Set<RequestOptionsCredential>,
-                presentationMechanism: PresentationMechanismEnum,
+                presentationRequest: CredentialPresentationRequest?
             ): String = directPostJwt(
-                transactionId,
-                responseUrl,
-                requestOptionsCredentials,
-                presentationMechanism,
-                oid4vpVerifier
+                transactionId = transactionId,
+                responseUrl = responseUrl,
+                presentationRequest = presentationRequest,
+                verifier = oid4vpVerifier
             )
 
             override suspend fun transactionGetDcApi(
                 transactionId: String,
                 responseUrl: String,
-                requestOptionsCredentials: Set<RequestOptionsCredential>,
-                dcApiSignedOid4vp: Boolean,
+                dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
+                deviceRequest: DeviceRequest?,
+                dcApiSignedOid4vp: Boolean
             ): String {
                 dcApiSignedOid4vpRequired = dcApiSignedOid4vp
-                val openId4VpRequest = buildOpenId4VpRequest(
+                val openId4VpRequest = buildOpenId4VpDcApiRequest(
                     transactionId = transactionId,
                     responseUrl = responseUrl,
-                    requestOptionsCredentials = requestOptionsCredentials,
+                    presentationRequest = dcqlRequest,
                     verifier = oid4vpVerifier,
                     dcApiSignedOid4vp = dcApiSignedOid4vp,
                     encryption = true,
@@ -172,14 +172,15 @@ class VerifierProfiles(
             override suspend fun transactionGetDcApi(
                 transactionId: String,
                 responseUrl: String,
-                requestOptionsCredentials: Set<RequestOptionsCredential>,
-                dcApiSignedOid4vp: Boolean,
+                dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
+                deviceRequest: DeviceRequest?,
+                dcApiSignedOid4vp: Boolean
             ): String {
                 dcApiSignedOid4vpRequired = dcApiSignedOid4vp
-                val openId4VpRequest = buildOpenId4VpRequest(
+                val openId4VpRequest = buildOpenId4VpDcApiRequest(
                     transactionId = transactionId,
                     responseUrl = responseUrl,
-                    requestOptionsCredentials = requestOptionsCredentials,
+                    presentationRequest = dcqlRequest,
                     verifier = oid4vpVerifier,
                     dcApiSignedOid4vp = dcApiSignedOid4vp,
                     encryption = false,
@@ -217,14 +218,12 @@ class VerifierProfiles(
             override suspend fun transactionGet(
                 transactionId: String,
                 responseUrl: String,
-                requestOptionsCredentials: Set<RequestOptionsCredential>,
-                presentationMechanism: PresentationMechanismEnum,
+                presentationRequest: CredentialPresentationRequest?,
             ): String = directPostJwt(
-                transactionId,
-                responseUrl,
-                requestOptionsCredentials,
-                presentationMechanism,
-                oid4vpVerifier
+                transactionId = transactionId,
+                responseUrl = responseUrl,
+                presentationRequest = presentationRequest,
+                verifier = oid4vpVerifier
             )
         },
 
@@ -245,11 +244,12 @@ class VerifierProfiles(
             override suspend fun transactionGetDcApi(
                 transactionId: String,
                 responseUrl: String,
-                requestOptionsCredentials: Set<RequestOptionsCredential>,
-                dcApiSignedOid4vp: Boolean,
+                dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
+                deviceRequest: DeviceRequest?,
+                dcApiSignedOid4vp: Boolean
             ): String {
                 val request = dcApiIsoMdoc(
-                    requestOptionsCredentials = requestOptionsCredentials,
+                    deviceRequest = deviceRequest ?: throw IllegalStateException("Device request is not available"),
                     verifier = iso180137Verifier,
                     id = transactionId
                 )
@@ -285,14 +285,12 @@ class VerifierProfiles(
             override suspend fun transactionGet(
                 transactionId: String,
                 responseUrl: String,
-                requestOptionsCredentials: Set<RequestOptionsCredential>,
-                presentationMechanism: PresentationMechanismEnum,
+                presentationRequest: CredentialPresentationRequest?,
             ): String = directPostJwt(
-                transactionId,
-                responseUrl,
-                requestOptionsCredentials,
-                presentationMechanism,
-                oid4vpVerifier
+                transactionId = transactionId,
+                responseUrl = responseUrl,
+                presentationRequest = presentationRequest,
+                verifier = oid4vpVerifier
             )
         },
         object : Profile {
@@ -321,14 +319,15 @@ class VerifierProfiles(
             override suspend fun transactionGetDcApi(
                 transactionId: String,
                 responseUrl: String,
-                requestOptionsCredentials: Set<RequestOptionsCredential>,
-                dcApiSignedOid4vp: Boolean,
+                dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
+                deviceRequest: DeviceRequest?,
+                dcApiSignedOid4vp: Boolean
             ): String {
                 dcApiSignedOid4vpRequired = dcApiSignedOid4vp
-                val openId4VpRequest = buildOpenId4VpRequest(
+                val openId4VpRequest = buildOpenId4VpDcApiRequest(
                     transactionId = transactionId,
                     responseUrl = responseUrl,
-                    requestOptionsCredentials = requestOptionsCredentials,
+                    presentationRequest = dcqlRequest,
                     verifier = oid4vpVerifier,
                     dcApiSignedOid4vp = dcApiSignedOid4vp,
                     encryption = false,
@@ -336,7 +335,7 @@ class VerifierProfiles(
 
                 val mdocRequest = DigitalCredentialGetRequest.IsoMdoc(
                     dcApiIsoMdoc(
-                        requestOptionsCredentials = requestOptionsCredentials,
+                        deviceRequest = deviceRequest ?: throw IllegalStateException("Device request is not available"),
                         verifier = iso180137Verifier,
                         id = transactionId
                     )
@@ -373,14 +372,15 @@ class VerifierProfiles(
             override suspend fun transactionGetDcApi(
                 transactionId: String,
                 responseUrl: String,
-                requestOptionsCredentials: Set<RequestOptionsCredential>,
-                dcApiSignedOid4vp: Boolean,
+                dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
+                deviceRequest: DeviceRequest?,
+                dcApiSignedOid4vp: Boolean
             ): String {
                 dcApiSignedOid4vpRequired = dcApiSignedOid4vp
-                val openId4VpRequest = buildOpenId4VpRequest(
+                val openId4VpRequest = buildOpenId4VpDcApiRequest(
                     transactionId = transactionId,
                     responseUrl = responseUrl,
-                    requestOptionsCredentials = requestOptionsCredentials,
+                    presentationRequest = dcqlRequest,
                     verifier = oid4vpVerifier,
                     dcApiSignedOid4vp = dcApiSignedOid4vp,
                     encryption = true,
@@ -388,7 +388,7 @@ class VerifierProfiles(
 
                 val mdocRequest = DigitalCredentialGetRequest.IsoMdoc(
                     dcApiIsoMdoc(
-                        requestOptionsCredentials = requestOptionsCredentials,
+                        deviceRequest = deviceRequest ?: throw IllegalStateException("Device request is not available"),
                         verifier = iso180137Verifier,
                         id = transactionId
                     )
@@ -406,35 +406,32 @@ class VerifierProfiles(
         redirectUri = configuration.publicContext.toString()
     )
 
-    private suspend fun buildOpenId4VpRequest(
+    private suspend fun buildOpenId4VpDcApiRequest(
         transactionId: String,
         responseUrl: String,
-        requestOptionsCredentials: Set<RequestOptionsCredential>,
+        presentationRequest: CredentialPresentationRequest.DCQLRequest?,
         verifier: OpenId4VpVerifier,
         dcApiSignedOid4vp: Boolean,
         encryption: Boolean,
-    ): DigitalCredentialGetRequest =
-        if (dcApiSignedOid4vp) {
-            val request = dcApiSigned(
-                responseUrl = responseUrl,
-                requestOptionsCredentials = requestOptionsCredentials,
-                presentationMechanism = PresentationMechanismEnum.DCQL,
-                verifier = verifier,
-                encryption = encryption,
-                transactionId = transactionId
-            )
-            DigitalCredentialGetRequest.OpenId4VpSigned(JarRequestParameters(request = request))
-        } else {
-            val request = dcApi(
-                responseUrl = responseUrl,
-                requestOptionsCredentials = requestOptionsCredentials,
-                presentationMechanism = PresentationMechanismEnum.DCQL,
-                verifier = verifier,
-                encryption = encryption,
-                transactionId = transactionId
-            )
-            DigitalCredentialGetRequest.OpenId4VpUnsigned(request)
-        }
+    ): DigitalCredentialGetRequest = if (dcApiSignedOid4vp) {
+        val request = dcApiSigned(
+            responseUrl = responseUrl,
+            presentationRequest = presentationRequest,
+            verifier = verifier,
+            encryption = encryption,
+            transactionId = transactionId
+        )
+        DigitalCredentialGetRequest.OpenId4VpSigned(JarRequestParameters(request = request))
+    } else {
+        val request = dcApi(
+            responseUrl = responseUrl,
+            presentationRequest = presentationRequest,
+            verifier = verifier,
+            encryption = encryption,
+            transactionId = transactionId
+        )
+        DigitalCredentialGetRequest.OpenId4VpUnsigned(request)
+    }
 
     private suspend fun x509Hash(): ClientIdScheme.CertificateHash = ClientIdScheme.CertificateHash(
         chain = listOf(verifierKeyMaterial.getCertificate()!!),
@@ -456,23 +453,20 @@ class VerifierProfiles(
     private suspend fun directPostJwt(
         transactionId: String,
         responseUrl: String,
-        requestOptionsCredentials: Set<RequestOptionsCredential>,
-        presentationMechanism: PresentationMechanismEnum,
+        presentationRequest: CredentialPresentationRequest?,
         verifier: OpenId4VpVerifier,
     ): String = verifier.createAuthnRequestAsSignedRequestObject(
         OpenId4VpRequestOptions(
             state = transactionId,
             responseMode = OpenIdConstants.ResponseMode.DirectPostJwt,
             responseUrl = responseUrl,
-            credentials = requestOptionsCredentials,
-            presentationMechanism = presentationMechanism,
+            presentationRequest = presentationRequest,
         ),
     ).getOrThrow().serialize()
 
     private suspend fun dcApi(
         responseUrl: String,
-        requestOptionsCredentials: Set<RequestOptionsCredential>,
-        presentationMechanism: PresentationMechanismEnum,
+        presentationRequest: CredentialPresentationRequest.DCQLRequest?,
         verifier: OpenId4VpVerifier,
         encryption: Boolean,
         transactionId: String,
@@ -480,8 +474,7 @@ class VerifierProfiles(
         OpenId4VpRequestOptions(
             responseMode = if (!encryption) OpenIdConstants.ResponseMode.DcApi else OpenIdConstants.ResponseMode.DcApiJwt,
             responseUrl = responseUrl,
-            credentials = requestOptionsCredentials,
-            presentationMechanism = presentationMechanism,
+            presentationRequest = presentationRequest,
             expectedOrigins = listOf(configuration.publicContext.toString()),
             populateClientId = false,
             state = transactionId,
@@ -490,8 +483,7 @@ class VerifierProfiles(
 
     private suspend fun dcApiSigned(
         responseUrl: String,
-        requestOptionsCredentials: Set<RequestOptionsCredential>,
-        presentationMechanism: PresentationMechanismEnum,
+        presentationRequest: CredentialPresentationRequest.DCQLRequest?,
         verifier: OpenId4VpVerifier,
         encryption: Boolean,
         transactionId: String,
@@ -499,21 +491,20 @@ class VerifierProfiles(
         OpenId4VpRequestOptions(
             responseMode = if (!encryption) OpenIdConstants.ResponseMode.DcApi else OpenIdConstants.ResponseMode.DcApiJwt,
             responseUrl = responseUrl,
-            credentials = requestOptionsCredentials,
-            presentationMechanism = presentationMechanism,
+            presentationRequest = presentationRequest,
             expectedOrigins = listOf(configuration.publicContext.toString()),
             state = transactionId,
         ),
     ).getOrThrow().serialize()
 
     private suspend fun dcApiIsoMdoc(
-        requestOptionsCredentials: Set<RequestOptionsCredential>,
+        deviceRequest: DeviceRequest,
         verifier: Iso180137AnnexCVerifier,
         id: String,
     ): IsoMdocRequest = try {
         verifier.createRequest(
             Iso180137AnnexCRequestOptions(
-                deviceRequest = CredentialPresentationRequestBuilder(requestOptionsCredentials).toIso180137AnnexCDeviceRequest(),
+                deviceRequest = deviceRequest,
                 state = id
             )
         )
@@ -555,12 +546,22 @@ class VerifierProfiles(
 
 }
 
-suspend fun Transaction.transactionGet(responseUrl: String): String = profile.transactionGet(
-    transactionId = id,
-    responseUrl = responseUrl,
-    requestOptionsCredentials = request.toCredentials(),
-    presentationMechanism = request.presentationMechanism,
-)
+suspend fun Transaction.transactionGet(responseUrl: String): String = when (presentationMechanism) {
+    PresentationMechanismEnum.PresentationExchange -> profile.transactionGet(
+        transactionId = id,
+        responseUrl = responseUrl,
+        presentationRequest = presentationExchangeRequest,
+    )
+
+    PresentationMechanismEnum.DCQL -> profile.transactionGet(
+        transactionId = id,
+        responseUrl = responseUrl,
+        presentationRequest = dcqlRequest,
+    )
+
+    PresentationMechanismEnum.DeviceRequest -> throw IllegalStateException("Not supported for this type of request.")
+}
+
 
 suspend fun Transaction.transactionGetDcApi(
     responseUrl: String,
@@ -568,7 +569,8 @@ suspend fun Transaction.transactionGetDcApi(
 ): String = profile.transactionGetDcApi(
     transactionId = id,
     responseUrl = responseUrl,
-    requestOptionsCredentials = request.toCredentials(),
+    deviceRequest = deviceRequest,
+    dcqlRequest = dcqlRequest,
     dcApiSignedOid4vp = dcApiSignedOid4vp,
 )
 
@@ -584,17 +586,18 @@ interface Profile {
     var dcApiSignedOid4vpRequired: Boolean?
 
     fun buildQrCodeUrl(requestUrl: String): String
+
     suspend fun transactionGet(
         transactionId: String,
         responseUrl: String,
-        requestOptionsCredentials: Set<RequestOptionsCredential>,
-        presentationMechanism: PresentationMechanismEnum,
+        presentationRequest: CredentialPresentationRequest?,
     ): String = throw IllegalStateException("Not supported for this profile")
 
     suspend fun transactionGetDcApi(
         transactionId: String,
         responseUrl: String,
-        requestOptionsCredentials: Set<RequestOptionsCredential>,
+        dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
+        deviceRequest: DeviceRequest?,
         dcApiSignedOid4vp: Boolean,
     ): String = throw IllegalStateException("DC API not supported for this profile")
 }

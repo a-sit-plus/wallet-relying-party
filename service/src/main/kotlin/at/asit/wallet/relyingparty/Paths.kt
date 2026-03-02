@@ -13,6 +13,7 @@ object Paths {
 
     object Transaction {
         const val CreateUrl = "/transaction/create"
+        const val CreateRawUrl = "/transaction/createRaw"
         const val ResultUrl = "/transaction/result"
         const val GetUrl = "/transaction/get"
         const val GetDcApiUrl = "/transaction/get/dcapi"
@@ -25,4 +26,7 @@ object Paths {
         const val OpenId4Vp = "openid4vp://"
     }
 
+    object Utilities {
+        const val BuildCredentialQueriesUrl = "/utilities/buildCredentialQueries"
+    }
 }

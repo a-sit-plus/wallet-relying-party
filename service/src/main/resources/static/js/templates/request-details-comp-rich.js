@@ -1,3 +1,5 @@
+import AccordionComp from './accordion-comp.js'
+
 export default {
     props: {
         request: {},
@@ -8,6 +10,9 @@ export default {
         activeProfile: { default: null },
         activeProfileName: { default: null }
     },
+      components: {
+        'accordion-comp': AccordionComp
+      },
     emits: [
         'updateSchemeType',
         'updateRepresentation',
@@ -15,6 +20,9 @@ export default {
         'updateAttribute',
         'addCredential',
         'removeCredential',
+        'updatePresentationDefinition',
+        'updateDcqlQuery',
+        'updateDeviceRequest',
         'generateQrCode'
     ],
     template: `
@@ -135,6 +143,34 @@ export default {
         </button>
     </p>
 </div>
+
+<accordion-comp title="Presentation Definition (JSON)">
+    <textarea
+       :value="request.presentationDefinition"
+       :placeholder="request.presentationDefinitionError ? request.presentationDefinitionError : 'Enter your PresentationDefinition (JSON)'"
+       rows="10"
+       @input="$emit('updatePresentationDefinition', $event.target.value)"
+       style="resize:both;width:100%"
+     ></textarea>
+</accordion-comp>
+<accordion-comp title="DCQL Query (JSON)">
+    <textarea
+       :value="request.dcqlQuery"
+       :placeholder="request.dcqlQueryError ? request.dcqlQueryError : 'Enter your DCQL Query (JSON)'"
+       rows="10"
+       @input="$emit('updateDcqlQuery', $event.target.value)"
+       style="resize:both;width:100%"
+     ></textarea>
+</accordion-comp>
+<accordion-comp title="Device Request (Base64Url)">
+    <textarea
+       :value="request.deviceRequest"
+       :placeholder="request.deviceRequestError ? request.deviceRequestError : 'Enter your ISO device request (Base64Url)'"
+       rows="10"
+       @input="$emit('updateDeviceRequest', $event.target.value)"
+       style="resize:both;width:100%"
+     ></textarea>
+</accordion-comp>
 
 <div class="row mb-3">
     <div class="d-flex justify-content-center">

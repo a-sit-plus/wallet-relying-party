@@ -6,6 +6,7 @@ Version 5.12.0 (unreleased):
     - Support verification of DC API responses
     - Support combined requests
     - Support OID4VP unsigned, signed (encrypted and unencrypted) and ISO 18013-7 requests
+- Raw Requests
 
 Version 5.11.0:
  - Update to VC-K 5.11.0

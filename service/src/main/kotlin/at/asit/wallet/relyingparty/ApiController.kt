@@ -1,18 +1,24 @@
 package at.asit.wallet.relyingparty
 
+import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dcapi.DigitalCredentialInterface
 import at.asitplus.dcapi.IsoMdocResponse
 import at.asitplus.dcapi.OpenId4VpResponse
 import at.asitplus.dcapi.OpenId4VpResponseSigned
 import at.asitplus.dcapi.OpenId4VpResponseUnsigned
+import at.asitplus.iso.DeviceRequest
 import at.asitplus.signum.indispensable.CryptoPrivateKey
 import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.asn1.encodeToPEM
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.*
+import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
+import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
+import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -51,8 +57,11 @@ class ApiController(
 
     data class Transaction(
         val id: String,
-        val request: TransactionRequest,
         val profile: Profile,
+        val presentationMechanism: PresentationMechanismEnum,
+        val presentationExchangeRequest: CredentialPresentationRequest.PresentationExchangeRequest? = null,
+        val dcqlRequest: CredentialPresentationRequest.DCQLRequest? = null,
+        val deviceRequest: DeviceRequest? = null,
     )
 
     @GetMapping(Paths.Api.ItemsUrl)
@@ -77,6 +86,34 @@ class ApiController(
     ): ResponseEntity<ApiItem> = transactionStore.removeApiItem(id).let {
         ResponseEntity.ok(it)
     } ?: ResponseEntity.notFound().build()
+
+    @PostMapping(Paths.Utilities.BuildCredentialQueriesUrl)
+    @ResponseBody
+    fun buildCredentialQueries(
+        @RequestBody credentials: List<TransactionRequestCredential>,
+    ): ResponseEntity<TransactionRequestQueries> = CredentialPresentationRequestBuilder(
+        credentials.map { it.toRequestOptionsCredential() }
+    ).let {
+        val presentationDefinition = catching {
+            it.toPresentationExchangeRequest().presentationDefinition
+        }
+        val dcqlQuery = catching {
+            it.toDCQLRequest()?.dcqlQuery
+        }
+        val deviceRequest = catching {
+            it.toIso180137AnnexCDeviceRequest()
+        }
+        ResponseEntity.ok(
+            TransactionRequestQueries(
+                presentationDefinition = presentationDefinition.getOrNull(),
+                presentationDefinitionError = presentationDefinition.exceptionOrNull()?.message,
+                dcqlQuery = dcqlQuery.getOrNull(),
+                dcqlQueryError = dcqlQuery.exceptionOrNull()?.message,
+                deviceRequest = deviceRequest.getOrNull(),
+                deviceRequestError = deviceRequest.exceptionOrNull()?.message,
+            )
+        )
+    }
 
     @OptIn(ExperimentalUuidApi::class)
     @PostMapping(Paths.Transaction.CreateUrl, produces = [APPLICATION_JSON_VALUE])
@@ -264,8 +301,38 @@ class ApiController(
         request: TransactionRequest,
         transactionId: String,
         profile: Profile,
-    ) = configuration.publicContext.appendPath("${Paths.Transaction.GetUrl}/$transactionId")
-        .also { transactions[transactionId] = Transaction(transactionId, request, profile) }
+    ) = configuration.publicContext.appendPath("${Paths.Transaction.GetUrl}/$transactionId").also {
+        transactions[transactionId] = Transaction(
+            id = transactionId,
+            profile = profile,
+            presentationMechanism = request.presentationMechanism,
+            presentationExchangeRequest = request.presentationDefinition?.let {
+                CredentialPresentationRequest.PresentationExchangeRequest(it)
+            },
+            dcqlRequest = request.dcqlQuery?.let {
+                CredentialPresentationRequest.DCQLRequest(it)
+            },
+            deviceRequest = request.deviceRequest,
+        )
+    }
+
+    private fun buildTransactionUrl(
+        request: CredentialPresentationRequest,
+        transactionId: String,
+        profile: Profile,
+    ) = configuration.publicContext.appendPath("${Paths.Transaction.GetUrl}/$transactionId").also {
+        transactions[transactionId] = Transaction(
+            id = transactionId,
+            profile = profile,
+            presentationMechanism = when (request) {
+                is CredentialPresentationRequest.DCQLRequest -> PresentationMechanismEnum.DCQL
+                is CredentialPresentationRequest.PresentationExchangeRequest -> PresentationMechanismEnum.PresentationExchange
+            },
+            presentationExchangeRequest = request as? CredentialPresentationRequest.PresentationExchangeRequest,
+            dcqlRequest = request as? CredentialPresentationRequest.DCQLRequest,
+            deviceRequest = null,
+        )
+    }
 
     // TODO replace with signum implementation when available
     private suspend fun decryptHpke(

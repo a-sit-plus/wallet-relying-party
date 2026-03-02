@@ -1,5 +1,9 @@
 package at.asit.wallet.relyingparty
 
+import at.asitplus.dif.PresentationDefinition
+import at.asitplus.iso.DeviceRequest
+import at.asitplus.iso.DeviceRequestBase64UrlSerializer
+import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.wallet.ehic.EhicScheme
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.lib.RequestOptionsCredential
@@ -12,43 +16,17 @@ import at.asitplus.wallet.por.PowerOfRepresentationScheme
 import at.asitplus.wallet.taxid.TaxIdScheme
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
-import kotlinx.serialization.Transient
 
 @Serializable
 data class TransactionRequest(
-    val credentialType: String? = null,
-    val representation: String? = null,
-    val simple: Boolean = false,
     @SerialName("presentationMechanismIdentifier")
     @Serializable(with = WebUiPresentationMechanismEnumSelectionSerializer::class)
     val presentationMechanism: PresentationMechanismEnum = PresentationMechanismEnum.PresentationExchange,
-    val attributes: Collection<String>? = null,
-    val credentials: List<TransactionRequestCredential>? = null,
+    val presentationDefinition: PresentationDefinition? = null,
+    val dcqlQuery: DCQLQuery? = null,
+    @Serializable(with = DeviceRequestBase64UrlSerializer::class)
+    val deviceRequest: DeviceRequest? = null,
 ) {
-    fun toRequestOptionsCredential() = at.asitplus.wallet.lib.RequestOptionsCredential(
-        credentialScheme = resolveCredentialType(),
-        representation = CredentialRepresentation.entries.firstOrNull { it.name == representation }
-            ?: CredentialRepresentation.SD_JWT,
-        requestedOptionalAttributes = attributes?.ifEmpty { null }?.toSet(),
-    )
-
-    @Transient
-    val requestOptionsCredentials = credentials
-        ?.let { credentials.map { it.toRequestOptionsCredential() }.toSet() }
-        ?: setOf(toRequestOptionsCredential())
-
-    private fun resolveCredentialType(): CredentialScheme = credentialType?.let {
-        AttributeIndex.resolveAttributeType(it)
-            ?: AttributeIndex.resolveSdJwtAttributeType(it)
-            ?: AttributeIndex.resolveIsoDoctype(it)
-    } ?: EuPidScheme
-
-    fun toCredentials() = if (presentationMechanism == PresentationMechanismEnum.DCQL) {
-        requestOptionsCredentials.map {
-            it.copy(requestedAttributes = it.requestedOptionalAttributes, requestedOptionalAttributes = null)
-        }.toSet()
-    } else requestOptionsCredentials
-
 }
 
 @Serializable

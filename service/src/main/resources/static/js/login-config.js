@@ -246,7 +246,6 @@ export default { "schemeTypes": [
   ],
   "profiles": [
     { "label": "Custom",
-      "simple": false,
       "credentials": [
         {
           "schemeType": null,

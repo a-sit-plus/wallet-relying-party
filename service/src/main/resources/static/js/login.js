@@ -7,6 +7,7 @@ const STATIC_DEV = false
 const URLs = {
     transactionUrl: STATIC_DEV ? 'api/transaction-create' : 'transaction/create',
     resultUrl: 'api/single/',
+    buildCredentialQueriesUrl: 'utilities/buildCredentialQueries',
     logUrl: 'logs/',
     successPageUrl: 'customer-success.html?id=',
     postUrl: 'transaction/result/'
@@ -17,9 +18,14 @@ const createBasicSetup = function (config) {
     // --- STATE ---------------------------------------------------
 
     const reqSelection = ref({
-        simple: false,
         presentationMechanismIdentifier: "dcql_query",
         credentials: [],
+        presentationDefinition: null,
+        presentationDefinitionError: null,
+        dcqlQuery: null,
+        dcqlQueryError: null,
+        deviceRequest: null,
+        deviceRequestError: null,
     })
     const selections = ref({})
     const credentialRequestOptions = ref({})
@@ -38,10 +44,53 @@ const createBasicSetup = function (config) {
         oldRequestJSON: null,
         changed: false,
     })
+    const requestedCredentialsChanged = ref({
+        oldRequestedCredentialsJSON: null,
+        changed: false,
+    })
 
     let resultInterval = null
 
     // --- FUNCTIONS -----------------------------------------------
+
+    function createRequestBuilderJSON() {
+        // build request payload
+        // from form inputs, take values and only selected attributes
+        const credentials = reqSelection.value.credentials.map(credential => {
+            return {
+                credentialType: credential.schemeType.value,
+                representation: credential.representation.value,
+                attributes: credential.attributes.filter(x => x.isSelected).map(x => x.value),
+            }
+        })
+
+        return JSON.stringify(credentials)
+    }
+
+    async function buildCredentialQueries(requestBuilderJson) {
+        const response = await fetch(URLs.buildCredentialQueriesUrl, {
+            method: "POST",
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: requestBuilderJson
+        });
+        if (!response.ok) {
+            const errorMessage = await parseErrorResponse(response)
+            throw new Error('Network response was not ok: ' + errorMessage);
+        }
+        let queries = await response.json();
+
+        return {
+            presentationDefinition: JSON.stringify(queries["presentationDefinition"], null, 4),
+            presentationDefinitionError: queries["presentationDefinitionError"],
+            dcqlQuery: JSON.stringify(queries["dcqlQuery"], null, 4),
+            dcqlQueryError: queries["dcqlQueryError"],
+            deviceRequest: queries["deviceRequest"],
+            deviceRequestError: queries["deviceRequestError"],
+        }
+    }
 
     function clearError() {
         error.value.type = null
@@ -132,6 +181,7 @@ const createBasicSetup = function (config) {
             console.log('error in pre-fetch: ', err)
             setError("GENERIC", "Error in pre-fetching DC API options: " + err)
             credentialRequestOptions.value[profile.name] = null
+            throw err
         }
     }
 
@@ -165,7 +215,6 @@ const createBasicSetup = function (config) {
         }
 
         reqSelection.value = {
-            simple: profile.simple,
             credentials: credentials,
             profileLabel: profile.label,
             profileName: profile.name,
@@ -173,7 +222,7 @@ const createBasicSetup = function (config) {
         }
         console.log('updateProfile result', reqSelection.value)
 
-        compareRequestChanged()
+        handleRequestChanged()
     }
 
     async function updateSchemeType(credential, schemeType) {
@@ -182,25 +231,25 @@ const createBasicSetup = function (config) {
         credential.attributes = schemeType.attributes
         credential.validRepresentations = schemeType.validRepresentations
         credential.sd = schemeType.sd
-        compareRequestChanged()
+        handleRequestChanged()
     }
 
     async function updatePresentationMechanismIdentifier(presentationMechanismIdentifier) {
         console.log('updatePresentationMechanismIdentifier', presentationMechanismIdentifier)
         reqSelection.value.presentationMechanismIdentifier = presentationMechanismIdentifier
-        compareRequestChanged()
+        handleRequestChanged()
     }
 
     async function updateRepresentation(credential, representation) {
         console.log('updateRepresentation', representation)
         credential.representation = representation
-        compareRequestChanged()
+        handleRequestChanged()
     }
 
     async function updateAttribute(attribute) {
         console.log('updateAttribute', attribute)
         attribute.isSelected = !attribute.isSelected
-        compareRequestChanged()
+        handleRequestChanged()
     }
 
     async function addCredential() {
@@ -211,13 +260,32 @@ const createBasicSetup = function (config) {
             "sd": null,
             "attributes": []
         })
-        compareRequestChanged()
+        handleRequestChanged()
     }
 
     async function removeCredential(credential) {
         console.log('removeCredential', credential)
         const index = reqSelection.value.credentials.indexOf(credential)
         reqSelection.value.credentials.splice(index, 1)
+        handleRequestChanged()
+    }
+
+    async function updatePresentationDefinition(presentationDefinition) {
+        console.log('updatePresentationDefinition', presentationDefinition)
+        reqSelection.value.presentationDefinition = presentationDefinition
+        compareRequestChanged()
+    }
+
+    async function updateDcqlQuery(dcqlQuery) {
+        console.log('updateDcqlQuery', dcqlQuery)
+        reqSelection.value.dcqlQuery = dcqlQuery
+        compareRequestChanged()
+    }
+
+    async function updateDeviceRequest(deviceRequest) {
+        console.log('updateDeviceRequest', deviceRequest)
+        reqSelection.value.deviceRequest = deviceRequest
+        compareRequestChanged()
     }
 
     function validate() {
@@ -233,36 +301,40 @@ const createBasicSetup = function (config) {
 
             // check scheme type
             const schemeType = credential.schemeType
-            if (schemeType == null || typeof schemeType != "object" || typeof schemeType.value != "string")
+            if (schemeType == null || typeof schemeType != "object" || typeof schemeType.value != "string") {
                 errors.push("Credential Type not set")
-            else if (!allowedSchemeTypes.includes(schemeType.value))
+            } else if (!allowedSchemeTypes.includes(schemeType.value)) {
                 errors.push("Credential Type invalid")
+            }
 
             // check representation type
             const representation = credential.representation
-            if (representation == null || typeof representation != "object" || typeof representation.value != "string")
+            if (representation == null || typeof representation != "object" || typeof representation.value != "string") {
                 errors.push("Presentation Type not set")
-            else if (!allowedRepresentations.includes(representation.value))
+            } else if (!allowedRepresentations.includes(representation.value)) {
                 errors.push("Presentation Type invalid")
+            }
         }
 
         return errors
     }
 
     function createRequestJSON() {
-        // build request payload
-        // from form inputs, take values and only selected attributes
-        const credentials = reqSelection.value.credentials.map(credential => {
-            return {
-                credentialType: credential.schemeType.value,
-                representation: credential.representation.value,
-                attributes: credential.attributes.filter(x => x.isSelected).map(x => x.value),
-            }
-        })
+        var presentationDefinition = reqSelection.value.presentationDefinition === "" ? null : reqSelection.value.presentationDefinition
+        var dcqlQuery = reqSelection.value.dcqlQuery === "" ? null : reqSelection.value.dcqlQuery
+        var deviceRequest = reqSelection.value.deviceRequest === "" ? null : reqSelection.value.deviceRequest
+
+        if(presentationDefinition != null) {
+            presentationDefinition = JSON.parse(presentationDefinition)
+        }
+        if(dcqlQuery != null) {
+            dcqlQuery = JSON.parse(dcqlQuery)
+        }
         const request = {
-            simple: reqSelection.value.simple,
             presentationMechanismIdentifier: reqSelection.value.presentationMechanismIdentifier,
-            credentials: credentials,
+            presentationDefinition: presentationDefinition,
+            dcqlQuery: dcqlQuery,
+            deviceRequest: deviceRequest,
         }
 
         return JSON.stringify(request)
@@ -384,6 +456,7 @@ const createBasicSetup = function (config) {
             console.log(`error: ${err}`)
             reqResult.value = null
             setError("GENERIC", "Error generating request: " + err)
+            throw err
         }
     }
 
@@ -438,14 +511,49 @@ const createBasicSetup = function (config) {
         }
     }
 
-    function compareRequestChanged() {
+    function compareRequestedCredentialsChanged() {
         try {
-            const requestJSON = createRequestJSON()
-            const changed = requestJSON != reqChanged.value.oldRequestJSON
-            reqChanged.value.changed = changed
+            const requestBuilderJSON = createRequestBuilderJSON()
+            const changed = requestBuilderJSON != requestedCredentialsChanged.value.oldRequestedCredentialsJSON
+            requestedCredentialsChanged.value.changed = changed
         } catch (error) {
-            reqChanged.value.changed = true
+            requestedCredentialsChanged.value.changed = true
         }
+    }
+
+    function compareRequestChanged() {
+        compareRequestedCredentialsChanged()
+        if(requestedCredentialsChanged.value.changed) {
+            reqChanged.value.changed = true
+        } else {
+            try {
+                const requestJSON = createRequestJSON()
+                const changed = requestJSON != reqChanged.value.oldRequestJSON
+                reqChanged.value.changed = changed
+            } catch (error) {
+                reqChanged.value.changed = true
+            }
+        }
+    }
+
+    async function handleRequestChanged() {
+        compareRequestChanged()
+        if(requestedCredentialsChanged.value.changed == false) {
+            return
+        }
+
+        // refresh credential queries
+        const requestBuilderJson = createRequestBuilderJSON()
+        const newQueries = await buildCredentialQueries(requestBuilderJson)
+        requestedCredentialsChanged.value.oldRequestedCredentialsJSON = requestBuilderJson
+        requestedCredentialsChanged.value.changed = false
+
+        reqSelection.value.presentationDefinition = newQueries["presentationDefinition"]
+        reqSelection.value.presentationDefinitionError = newQueries["presentationDefinitionError"]
+        reqSelection.value.dcqlQuery = newQueries["dcqlQuery"]
+        reqSelection.value.dcqlQueryError = newQueries["dcqlQueryError"]
+        reqSelection.value.deviceRequest = newQueries["deviceRequest"]
+        reqSelection.value.deviceRequestError = newQueries["deviceRequestError"]
     }
 
     watch([selections, activeProfile], async () => {
@@ -497,6 +605,9 @@ const createBasicSetup = function (config) {
         updatePresentationMechanismIdentifier,
         addCredential,
         removeCredential,
+        updatePresentationDefinition,
+        updateDcqlQuery,
+        updateDeviceRequest,
         updateAttribute,
         generateQrCode,
         startPeriodicUpdate,

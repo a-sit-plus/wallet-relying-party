@@ -20,7 +20,7 @@ object WebUiPresentationMechanismEnumSelectionSerializer :
                 "presentation_definition" -> PresentationMechanismEnum.PresentationExchange
                 "dcql_query" -> PresentationMechanismEnum.DCQL
                 "device_request" -> PresentationMechanismEnum.DeviceRequest
-                else -> throw IllegalArgumentException("Unsupported presentation mechanism identifier.")
+                else -> throw IllegalArgumentException("Unsupported presentation mechanism identifier `$it`.")
             }
         }
     )
