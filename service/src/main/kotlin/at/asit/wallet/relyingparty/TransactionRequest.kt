@@ -26,6 +26,8 @@ data class TransactionRequest(
     val dcqlQuery: DCQLQuery? = null,
     @Serializable(with = DeviceRequestBase64UrlSerializer::class)
     val deviceRequest: DeviceRequest? = null,
+    val includeWrpac: Boolean = false,
+    val includeWrprc: Boolean = false,
 ) {
 }
 

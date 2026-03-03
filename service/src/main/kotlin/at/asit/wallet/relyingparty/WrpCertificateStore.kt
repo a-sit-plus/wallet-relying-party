@@ -243,15 +243,15 @@ class WrpCertificateStore(
         if (hasWrpac()) {
             options += WrpCertificateOption(
                 id = CERT_ID_WRPAC,
-                label = "WRPAC (x509_hash)",
-                scheme = "x509_hash",
+                label = "WRPAC (wrpac)",
+                scheme = "wrpac",
             )
         }
         if (hasWrprc()) {
             options += WrpCertificateOption(
                 id = CERT_ID_WRPRC,
-                label = "WRPRC (wrprc+jws)",
-                scheme = "wrprc+jws",
+                label = "WRPRC (wrprc)",
+                scheme = "wrprc",
             )
         }
         return options

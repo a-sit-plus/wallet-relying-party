@@ -12,6 +12,7 @@ import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ResponseMode
+import at.asitplus.openid.VerifierInfo
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
@@ -70,6 +71,7 @@ enum class SupportedOptions {
 class VerifierProfiles(
     private val configuration: AppConfigurationProperties,
     private val verifierKeyMaterial: KeyMaterial,
+    private val wrpCertificateStore: WrpCertificateStore,
 ) {
 
     private val httpClient = HttpClient {
@@ -149,6 +151,7 @@ class VerifierProfiles(
                             verifier = preparedOid4vpVerifier,
                             dcApiSignedOid4vp = dcApiSignedOid4vp,
                             encryption = true,
+                            verifierInfo = verifierInfo,
                         )
 
                         val getRequests = listOf(openId4VpRequest)
@@ -262,6 +265,8 @@ class VerifierProfiles(
                         dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
                         deviceRequest: DeviceRequest?,
                         dcApiSignedOid4vp: Boolean,
+                        verifierInfo: List<VerifierInfo>?,
+                        includeWrpac: Boolean,
                     ): String = vckJsonSerializer.encodeToString(
                         CredentialRequestOptions.create(
                             listOf(
@@ -272,6 +277,7 @@ class VerifierProfiles(
                                     verifier = preparedOid4vpVerifier,
                                     dcApiSignedOid4vp = dcApiSignedOid4vp,
                                     encryption = false,
+                                    verifierInfo = verifierInfo,
                                 )
                             )
                         )
@@ -313,11 +319,18 @@ class VerifierProfiles(
                         transactionId: String,
                         responseUrl: String,
                         presentationRequest: CredentialPresentationRequest?,
+                        verifierInfo: List<VerifierInfo>?,
+                        includeWrpac: Boolean,
                     ): String = directPostJwt(
                         transactionId = transactionId,
                         responseUrl = responseUrl,
                         presentationRequest = presentationRequest,
-                        verifier = preparedOid4vpVerifier
+                        verifier = selectOid4vpVerifier(
+                            includeWrpac = includeWrpac,
+                            defaultVerifier = oid4vpVerifier,
+                            defaultClientIdScheme = clientIdScheme,
+                        ),
+                        verifierInfo
                     )
                 }
             }
@@ -407,11 +420,18 @@ class VerifierProfiles(
                         transactionId: String,
                         responseUrl: String,
                         presentationRequest: CredentialPresentationRequest?,
+                        verifierInfo: List<VerifierInfo>?,
+                        includeWrpac: Boolean,
                     ): String = directPostJwt(
                         transactionId = transactionId,
                         responseUrl = responseUrl,
                         presentationRequest = presentationRequest,
-                        verifier = preparedOid4vpVerifier
+                        verifier = selectOid4vpVerifier(
+                            includeWrpac = includeWrpac,
+                            defaultVerifier = oid4vpVerifier,
+                            defaultClientIdScheme = clientIdScheme,
+                        ),
+                        verifierInfo
                     )
                 }
             }
@@ -550,6 +570,57 @@ class VerifierProfiles(
     private fun iso180137Verifier() = Iso180137AnnexCVerifier(validatorMdoc = potentialValidatorMdoc())
 
     private suspend fun x509SanDnsD23(redirectUri: String = configuration.publicContext.toString()): ClientIdScheme.CertificateSanDns = ClientIdScheme.CertificateSanDns(
+    fun buildVerifierInfo(
+        requestOptionsCredentials: Set<RequestOptionsCredential>,
+        includeWrprc: Boolean,
+    ): List<VerifierInfo>? {
+        if (!includeWrprc) return null
+
+        val credentialIds = requestOptionsCredentials.map { it.id }.toSet()
+        val wrprc = wrpCertificateStore.loadWrprcJws()?.trim()?.takeIf { it.isNotBlank() } ?: return null
+
+        return listOf(
+            VerifierInfo(
+                format = "wrprc",
+                data = wrprc,
+                credentialIds = credentialIds,
+            )
+        )
+    }
+
+    private fun selectOid4vpVerifier(
+        includeWrpac: Boolean,
+        defaultVerifier: OpenId4VpVerifier,
+        defaultClientIdScheme: ClientIdScheme,
+    ): OpenId4VpVerifier {
+        if (!includeWrpac) return defaultVerifier
+
+        val defaultScheme = defaultClientIdScheme as? ClientIdScheme.CertificateSanDns ?: return defaultVerifier
+        val wrpacChain = wrpCertificateStore.loadWrpacChain() ?: return defaultVerifier
+        val wrpacKeyMaterial = wrpCertificateStore.loadWrpacKeyMaterial() ?: return defaultVerifier
+        val dnsName = wrpacChain.first().tbsCertificate.subjectAlternativeNames?.dnsNames?.firstOrNull()
+            ?: return defaultVerifier
+
+        val wrpacClientIdScheme = runCatching {
+            ClientIdScheme.CertificateSanDns(
+                chain = wrpacChain,
+                clientIdDnsName = dnsName,
+                redirectUri = defaultScheme.redirectUri,
+            )
+        }.getOrNull() ?: return defaultVerifier
+
+        return OpenId4VpVerifier(
+            keyMaterial = wrpacKeyMaterial,
+            clientIdScheme = wrpacClientIdScheme,
+            verifier = VerifierAgent(
+                identifier = wrpacClientIdScheme.clientId,
+                validatorSdJwt = potentialValidatorSdJwt(),
+                validatorMdoc = potentialValidatorMdoc()
+            ),
+        )
+    }
+
+    private suspend fun x509SanDnsD23(): ClientIdScheme.CertificateSanDns = ClientIdScheme.CertificateSanDns(
         chain = listOf(verifierKeyMaterial.getCertificate()!!),
         clientIdDnsName = configuration.publicContext.host,
         redirectUri = redirectUri
@@ -562,6 +633,7 @@ class VerifierProfiles(
         verifier: OpenId4VpVerifier,
         dcApiSignedOid4vp: Boolean,
         encryption: Boolean,
+        verifierInfo: List<VerifierInfo>?,
     ): DigitalCredentialGetRequest = if (dcApiSignedOid4vp) {
         DigitalCredentialGetRequest.OpenId4VpSigned(
             JarRequestParameters(
@@ -570,7 +642,8 @@ class VerifierProfiles(
                     presentationRequest = presentationRequest,
                     verifier = verifier,
                     encryption = encryption,
-                    transactionId = transactionId
+                    transactionId = transactionId,
+                    verifierInfo = verifierInfo
                 )
             )
         )
@@ -612,13 +685,15 @@ class VerifierProfiles(
         responseUrl: String,
         presentationRequest: CredentialPresentationRequest?,
         verifier: OpenId4VpVerifier,
-    ): String = verifier.createAuthnRequest(
-        requestOptions = OpenId4VpRequestOptions(
+        verifierInfo: List<VerifierInfo>?,
+    ): String = verifier.createAuthnRequestAsSignedRequestObject(
+        OpenId4VpRequestOptions(
             state = transactionId,
             responseMode = ResponseMode.DirectPost,
             responseUrl = responseUrl,
             presentationRequest = presentationRequest,
             verifierMetadataMode = VerifierMetadataMode.OMIT_IF_OUT_OF_BAND,
+            verifierInfo = verifierInfo,
         ),
         creationOptions = OpenId4VpVerifier.CreationOptions.Query("av://"),
     ).getOrThrow().url.normalizeAvWalletUrl()
@@ -628,12 +703,14 @@ class VerifierProfiles(
         responseUrl: String,
         presentationRequest: CredentialPresentationRequest?,
         verifier: OpenId4VpVerifier,
+        verifierInfo: List<VerifierInfo>?,
     ): String = verifier.createAuthnRequestAsSignedRequestObject(
         OpenId4VpRequestOptions(
             state = transactionId,
             responseMode = ResponseMode.DirectPostJwt,
             responseUrl = responseUrl,
             presentationRequest = presentationRequest,
+            verifierInfo = verifierInfo,
         ),
     ).getOrThrow().serialize()
 
@@ -643,11 +720,13 @@ class VerifierProfiles(
         verifier: OpenId4VpVerifier,
         encryption: Boolean,
         transactionId: String,
+        verifierInfo: List<VerifierInfo>?,
     ): AuthenticationRequestParameters = verifier.createAuthnRequest(
         OpenId4VpRequestOptions(
             responseMode = if (!encryption) ResponseMode.DcApi else ResponseMode.DcApiJwt,
             responseUrl = responseUrl,
             presentationRequest = presentationRequest,
+            verifierInfo = verifierInfo,
             expectedOrigins = listOf(configuration.publicContext.toString()),
             populateClientId = false,
             state = transactionId,
@@ -660,10 +739,14 @@ class VerifierProfiles(
         verifier: OpenId4VpVerifier,
         encryption: Boolean,
         transactionId: String,
+        verifierInfo: List<VerifierInfo>?,
     ): String = verifier.createAuthnRequestAsSignedRequestObject(
         OpenId4VpRequestOptions(
             responseMode = if (!encryption) ResponseMode.DcApi else ResponseMode.DcApiJwt,
             responseUrl = responseUrl,
+            credentials = requestOptionsCredentials,
+            presentationMechanism = presentationMechanism,
+            verifierInfo = verifierInfo,
             presentationRequest = presentationRequest,
             expectedOrigins = listOf(configuration.publicContext.toString()),
             state = transactionId,
@@ -725,6 +808,8 @@ suspend fun Transaction.transactionGet(responseUrl: String): String = when (pres
         transactionId = id,
         responseUrl = responseUrl,
         presentationRequest = presentationExchangeRequest,
+        verifierInfo = verifierInfo,
+        includeWrpac = request.includeWrpac,
     )
 
     PresentationMechanismEnum.DCQL -> profile.transactionGet(
@@ -748,6 +833,8 @@ suspend fun Transaction.transactionGetDcApi(
         deviceRequest = deviceRequest,
         dcqlRequest = dcqlRequest,
         dcApiSignedOid4vp = dcApiSignedOid4vp,
+        verifierInfo = verifierInfo,
+        includeWrpac = request.includeWrpac,
     )
 }
 
@@ -789,6 +876,8 @@ interface PreparedProfile {
         transactionId: String,
         responseUrl: String,
         presentationRequest: CredentialPresentationRequest?,
+        verifierInfo: List<VerifierInfo>?,
+        includeWrpac: Boolean,
     ): String = throw IllegalStateException("Not supported for this profile")
 
     suspend fun transactionGetDcApi(
@@ -797,5 +886,7 @@ interface PreparedProfile {
         dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
         deviceRequest: DeviceRequest?,
         dcApiSignedOid4vp: Boolean,
+        verifierInfo: List<VerifierInfo>?,
+        includeWrpac: Boolean,
     ): String = throw IllegalStateException("DC API not supported for this profile")
 }

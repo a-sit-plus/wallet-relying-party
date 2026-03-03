@@ -184,7 +184,11 @@ class ApiController(
             check(transaction.profile.supportedOptions.any { it.isDevice }) { "Profile does not device flow" }
 
             val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
-            val body = transaction.transactionGet(responseUrl)
+            val verifierInfo = profiles.buildVerifierInfo(
+                requestOptionsCredentials = transaction.request.toCredentials(),
+                includeWrprc = transaction.request.includeWrprc,
+            )
+            val body = transaction.transactionGet(responseUrl, verifierInfo)
                 .also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
             ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/" + JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST))
@@ -212,7 +216,11 @@ class ApiController(
         catching {
             check(transaction.profile.supportedOptions.any { it.isDcApi }) { "Profile does not support DC API flow" }
             val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
-            val body = transaction.transactionGetDcApi(responseUrl, dcApiSignedOid4vp)
+            val verifierInfo = profiles.buildVerifierInfo(
+                requestOptionsCredentials = transaction.request.toCredentials(),
+                includeWrprc = transaction.request.includeWrprc,
+            )
+            val body = transaction.transactionGetDcApi(responseUrl, dcApiSignedOid4vp, verifierInfo)
                 .also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
             ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
