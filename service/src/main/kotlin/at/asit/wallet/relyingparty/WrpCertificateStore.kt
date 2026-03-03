@@ -179,7 +179,7 @@ class WrpCertificateStore(
     fun loadWrprcJws(): String? =
         if (Files.exists(wrprcPath)) Files.readString(wrprcPath) else null
 
-    fun hasWrpac(): Boolean = Files.exists(wrpacChainPath)
+    fun hasWrpac(): Boolean = Files.exists(wrpacChainPath) || Files.exists(wrpacKeyStorePath)
 
     fun hasWrprc(): Boolean = Files.exists(wrprcPath)
 
@@ -240,11 +240,18 @@ class WrpCertificateStore(
                 scheme = "x509_san_dns",
             )
         )
-        if (Files.exists(wrpacKeyStorePath)) {
+        if (hasWrpac()) {
             options += WrpCertificateOption(
                 id = CERT_ID_WRPAC,
                 label = "WRPAC (x509_hash)",
                 scheme = "x509_hash",
+            )
+        }
+        if (hasWrprc()) {
+            options += WrpCertificateOption(
+                id = CERT_ID_WRPRC,
+                label = "WRPRC (wrprc+jws)",
+                scheme = "wrprc+jws",
             )
         }
         return options

@@ -37,6 +37,7 @@
                 const wrpLocalError = ref("");
                 const serviceLocalError = ref("");
                 const certLocalError = ref("");
+                const certLocalInfo = ref("");
                 const uploadMenuOpen = ref(false);
                 const wrpRegistrationPolling = ref(false);
                 const serviceRegistrationPolling = ref(false);
@@ -428,6 +429,21 @@
                     }
                 }
 
+                async function refreshCertificateSection() {
+                    clearLocalErrors();
+                    certLocalInfo.value = "";
+                    try {
+                        await Promise.all([
+                            app.loadRegistrationState(),
+                            app.loadCertificateOptions(),
+                            app.loadCertificatePreviews(),
+                        ]);
+                        certLocalInfo.value = `Certificates refreshed (${new Date().toLocaleTimeString()}).`;
+                    } catch (err) {
+                        certLocalError.value = "Refreshing certificates failed: " + err;
+                    }
+                }
+
                 onMounted(async () => {
                     for (let i = 0; i < 5; i++) {
                         await app.refreshRegistrationStateFromRegistrar({
@@ -471,6 +487,7 @@
                     wrpLocalError,
                     serviceLocalError,
                     certLocalError,
+                    certLocalInfo,
                     uploadMenuOpen,
                     wrpForm,
                     serviceForm,
@@ -519,6 +536,7 @@
                     resetWrpacForTesting,
                     uploadWrprcForTesting,
                     resetWrprcForTesting,
+                    refreshCertificateSection,
                 };
             },
             components: {HeaderComp, TitleComp}
@@ -690,6 +708,7 @@
                 <div class="card-body">
                     <h6 class="mb-3">Certificate Handling</h6>
                     <div v-if="certLocalError" class="alert alert-danger py-2 mb-3 small">{{ certLocalError }}</div>
+                    <div v-if="certLocalInfo" class="alert alert-info py-2 mb-3 small">{{ certLocalInfo }}</div>
                     <div class="row g-2 align-items-end mb-3">
                         <div class="col-md-6"><label class="form-label small mb-1">WRPAC Provider CSR URL</label><input
                                 class="form-control form-control-sm" v-model="wrpacProviderUrl"
@@ -721,10 +740,15 @@
                     </div>
 
                     <div class="border-top pt-3 mb-3">
-                        <h6 class="mb-2">Certificates (embedded view)</h6>
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0">Certificates</h6>
+                            <button class="btn btn-outline-secondary btn-sm" @click="refreshCertificateSection">Refresh</button>
+                        </div>
+                        <div class="small mb-1">
+                            WRP Access Certificate Status: <strong>{{ wrpacPreview ? "available" : "not available" }}</strong>
+                        </div>
                         <div class="small mb-2">
-                            WRPAC: <strong>{{ wrpacPreview ? "available" : "missing" }}</strong>,
-                            WRPRC: <strong>{{ wrprcPreview ? "available" : "missing" }}</strong>
+                            WRP Registration Certificate Status: <strong>{{ wrprcPreview ? "available" : "not available" }}</strong>
                         </div>
                         <div class="mb-2">
                             <label class="form-label small mb-1">WRPAC</label>

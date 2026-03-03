@@ -29,25 +29,23 @@
     <div id="errorAlert" class="alert alert-danger d-none"></div>
     <div class="card mb-4">
         <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-                <h5 class="card-title mb-0">Current Registration & Certificate State</h5>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5 class="card-title mb-0">Certificates</h5>
                 <button id="refreshPreview" class="btn btn-outline-secondary btn-sm">Refresh</button>
             </div>
-            <div class="small mb-2" id="registrationSummary">Registration: loading...</div>
-            <div class="small text-muted mb-3" id="availability">WRPAC: loading..., WRPRC: loading...</div>
-            <div class="border-top pt-3">
-                <h6 class="mb-2">Certificates (embedded view)</h6>
-                <div class="small mb-2" id="certStatusLine">WRPAC: missing, WRPRC: missing</div>
-                <div class="mb-2">
-                    <label class="form-label small mb-1">WRPAC</label>
-                    <textarea id="wrpacPreview" class="form-control form-control-sm" rows="5" readonly
-                              placeholder="No WRPAC loaded yet"></textarea>
-                </div>
-                <div class="mb-2">
-                    <label class="form-label small mb-1">WRPRC</label>
-                    <textarea id="wrprcPreview" class="form-control form-control-sm" rows="5" readonly
-                              placeholder="No WRPRC loaded yet"></textarea>
-                </div>
+            <div class="small mb-1">WRP Access Certificate Status: <strong id="wrpacStatusValue">not available</strong>
+            </div>
+            <div class="small mb-2">WRP Registration Certificate Status: <strong id="wrprcStatusValue">not
+                available</strong></div>
+            <div class="mb-2">
+                <label class="form-label small mb-1">WRPAC</label>
+                <textarea id="wrpacPreview" class="form-control form-control-sm" rows="5" readonly
+                          placeholder="No WRPAC loaded yet"></textarea>
+            </div>
+            <div class="mb-2">
+                <label class="form-label small mb-1">WRPRC</label>
+                <textarea id="wrprcPreview" class="form-control form-control-sm" rows="5" readonly
+                          placeholder="No WRPRC loaded yet"></textarea>
             </div>
         </div>
     </div>
@@ -115,7 +113,6 @@
 
 <script>
     const api = {
-        registration: "api/wrp/registration",
         previews: "api/wrp/certs",
         availability: "api/wrp/availability",
         wrpac: "api/wrp/wrpac",
@@ -142,37 +139,25 @@
         errorAlert.classList.add("d-none");
     }
 
-    function buildRegistrationSummary(state) {
-        if (!state) return "Registration: unavailable";
-        const status = state.status || "unregistered";
-        const wrpId = state.wrpIdentifier || "not registered";
-        const service = state.serviceUri || state.serviceRegistration?.serviceUri || "not registered";
-        return `Registration status: ${status} | WRP: ${wrpId} | Service: ${service}`;
-    }
-
     async function refreshData() {
-        const [registrationResp, availabilityResp, previewsResp] = await Promise.all([
-            fetch(api.registration),
+        const [availabilityResp, previewsResp] = await Promise.all([
             fetch(api.availability),
             fetch(api.previews),
         ]);
 
-        if (!registrationResp.ok || !availabilityResp.ok || !previewsResp.ok) {
-            throw new Error("Could not load registration/certificate state");
+        if (!availabilityResp.ok || !previewsResp.ok) {
+            throw new Error("Could not load certificate state");
         }
 
-        const registration = await registrationResp.json();
         const availability = await availabilityResp.json();
         const previews = await previewsResp.json();
 
-        document.getElementById("registrationSummary").textContent = buildRegistrationSummary(registration);
-        document.getElementById("availability").textContent =
-            `WRPAC: ${availability.hasWrpac ? "available" : "not available"}, WRPRC: ${availability.hasWrprc ? "available" : "not available"}`;
-
         const wrpac = previews.find(item => item.id === "wrpac");
         const wrprc = previews.find(item => item.id === "wrprc");
-        document.getElementById("certStatusLine").textContent =
-            `WRPAC: ${wrpac ? "available" : "missing"}, WRPRC: ${wrprc ? "available" : "missing"}`;
+        document.getElementById("wrpacStatusValue").textContent =
+            (availability.hasWrpac || wrpac) ? "available" : "not available";
+        document.getElementById("wrprcStatusValue").textContent =
+            (availability.hasWrprc || wrprc) ? "available" : "not available";
         document.getElementById("wrpacPreview").value = wrpac ? wrpac.content : "";
         document.getElementById("wrprcPreview").value = wrprc ? wrprc.content : "";
     }

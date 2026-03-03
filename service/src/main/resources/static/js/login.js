@@ -684,13 +684,14 @@ const createBasicSetup = function (config) {
     })
 
     updateProfile(config.profiles[0])
+    loadCertificateAvailability()
     loadRegistrationState()
     loadCertificateOptions()
     loadCertificatePreviews()
 
     async function loadCertificateOptions() {
         try {
-            const response = await fetch("api/wrp/cert-options")
+            const response = await fetch("api/wrp/cert-options", {cache: "no-store"})
             if (response.ok) {
                 certOptions.value = await response.json()
                 syncCertificateSelection()
@@ -702,7 +703,7 @@ const createBasicSetup = function (config) {
 
     async function loadCertificatePreviews() {
         try {
-            const response = await fetch("api/wrp/certs")
+            const response = await fetch("api/wrp/certs", {cache: "no-store"})
             if (response.ok) {
                 certPreviews.value = await response.json()
                 syncCertificateSelection()
@@ -713,8 +714,14 @@ const createBasicSetup = function (config) {
     }
 
     function syncCertificateSelection() {
-        const hasWrpac = certOptions.value.some(item => item.id === "wrpac")
-        const hasWrprc = certPreviews.value.some(item => item.id === "wrprc")
+        const hasWrpac =
+            certPreviews.value.some(item => item.id === "wrpac") ||
+            certOptions.value.some(item => item.id === "wrpac") ||
+            registrationState.value?.hasWrpac === true
+        const hasWrprc =
+            certPreviews.value.some(item => item.id === "wrprc") ||
+            certOptions.value.some(item => item.id === "wrprc") ||
+            registrationState.value?.hasWrprc === true
         if (!hasWrpac && reqSelection.value.includeWrpac) {
             reqSelection.value.includeWrpac = false
         }
@@ -723,11 +730,29 @@ const createBasicSetup = function (config) {
         }
     }
 
+    async function loadCertificateAvailability() {
+        try {
+            const response = await fetch("api/wrp/availability", {cache: "no-store"})
+            if (response.ok) {
+                const availability = await response.json()
+                registrationState.value = {
+                    ...registrationState.value,
+                    hasWrpac: availability.hasWrpac === true,
+                    hasWrprc: availability.hasWrprc === true,
+                }
+                syncCertificateSelection()
+            }
+        } catch (err) {
+            console.log('loadCertificateAvailability error: ', err)
+        }
+    }
+
     async function loadRegistrationState() {
         try {
-            const response = await fetch("api/wrp/registration")
+            const response = await fetch("api/wrp/registration", {cache: "no-store"})
             if (response.ok) {
                 registrationState.value = await response.json()
+                syncCertificateSelection()
             }
         } catch (err) {
             console.log('loadRegistrationState error: ', err)
