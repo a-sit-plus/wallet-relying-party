@@ -42,24 +42,24 @@ export default {
                     <input class="form-check-input"
                            type="checkbox"
                            name="includeWrpac"
-                           :disabled="!((certPreviews && certPreviews.some(item => item.id === 'wrpac')) || (certOptions && certOptions.some(item => item.id === 'wrpac')) || (registrationState && registrationState.hasWrpac))"
+                           :disabled="!((certPreviews && certPreviews.some(item => item && item.id === 'wrpac')) || (certOptions && certOptions.some(item => item && item.id === 'wrpac')) || (registrationState && registrationState.hasWrpac))"
                            :checked="request.includeWrpac"
                            @click="$emit('updateIncludeWrpac', !request.includeWrpac)">
                     <label class="form-check-label">
                         WRP Access Certificate (WRPAC) - <span class="text-primary">x509_san_dns / x5c</span>
-                        <span v-if="!((certPreviews && certPreviews.some(item => item.id === 'wrpac')) || (certOptions && certOptions.some(item => item.id === 'wrpac')) || (registrationState && registrationState.hasWrpac))" class="text-muted">(not available)</span>
+                        <span v-if="!((certPreviews && certPreviews.some(item => item && item.id === 'wrpac')) || (certOptions && certOptions.some(item => item && item.id === 'wrpac')) || (registrationState && registrationState.hasWrpac))" class="text-muted">(not available)</span>
                     </label>
                 </div>
                 <div class="form-check">
                     <input class="form-check-input"
                            type="checkbox"
                            name="includeWrprc"
-                           :disabled="!((certPreviews && certPreviews.some(item => item.id === 'wrprc')) || (certOptions && certOptions.some(item => item.id === 'wrprc')) || (registrationState && registrationState.hasWrprc))"
+                           :disabled="!((certPreviews && certPreviews.some(item => item && item.id === 'wrprc')) || (certOptions && certOptions.some(item => item && item.id === 'wrprc')) || (registrationState && registrationState.hasWrprc))"
                            :checked="request.includeWrprc"
                            @click="$emit('updateIncludeWrprc', !request.includeWrprc)">
                     <label class="form-check-label">
                         WRP Registration Certificate (WRPRC) - <span class="text-primary">verifier_info / wrprc+jws</span>
-                        <span v-if="!((certPreviews && certPreviews.some(item => item.id === 'wrprc')) || (certOptions && certOptions.some(item => item.id === 'wrprc')) || (registrationState && registrationState.hasWrprc))" class="text-muted">(not available)</span>
+                        <span v-if="!((certPreviews && certPreviews.some(item => item && item.id === 'wrprc')) || (certOptions && certOptions.some(item => item && item.id === 'wrprc')) || (registrationState && registrationState.hasWrprc))" class="text-muted">(not available)</span>
                     </label>
                 </div>
             </div>
@@ -72,7 +72,7 @@ export default {
     </legend>
     <div :class="singleColumn ? '' : 'col-lg-7 overflow-hidden'">
         <div v-for="item in certPreviews"
-             v-if="(item.id === 'wrpac' && request.includeWrpac) || (item.id === 'wrprc' && request.includeWrprc)"
+             v-if="item && ((item.id === 'wrpac' && request.includeWrpac) || (item.id === 'wrprc' && request.includeWrprc))"
              :key="item.id"
              class="mb-3">
             <div class="fw-bold mb-1">{{ item.label }} <span class="text-muted">({{ item.type }})</span></div>

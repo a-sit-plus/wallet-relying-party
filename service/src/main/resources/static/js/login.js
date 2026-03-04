@@ -13,6 +13,15 @@ const URLs = {
     postUrl: 'transaction/result/'
 }
 
+function normalizeCertificateItems(items) {
+    if (!Array.isArray(items)) return []
+    return items.filter(item => item && typeof item === "object")
+}
+
+function hasCertificateItem(items, id) {
+    return normalizeCertificateItems(items).some(item => item.id === id)
+}
+
 const createBasicSetup = function (config) {
 
     // --- STATE ---------------------------------------------------
@@ -693,7 +702,7 @@ const createBasicSetup = function (config) {
         try {
             const response = await fetch("api/wrp/cert-options", {cache: "no-store"})
             if (response.ok) {
-                certOptions.value = await response.json()
+                certOptions.value = normalizeCertificateItems(await response.json())
                 syncCertificateSelection()
             }
         } catch (err) {
@@ -705,7 +714,7 @@ const createBasicSetup = function (config) {
         try {
             const response = await fetch("api/wrp/certs", {cache: "no-store"})
             if (response.ok) {
-                certPreviews.value = await response.json()
+                certPreviews.value = normalizeCertificateItems(await response.json())
                 syncCertificateSelection()
             }
         } catch (err) {
@@ -715,12 +724,12 @@ const createBasicSetup = function (config) {
 
     function syncCertificateSelection() {
         const hasWrpac =
-            certPreviews.value.some(item => item.id === "wrpac") ||
-            certOptions.value.some(item => item.id === "wrpac") ||
+            hasCertificateItem(certPreviews.value, "wrpac") ||
+            hasCertificateItem(certOptions.value, "wrpac") ||
             registrationState.value?.hasWrpac === true
         const hasWrprc =
-            certPreviews.value.some(item => item.id === "wrprc") ||
-            certOptions.value.some(item => item.id === "wrprc") ||
+            hasCertificateItem(certPreviews.value, "wrprc") ||
+            hasCertificateItem(certOptions.value, "wrprc") ||
             registrationState.value?.hasWrprc === true
         if (!hasWrpac && reqSelection.value.includeWrpac) {
             reqSelection.value.includeWrpac = false
