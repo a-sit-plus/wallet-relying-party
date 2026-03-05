@@ -307,11 +307,12 @@ class ApiController(
         response: DCAPIResponse,
         transactionId: String,
         expectedOrigin: String,
-    ): User = when (val result = verifier.validateResponse(response, transactionId, ::decryptHpke, expectedOrigin)) {
+    ): User = when (val result =
+        verifier.validateResponse(response, transactionId, ::decryptHpke, expectedOrigin).getOrThrow()) {
         is Iso180137AnnexCResponseResult.Success -> result.toUser()
         is Iso180137AnnexCResponseResult.SuccessIso -> result.toUser()
+        is Iso180137AnnexCResponseResult.SuccessUnsigned -> result.toUser()
         is Iso180137AnnexCResponseResult.Error -> throw RuntimeException(result.reason, result.cause)
-        is Iso180137AnnexCResponseResult.ValidationError -> throw RuntimeException("Failed:", result.cause)
     }
 
     private suspend fun validateAuthnResponse(
@@ -335,6 +336,7 @@ class ApiController(
         is Error -> throw RuntimeException(result.reason, result.cause)
         is ValidationError -> throw RuntimeException("Failed: ${result.field}", result.cause)
         is IdToken -> throw RuntimeException("Only got id_token")
+        is SuccessUnsigned -> result.toUser()
     }
 }
 

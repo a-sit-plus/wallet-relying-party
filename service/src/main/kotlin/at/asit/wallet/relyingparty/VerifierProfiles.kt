@@ -26,6 +26,7 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.ClientIdScheme
+import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
@@ -512,7 +513,7 @@ class VerifierProfiles(
     ): IsoMdocRequest = try {
         verifier.createRequest(
             Iso180137AnnexCRequestOptions(
-                credentials = requestOptionsCredentials,
+                deviceRequest = CredentialPresentationRequestBuilder(requestOptionsCredentials).toIso180137AnnexCDeviceRequest(),
                 state = id
             )
         )
