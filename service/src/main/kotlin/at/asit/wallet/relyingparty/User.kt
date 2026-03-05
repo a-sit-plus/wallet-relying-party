@@ -14,16 +14,30 @@ import at.asitplus.wallet.lib.agent.validation.common.EntityExpiredError
 import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
+import at.asitplus.wallet.lib.data.VcJwsVerificationResultWrapper
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.Iso180137AnnexCResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
-import at.asitplus.wallet.lib.openid.AuthnResponseResult.*
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.Error
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.IdToken
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.Success
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessIso
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessSdJwt
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.SuccessUnsigned
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.ValidationError
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.VerifiableDCQLPresentationValidationResults
+import at.asitplus.wallet.lib.openid.AuthnResponseResult.VerifiablePresentationValidationResults
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
-import kotlinx.datetime.*
+import kotlinx.datetime.LocalDate
+import kotlinx.datetime.LocalDateTime
+import kotlinx.datetime.LocalTime
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.format
 import kotlinx.datetime.format.char
+import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
@@ -95,6 +109,7 @@ fun AuthnResponseResult.toApiItemCredentials(): Collection<ApiItemCredential> = 
     is ValidationError -> toApiItemCredentials()
     is VerifiablePresentationValidationResults -> toApiItemCredentials()
     is VerifiableDCQLPresentationValidationResults -> this.allValidationResults.toApiItemCredentials()
+    is SuccessUnsigned -> vc.toApiItemCredentials()
 }
 
 fun Error.toApiItemCredentials(): Collection<ApiItemCredential> = listOf(
@@ -122,15 +137,32 @@ fun Iso180137AnnexCResponseResult.Success.toUser() = vp.toApiItemCredentials().t
 
 fun VerifiablePresentationParsed.toApiItemCredentials(): List<ApiItemCredential> =
     freshVerifiableCredentials.takeIf { it.isNotEmpty() }?.let {
-        it.map { it.vcJws.vc.credentialSubject }
-            .filterIsInstance<EuPidCredential>()
-            .map { it.toApiItemCredential() }
+        it.map {
+            ApiItemCredential(
+                jwtCredential = it.vcJws.vc.credentialSubject,
+                credentialType = EuPidScheme.vcType,
+            )
+        }
     } ?: notVerifiablyFreshVerifiableCredentials.takeIf { it.isNotEmpty() }?.let {
         it.map { it.freshnessSummary }
             .map { it.toApiItemCredential() }
     } ?: invalidVerifiableCredentials.takeIf { it.isNotEmpty() }?.let {
         it.map { ApiItemCredential(error = "Structure invalid: $it") }
     } ?: listOf(ApiItemCredential(error = "No result"))
+
+fun Iso180137AnnexCResponseResult.SuccessUnsigned.toUser() = this.vc.toApiItemCredentials().toUser()
+fun SuccessUnsigned.toUser() = toApiItemCredentials().toUser()
+fun SuccessUnsigned.toApiItemCredentials(): List<ApiItemCredential> = vc.toApiItemCredentials()
+fun VcJwsVerificationResultWrapper.toApiItemCredentials(): List<ApiItemCredential> = if (freshnessSummary.isFresh) {
+    listOf(this).map {
+        ApiItemCredential(
+            jwtCredential = it.vcJws.vc.credentialSubject,
+            credentialType = it.vcJws.vc.type.first(),
+        )
+    }
+} else {
+    listOf(freshnessSummary.toApiItemCredential())
+}
 
 fun CredentialFreshnessSummary.VcJws.toApiItemCredential(): ApiItemCredential =
     ApiItemCredential(error = errorMessage())
