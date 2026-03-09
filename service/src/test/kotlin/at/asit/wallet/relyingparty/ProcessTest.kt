@@ -136,7 +136,7 @@ class ProcessTest {
     }
 
     @Test
-    fun `includeWrpac uses wrpac certificate san dns as client id`() = runTest {
+    fun `includeWrpac uses wrpac certificate hash as client id`() = runTest {
         val wrpacDnsName = "wrpac.example.com"
         val wrpacKeyMaterial = createSanDnsKeyMaterial(wrpacDnsName)
         Mockito.`when`(wrpCertificateStore.loadWrpacChain()).thenReturn(listOf(wrpacKeyMaterial.getCertificate()!!))
@@ -173,7 +173,8 @@ class ProcessTest {
 
         val payload = decodeJwtPart(requestObject, 1)
         val clientId = Json.parseToJsonElement(payload).jsonObject["client_id"]?.jsonPrimitive?.content
-        assertEquals("x509_san_dns:$wrpacDnsName", clientId)
+        requireNotNull(clientId)
+        assertTrue(clientId.startsWith("x509_hash:"))
     }
 
     private suspend fun runProcess(

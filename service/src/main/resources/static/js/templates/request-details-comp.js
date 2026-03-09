@@ -46,7 +46,7 @@ export default {
                            :checked="request.includeWrpac"
                            @click="$emit('updateIncludeWrpac', !request.includeWrpac)">
                     <label class="form-check-label">
-                        WRP Access Certificate (WRPAC) - <span class="text-primary">x509_san_dns / x5c</span>
+                        WRP Access Certificate (WRPAC) - <span class="text-primary">x509_hash / x5c</span>
                         <span v-if="!((certPreviews && certPreviews.some(item => item && item.id === 'wrpac')) || (certOptions && certOptions.some(item => item && item.id === 'wrpac')) || (registrationState && registrationState.hasWrpac))" class="text-muted">(not available)</span>
                     </label>
                 </div>
@@ -58,7 +58,7 @@ export default {
                            :checked="request.includeWrprc"
                            @click="$emit('updateIncludeWrprc', !request.includeWrprc)">
                     <label class="form-check-label">
-                        WRP Registration Certificate (WRPRC) - <span class="text-primary">verifier_info / wrprc+jws</span>
+                        WRP Registration Certificate (WRPRC) - <span class="text-primary">verifier_info / registration_cert</span>
                         <span v-if="!((certPreviews && certPreviews.some(item => item && item.id === 'wrprc')) || (certOptions && certOptions.some(item => item && item.id === 'wrprc')) || (registrationState && registrationState.hasWrprc))" class="text-muted">(not available)</span>
                     </label>
                 </div>

@@ -151,7 +151,6 @@ class WrpCertificateStore(
 
     fun saveWrpacChainOnly(chainPem: String, thumbprint: String = "") {
         Files.writeString(wrpacChainPath, chainPem, StandardCharsets.UTF_8)
-        Files.deleteIfExists(wrpacKeyStorePath)
         val current = loadState()
         saveState(current.copy(wrpacThumbprint = thumbprint.ifBlank { current.wrpacThumbprint }))
     }
@@ -179,7 +178,11 @@ class WrpCertificateStore(
     fun loadWrprcJws(): String? =
         if (Files.exists(wrprcPath)) Files.readString(wrprcPath) else null
 
-    fun hasWrpac(): Boolean = Files.exists(wrpacChainPath) || Files.exists(wrpacKeyStorePath)
+    fun hasWrpac(): Boolean = Files.exists(wrpacChainPath) && Files.exists(wrpacKeyStorePath)
+
+    fun hasWrpacChain(): Boolean = Files.exists(wrpacChainPath)
+
+    fun hasWrpacKeyMaterial(): Boolean = Files.exists(wrpacKeyStorePath)
 
     fun hasWrprc(): Boolean = Files.exists(wrprcPath)
 
@@ -204,7 +207,12 @@ class WrpCertificateStore(
         if (certificates.isEmpty()) {
             return null
         }
-        val signumCerts = certificates.mapNotNull { X509Certificate.decodeFromByteArray(it.encoded) }
+        // Transport chains must exclude trust anchors; filter self-signed roots from persisted demo data.
+        val transportCertificates = certificates.filterNot {
+            it.subjectX500Principal == it.issuerX500Principal
+        }.ifEmpty { certificates }
+
+        val signumCerts = transportCertificates.mapNotNull { X509Certificate.decodeFromByteArray(it.encoded) }
         if (signumCerts.isEmpty()) {
             return null
         }
@@ -237,21 +245,21 @@ class WrpCertificateStore(
             WrpCertificateOption(
                 id = CERT_ID_VERIFIER,
                 label = "Default verifier",
-                scheme = "x509_san_dns",
+                scheme = "x509_hash (WRPAC mode)",
             )
         )
         if (hasWrpac()) {
             options += WrpCertificateOption(
                 id = CERT_ID_WRPAC,
-                label = "WRPAC (wrpac)",
-                scheme = "wrpac",
+                label = "WRPAC (x509_hash / x5c)",
+                scheme = "x509_hash / x5c",
             )
         }
         if (hasWrprc()) {
             options += WrpCertificateOption(
                 id = CERT_ID_WRPRC,
-                label = "WRPRC (wrprc)",
-                scheme = "wrprc",
+                label = "WRPRC (registration_cert)",
+                scheme = "registration_cert",
             )
         }
         return options
@@ -276,3 +284,4 @@ class WrpCertificateStore(
         private const val WRPAC_PASSWORD = "changeit"
     }
 }
+

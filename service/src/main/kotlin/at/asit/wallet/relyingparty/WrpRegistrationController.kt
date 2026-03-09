@@ -48,7 +48,14 @@ import java.security.cert.X509Certificate as JcaX509Certificate
 
 data class WrpCertificateAvailability(
     val hasWrpac: Boolean,
+    val hasWrpacChain: Boolean,
+    val hasWrpacKeyMaterial: Boolean,
     val hasWrprc: Boolean,
+)
+
+private data class WrpacLoadAttempt(
+    val success: Boolean,
+    val reason: String? = null,
 )
 
 data class SaveWrprcRequest(
@@ -60,6 +67,8 @@ data class RegistrationStateResponse(
     val wrpIdentifier: String?,
     val serviceUri: String?,
     val hasWrpac: Boolean,
+    val hasWrpacChain: Boolean,
+    val hasWrpacKeyMaterial: Boolean,
     val hasWrprc: Boolean,
     val wrpRegistration: WrpRegistrationData,
     val serviceRegistration: ServiceRegistrationData,
@@ -169,6 +178,8 @@ class WrpRegistrationController(
     fun certificateAvailability(): WrpCertificateAvailability =
         WrpCertificateAvailability(
             hasWrpac = store.hasWrpac(),
+            hasWrpacChain = store.hasWrpacChain(),
+            hasWrpacKeyMaterial = store.hasWrpacKeyMaterial(),
             hasWrprc = store.hasWrprc(),
         )
 
@@ -185,6 +196,8 @@ class WrpRegistrationController(
             wrpIdentifier = state.wrpIdentifier,
             serviceUri = state.serviceUri,
             hasWrpac = store.hasWrpac(),
+            hasWrpacChain = store.hasWrpacChain(),
+            hasWrpacKeyMaterial = store.hasWrpacKeyMaterial(),
             hasWrprc = store.hasWrprc(),
             wrpRegistration = state.wrpRegistration,
             serviceRegistration = state.serviceRegistration,
@@ -339,10 +352,12 @@ class WrpRegistrationController(
             )
             if (!store.hasWrpac()) {
                 val loaded = tryLoadWrpacForWrp(registrarClient, remoteBaseUrl, wrpIdentifier)
-                if (!loaded || !store.hasWrpac()) {
+                if (!loaded.success || !store.hasWrpac()) {
+                    val detail = loaded.reason?.let { " Details: $it" } ?: ""
                     throw ResponseStatusException(
                         HttpStatus.PRECONDITION_FAILED,
-                        "WRPAC is required before service registration. Register WRP, issue/approve WRPAC in registrar, then retry."
+                        "WRPAC is required before service registration. Register WRP, issue/approve WRPAC in registrar, then retry." +
+                                detail
                     )
                 }
             }
@@ -444,7 +459,8 @@ class WrpRegistrationController(
         }
         throw ResponseStatusException(
             HttpStatus.BAD_REQUEST,
-            "WRPAC endpoint must return JSON (chainPem/keyStoreBase64) or a PEM certificate chain"
+            "WRPAC endpoint must return JSON with chainPem/keyStoreBase64. " +
+                    "PEM-only is accepted only when matching local WRPAC key material already exists."
         )
     }
 
@@ -502,10 +518,14 @@ class WrpRegistrationController(
         } catch (ex: ResponseStatusException) {
             if (ex.statusCode == HttpStatus.CONFLICT && ex.reason == "wrpac_already_issued") {
                 val fetched = tryLoadWrpacForWrp(registrarClient, remoteBaseUrl, wrpIdentifier)
-                if (!fetched || !store.hasWrpac()) {
+                if (!fetched.success || !store.hasWrpac()) {
+                    val detail = fetched.reason?.let { " Details: $it" } ?: ""
                     throw ResponseStatusException(
                         HttpStatus.BAD_GATEWAY,
-                        "WRPAC already issued by provider, but fetch from registrar failed. Use 'Fetch Existing WRPAC'."
+                        "WRPAC already issued by provider, but fetch from registrar did not provide usable key material." +
+                                detail +
+                                " If local WRPAC key material was deleted, a fresh WRPAC must be re-issued " +
+                                "(or existing WRPAC revoked/replaced at provider) so a new private key is available."
                     )
                 }
                 val status = if (current.serviceUri.isNullOrBlank()) "wrp_registered" else "service_registered"
@@ -535,9 +555,13 @@ class WrpRegistrationController(
                     keyStoreBytes = keyStoreBytes,
                     thumbprint = thumbprint,
                 )
-            } catch (_: ResponseStatusException) {
-                // Keep demo flow usable even if provider chain cannot be imported into PKCS12 locally.
-                store.saveWrpacChainOnly(chainPemNormalized, thumbprint)
+            } catch (ex: ResponseStatusException) {
+                throw ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "WRPAC certificate chain received, but PKCS12 key material could not be stored: " +
+                            "${ex.reason ?: ex.message ?: ex::class.simpleName}. " +
+                            "x509_hash flow requires both certificate chain and private key."
+                )
             }
         } catch (ex: ResponseStatusException) {
             throw ex
@@ -735,18 +759,32 @@ class WrpRegistrationController(
         if (!chainPem.contains("-----BEGIN CERTIFICATE-----")) {
             return false
         }
+        if (!store.hasWrpacKeyMaterial()) {
+            throw ResponseStatusException(
+                HttpStatus.BAD_REQUEST,
+                "WRPAC endpoint returned only PEM certificate chain. Missing keyStoreBase64/private key material " +
+                        "required for x509_hash request signing."
+            )
+        }
         store.saveWrpacChainOnly(chainPem)
         return true
     }
 
-    private fun tryLoadWrpacForWrp(client: HttpClient, remoteBaseUrl: String, wrpIdentifier: String): Boolean {
+    private fun tryLoadWrpacForWrp(client: HttpClient, remoteBaseUrl: String, wrpIdentifier: String): WrpacLoadAttempt {
         val encodedWrp = URLEncoder.encode(wrpIdentifier, Charsets.UTF_8)
         val wrpacUrl = "${remoteBaseUrl.trimEnd('/')}/api/rp/wrps/$encodedWrp/wrpac"
         return try {
             val fetched = fetchText(client, wrpacUrl)
-            persistWrpac(fetched)
-        } catch (_: ResponseStatusException) {
-            false
+            if (persistWrpac(fetched)) {
+                WrpacLoadAttempt(success = true)
+            } else {
+                WrpacLoadAttempt(
+                    success = false,
+                    reason = "registrar response is neither RemoteWrpacPayload JSON nor certificate PEM"
+                )
+            }
+        } catch (ex: ResponseStatusException) {
+            WrpacLoadAttempt(success = false, reason = ex.reason ?: ex.message)
         }
     }
 
@@ -1175,25 +1213,36 @@ class WrpRegistrationController(
     }
 
     private fun buildPkcs12FromKeyAndChain(privateKey: PrivateKey, chain: List<JcaX509Certificate>): ByteArray {
-        val keyStore = try {
-            KeyStore.getInstance("PKCS12").apply {
+        fun createPkcs12(certChain: Array<JcaX509Certificate>): ByteArray {
+            val keyStore = KeyStore.getInstance("PKCS12").apply {
                 load(null, null)
                 setKeyEntry(
                     "wrpac",
                     privateKey,
                     "changeit".toCharArray(),
-                    chain.toTypedArray(),
+                    certChain,
                 )
             }
-        } catch (ex: Exception) {
-            throw ResponseStatusException(
-                HttpStatus.BAD_GATEWAY,
-                "WRPAC certificate chain could not be stored in PKCS12: ${ex.message ?: ex::class.simpleName}"
-            )
+            return ByteArrayOutputStream().use { output ->
+                keyStore.store(output, "changeit".toCharArray())
+                output.toByteArray()
+            }
         }
-        return ByteArrayOutputStream().use { output ->
-            keyStore.store(output, "changeit".toCharArray())
-            output.toByteArray()
+
+        return try {
+            createPkcs12(chain.toTypedArray())
+        } catch (fullChainEx: Exception) {
+            // Some providers return a chain that is usable for x5c transport but rejected by JCA PKCS12 validation.
+            // For signing we only need private key + leaf cert locally; x5c is loaded separately from PEM.
+            try {
+                createPkcs12(arrayOf(chain.first()))
+            } catch (_: Exception) {
+                throw ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "WRPAC certificate chain could not be stored in PKCS12: " +
+                            "${fullChainEx.message ?: fullChainEx::class.simpleName}"
+                )
+            }
         }
     }
 

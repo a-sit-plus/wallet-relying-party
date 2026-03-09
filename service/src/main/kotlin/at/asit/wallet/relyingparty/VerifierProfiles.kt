@@ -257,7 +257,7 @@ class VerifierProfiles(
                     override val iso180137Verifier: Iso180137AnnexCVerifier? = null
                     override val supportedOptions = profileSupportedOptions
 
-                    override fun buildQrCodeUrl(requestUrl: String) = requestUrl
+            override fun buildQrCodeUrl(requestUrl: String, includeWrpac: Boolean) = requestUrl
 
                     override suspend fun transactionGetDcApi(
                         transactionId: String,
@@ -312,8 +312,12 @@ class VerifierProfiles(
                     override val iso180137Verifier: Iso180137AnnexCVerifier? = null
                     override val supportedOptions = profileSupportedOptions
 
-                    override fun buildQrCodeUrl(requestUrl: String): String =
-                        buildQrCodeUrlByReference(urlPrefix, requestUrl, preparedClientIdScheme)
+            override fun buildQrCodeUrl(requestUrl: String, includeWrpac: Boolean): String =
+                buildQrCodeUrlByReference(
+                    urlPrefix,
+                    requestUrl,
+                    selectClientIdSchemeForQr(includeWrpac, clientIdScheme),
+                )
 
                     override suspend fun transactionGet(
                         transactionId: String,
@@ -361,7 +365,7 @@ class VerifierProfiles(
                     override val iso180137Verifier = preparedIso180137Verifier
                     override val supportedOptions = profileSupportedOptions
 
-                    override fun buildQrCodeUrl(requestUrl: String): String = requestUrl
+            override fun buildQrCodeUrl(requestUrl: String, includeWrpac: Boolean): String = requestUrl
 
                     override suspend fun transactionGetDcApi(
                         transactionId: String,
@@ -413,8 +417,12 @@ class VerifierProfiles(
                     override val iso180137Verifier: Iso180137AnnexCVerifier? = null
                     override val supportedOptions = profileSupportedOptions
 
-                    override fun buildQrCodeUrl(requestUrl: String) =
-                        buildQrCodeUrlByReference(urlPrefix, requestUrl, preparedClientIdScheme)
+            override fun buildQrCodeUrl(requestUrl: String, includeWrpac: Boolean) =
+                buildQrCodeUrlByReference(
+                    urlPrefix,
+                    requestUrl,
+                    selectClientIdSchemeForQr(includeWrpac, clientIdScheme),
+                )
 
                     override suspend fun transactionGet(
                         transactionId: String,
@@ -463,7 +471,7 @@ class VerifierProfiles(
                     override val iso180137Verifier = preparedIso180137Verifier
                     override val supportedOptions = profileSupportedOptions
 
-                    override fun buildQrCodeUrl(requestUrl: String) = requestUrl
+            override fun buildQrCodeUrl(requestUrl: String, includeWrpac: Boolean) = requestUrl
 
                     override suspend fun transactionGetDcApi(
                         transactionId: String,
@@ -523,7 +531,7 @@ class VerifierProfiles(
                     override val iso180137Verifier = preparedIso180137Verifier
                     override val supportedOptions = profileSupportedOptions
 
-                    override fun buildQrCodeUrl(requestUrl: String) = requestUrl
+            override fun buildQrCodeUrl(requestUrl: String, includeWrpac: Boolean) = requestUrl
 
                     override suspend fun transactionGetDcApi(
                         transactionId: String,
@@ -581,7 +589,7 @@ class VerifierProfiles(
 
         return listOf(
             VerifierInfo(
-                format = "wrprc",
+                format = "registration_cert",
                 data = wrprc,
                 credentialIds = credentialIds,
             )
@@ -594,20 +602,30 @@ class VerifierProfiles(
         defaultClientIdScheme: ClientIdScheme,
     ): OpenId4VpVerifier {
         if (!includeWrpac) return defaultVerifier
-
-        val defaultScheme = defaultClientIdScheme as? ClientIdScheme.CertificateSanDns ?: return defaultVerifier
-        val wrpacChain = wrpCertificateStore.loadWrpacChain() ?: return defaultVerifier
-        val wrpacKeyMaterial = wrpCertificateStore.loadWrpacKeyMaterial() ?: return defaultVerifier
-        val dnsName = wrpacChain.first().tbsCertificate.subjectAlternativeNames?.dnsNames?.firstOrNull()
-            ?: return defaultVerifier
-
-        val wrpacClientIdScheme = runCatching {
-            ClientIdScheme.CertificateSanDns(
-                chain = wrpacChain,
-                clientIdDnsName = dnsName,
-                redirectUri = defaultScheme.redirectUri,
+        val wrpacChain = wrpCertificateStore.loadWrpacChain()
+            ?: throw ClientFacingException(
+                "includeWrpac is enabled, but no WRPAC certificate chain is stored"
             )
-        }.getOrNull() ?: return defaultVerifier
+        val wrpacKeyMaterial = wrpCertificateStore.loadWrpacKeyMaterial()
+            ?: throw ClientFacingException(
+                "includeWrpac is enabled, but no WRPAC key material is stored"
+            )
+        val redirectUri = when (defaultClientIdScheme) {
+            is ClientIdScheme.CertificateSanDns -> defaultClientIdScheme.redirectUri
+            is ClientIdScheme.CertificateHash -> defaultClientIdScheme.redirectUri
+            else -> throw ClientFacingException(
+                "includeWrpac is enabled, but profile client_id scheme ${defaultClientIdScheme::class.simpleName} " +
+                        "cannot be replaced with x509_hash"
+            )
+        }
+        val wrpacClientIdScheme = runCatching {
+            ClientIdScheme.CertificateHash(
+                chain = wrpacChain,
+                redirectUri = redirectUri,
+            )
+        }.getOrElse {
+            throw ClientFacingException("Failed to build x509_hash client_id from WRPAC", it)
+        }
 
         return OpenId4VpVerifier(
             keyMaterial = wrpacKeyMaterial,
@@ -618,6 +636,38 @@ class VerifierProfiles(
                 validatorMdoc = potentialValidatorMdoc()
             ),
         )
+    }
+
+    private fun selectClientIdSchemeForQr(
+        includeWrpac: Boolean,
+        defaultClientIdScheme: ClientIdScheme,
+    ): ClientIdScheme {
+        if (!includeWrpac) return defaultClientIdScheme
+        val wrpacChain = wrpCertificateStore.loadWrpacChain()
+            ?: throw ClientFacingException(
+                "includeWrpac is enabled, but no WRPAC certificate chain is stored"
+            )
+        if (wrpCertificateStore.loadWrpacKeyMaterial() == null) {
+            throw ClientFacingException(
+                "includeWrpac is enabled, but no WRPAC key material is stored"
+            )
+        }
+        val redirectUri = when (defaultClientIdScheme) {
+            is ClientIdScheme.CertificateSanDns -> defaultClientIdScheme.redirectUri
+            is ClientIdScheme.CertificateHash -> defaultClientIdScheme.redirectUri
+            else -> throw ClientFacingException(
+                "includeWrpac is enabled, but profile client_id scheme ${defaultClientIdScheme::class.simpleName} " +
+                        "cannot be replaced with x509_hash"
+            )
+        }
+        return runCatching {
+            ClientIdScheme.CertificateHash(
+                chain = wrpacChain,
+                redirectUri = redirectUri,
+            )
+        }.getOrElse {
+            throw ClientFacingException("Failed to build x509_hash client_id from WRPAC", it)
+        }
     }
 
     private suspend fun x509SanDnsD23(): ClientIdScheme.CertificateSanDns = ClientIdScheme.CertificateSanDns(
@@ -865,7 +915,7 @@ interface PreparedProfile {
     val iso180137Verifier: Iso180137AnnexCVerifier?
     val supportedOptions: Set<SupportedOptions>
 
-    fun buildQrCodeUrl(requestUrl: String): String
+    fun buildQrCodeUrl(requestUrl: String, includeWrpac: Boolean): String
 
     suspend fun buildWalletUrl(
         transaction: Transaction,
