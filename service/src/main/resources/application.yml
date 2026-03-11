@@ -1,5 +1,5 @@
 app:
-  public-url: http://localhost:8080
+  public-context: http://localhost:8080
 spring:
   mvc:
     problemdetails:
