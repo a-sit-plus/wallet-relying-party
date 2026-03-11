@@ -1,7 +1,6 @@
 package at.asit.wallet.relyingparty
 
 import at.asitplus.catching
-import at.asitplus.dcapi.DCAPIResponse
 import at.asitplus.dcapi.DigitalCredentialInterface
 import at.asitplus.dcapi.IsoMdocResponse
 import at.asitplus.dcapi.OpenId4VpResponse
@@ -11,12 +10,9 @@ import at.asitplus.signum.indispensable.CryptoPrivateKey
 import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.asn1.encodeToPEM
 import at.asitplus.wallet.lib.data.vckJsonSerializer
-import at.asitplus.wallet.lib.iso.Iso180137AnnexCVerifier
-import at.asitplus.wallet.lib.iso.Iso180137AnnexCResponseResult
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.*
-import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -205,12 +201,14 @@ class ApiController(
             val parsedResponse =
                 catching { vckJsonSerializer.decodeFromString<DigitalCredentialInterface>(requestBody) }.getOrNull()
             if (parsedResponse.isMdocResponse(transaction)) {
-                validateMdocResponse(
-                    verifier = transaction.profile.iso180137Verifier ?: throw IllegalStateException("Missing verifier"),
-                    response = (parsedResponse as IsoMdocResponse).data,
-                    transactionId = id,
+                val verifier = transaction.profile.iso180137Verifier
+                    ?: throw IllegalStateException("Missing verifier")
+                verifier.validateResponse(
+                    receivedData = (parsedResponse as IsoMdocResponse).data,
+                    externalId = id,
+                    decryptHpke = ::decryptHpke,
                     expectedOrigin = configuration.publicContext.toString()
-                )
+                ).getOrThrow().toUser()
             } else if (parsedResponse.isOpenId4VpResponse(transaction)) {
                 val dcApiSignedOid4vpRequired = transaction.profile.dcApiSignedOid4vpRequired
                 require(dcApiSignedOid4vpRequired != null)
@@ -219,17 +217,19 @@ class ApiController(
                 } else {
                     check(parsedResponse is OpenId4VpResponseUnsigned) { "Expected unsigned response" }
                 }
-                validateAuthnResponse(
-                    verifier = transaction.profile.oid4vpVerifier ?: throw IllegalStateException("Missing verifier"),
-                    authnResponse = parsedResponse as OpenId4VpResponse,
-                    transactionId = id
-                )
+                val verifier = transaction.profile.oid4vpVerifier
+                    ?: throw IllegalStateException("Missing verifier")
+                verifier.validateAuthnResponse(
+                    input = parsedResponse as OpenId4VpResponse,
+                    externalId = id
+                ).convertToUser()
             } else if (transaction.profile.supportedOptions.any { it.isDevice }) {
-                validateAuthnResponse(
-                    verifier = transaction.profile.oid4vpVerifier ?: throw IllegalStateException("Missing verifier"),
-                    authnResponse = requestBody,
-                    transactionId = id
-                )
+                val verifier = transaction.profile.oid4vpVerifier
+                    ?: throw IllegalStateException("Missing verifier")
+                verifier.validateAuthnResponse(
+                    input = requestBody,
+                    externalId = id
+                ).convertToUser()
             } else {
                 throw IllegalStateException("Unsupported response")
             }
@@ -302,41 +302,16 @@ class ApiController(
         )
     }
 
-    private suspend fun validateMdocResponse(
-        verifier: Iso180137AnnexCVerifier,
-        response: DCAPIResponse,
-        transactionId: String,
-        expectedOrigin: String,
-    ): User = when (val result =
-        verifier.validateResponse(response, transactionId, ::decryptHpke, expectedOrigin).getOrThrow()) {
-        is Iso180137AnnexCResponseResult.Success -> result.toUser()
-        is Iso180137AnnexCResponseResult.SuccessIso -> result.toUser()
-        is Iso180137AnnexCResponseResult.SuccessUnsigned -> result.toUser()
-        is Iso180137AnnexCResponseResult.Error -> throw RuntimeException(result.reason, result.cause)
-    }
-
-    private suspend fun validateAuthnResponse(
-        verifier: OpenId4VpVerifier,
-        authnResponse: String,
-        transactionId: String,
-    ): User = validateResponseResult(verifier.validateAuthnResponse(authnResponse, externalId = transactionId))
-
-    private suspend fun validateAuthnResponse(
-        verifier: OpenId4VpVerifier,
-        authnResponse: OpenId4VpResponse,
-        transactionId: String,
-    ): User = validateResponseResult(verifier.validateAuthnResponse(authnResponse, externalId = transactionId))
-
-    private fun validateResponseResult(result: AuthnResponseResult): User = when (result) {
-        is VerifiableDCQLPresentationValidationResults -> result.toUser()
-        is Success -> result.toUser()
-        is SuccessSdJwt -> result.toUser()
-        is SuccessIso -> result.toUser()
-        is VerifiablePresentationValidationResults -> result.toUser()
-        is Error -> throw RuntimeException(result.reason, result.cause)
-        is ValidationError -> throw RuntimeException("Failed: ${result.field}", result.cause)
+    private fun AuthnResponseResult.convertToUser(): User = when (this) {
+        is VerifiableDCQLPresentationValidationResults -> this.toUser()
+        is Success -> this.toUser()
+        is SuccessSdJwt -> this.toUser()
+        is SuccessIso -> this.toUser()
+        is VerifiablePresentationValidationResults -> this.toUser()
+        is Error -> throw RuntimeException(this.reason, this.cause)
+        is ValidationError -> throw RuntimeException("Failed: ${this.field}", this.cause)
         is IdToken -> throw RuntimeException("Only got id_token")
-        is SuccessUnsigned -> result.toUser()
+        is SuccessUnsigned -> this.toUser()
     }
 }
 
