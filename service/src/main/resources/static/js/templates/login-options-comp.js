@@ -5,17 +5,56 @@ export default {
         'error',
         'dcapiSelection'
     ],
+    data() {
+        return {
+            activeProfileName: null
+        }
+    },
+    computed: {
+        regularProfiles() {
+            return (this.result?.profiles || []).filter(profile => !this.isDcApiProfile(profile))
+        },
+        dcApiProfiles() {
+            return (this.result?.profiles || []).filter(profile => this.isDcApiProfile(profile))
+        }
+    },
     emits: [
         'generateQrCode',
         'invokeDCAPI',
         'profileTabChanged',
         'update:dcapiSelection'
     ],
-    mounted() {
-        // Emit the initially active tab if available
-        if (this.result && this.result.profiles && this.result.profiles.length > 0) {
-            this.$emit('profileTabChanged', this.result.profiles[0].name)
+    methods: {
+        isDcApiProfile(profile) {
+            return typeof profile?.label === 'string' && profile.label.startsWith('DCAPI: ')
+        },
+        activateProfile(profileName) {
+            this.activeProfileName = profileName
+            this.$emit('profileTabChanged', profileName)
+        },
+        ensureActiveProfile() {
+            const profiles = this.result?.profiles || []
+            if (profiles.length === 0) {
+                this.activeProfileName = null
+                return
+            }
+
+            if (!profiles.some(profile => profile.name === this.activeProfileName)) {
+                this.activateProfile(profiles[0].name)
+            }
         }
+    },
+    watch: {
+        result: {
+            handler() {
+                this.ensureActiveProfile()
+            },
+            deep: true,
+            immediate: true
+        }
+    },
+    mounted() {
+        this.ensureActiveProfile()
     },
     template: `
 <div v-if="result != null && result.profiles != null && changed.changed" class="z-3 position-absolute rounded w-100">
@@ -43,12 +82,23 @@ export default {
      :class="{ 'blur' : changed.changed || error.type === 'GENERIC'}">
 
     <div class="card-header">
-        <ul class="nav nav-tabs card-header-tabs" role="tablist">
-            <li class="nav-item" v-for="(profile, index) in result.profiles">
+        <ul v-if="regularProfiles.length > 0" class="nav nav-tabs card-header-tabs" role="tablist">
+            <li class="nav-item" v-for="profile in regularProfiles">
                 <button class="nav-link" data-bs-toggle="tab"
                         :data-bs-target="'#tab-' + profile.name"
-                        :class="{ 'active' : index == 0}"
-                        @click="$emit('profileTabChanged', profile.name)"
+                        :class="{ 'active' : activeProfileName === profile.name}"
+                        @click="activateProfile(profile.name)"
+                        type="button">
+                    {{ profile.label }}
+                </button>
+            </li>
+        </ul>
+        <ul v-if="dcApiProfiles.length > 0" class="nav nav-tabs card-header-tabs mt-2" role="tablist">
+            <li class="nav-item" v-for="profile in dcApiProfiles">
+                <button class="nav-link" data-bs-toggle="tab"
+                        :data-bs-target="'#tab-' + profile.name"
+                        :class="{ 'active' : activeProfileName === profile.name}"
+                        @click="activateProfile(profile.name)"
                         type="button">
                     {{ profile.label }}
                 </button>
@@ -66,11 +116,11 @@ export default {
         </div>
         <div class="tab-content"
              :class="{ 'blur' : error.type === 'INCOMPATIBLE_PRESENTATION_TYPE' && !changed.changed }">
-            <div v-for="(profile, index) in result.profiles"
+            <div v-for="profile in result.profiles"
                  class="tab-pane"
                  role="tabpanel"
                  :id="'tab-' + profile.name"
-                 :class="{ 'active' : index == 0}">
+                 :class="{ 'active' : activeProfileName === profile.name}">
 
                  <p>Details: {{profile.description}}</p>
                 <div class="options-grid">
