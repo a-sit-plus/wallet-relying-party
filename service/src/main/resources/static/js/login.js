@@ -50,6 +50,7 @@ const createBasicSetup = function (config) {
     })
 
     let resultInterval = null
+    let requestQueriesPromise = null
 
     // --- FUNCTIONS -----------------------------------------------
 
@@ -418,6 +419,8 @@ const createBasicSetup = function (config) {
                 return
             }
 
+            await handleRequestChanged()
+
             const requestJSON = createRequestJSON()
             console.log(`generateQrCode: fetching ${requestJSON}`)
 
@@ -542,18 +545,31 @@ const createBasicSetup = function (config) {
             return
         }
 
-        // refresh credential queries
-        const requestBuilderJson = createRequestBuilderJSON()
-        const newQueries = await buildCredentialQueries(requestBuilderJson)
-        requestedCredentialsChanged.value.oldRequestedCredentialsJSON = requestBuilderJson
-        requestedCredentialsChanged.value.changed = false
+        if (requestQueriesPromise != null) {
+            await requestQueriesPromise
+            return
+        }
 
-        reqSelection.value.presentationDefinition = newQueries["presentationDefinition"]
-        reqSelection.value.presentationDefinitionError = newQueries["presentationDefinitionError"]
-        reqSelection.value.dcqlQuery = newQueries["dcqlQuery"]
-        reqSelection.value.dcqlQueryError = newQueries["dcqlQueryError"]
-        reqSelection.value.deviceRequest = newQueries["deviceRequest"]
-        reqSelection.value.deviceRequestError = newQueries["deviceRequestError"]
+        requestQueriesPromise = (async () => {
+            // refresh credential queries
+            const requestBuilderJson = createRequestBuilderJSON()
+            const newQueries = await buildCredentialQueries(requestBuilderJson)
+            requestedCredentialsChanged.value.oldRequestedCredentialsJSON = requestBuilderJson
+            requestedCredentialsChanged.value.changed = false
+
+            reqSelection.value.presentationDefinition = newQueries["presentationDefinition"]
+            reqSelection.value.presentationDefinitionError = newQueries["presentationDefinitionError"]
+            reqSelection.value.dcqlQuery = newQueries["dcqlQuery"]
+            reqSelection.value.dcqlQueryError = newQueries["dcqlQueryError"]
+            reqSelection.value.deviceRequest = newQueries["deviceRequest"]
+            reqSelection.value.deviceRequestError = newQueries["deviceRequestError"]
+        })()
+
+        try {
+            await requestQueriesPromise
+        } finally {
+            requestQueriesPromise = null
+        }
     }
 
     watch([selections, activeProfile], async () => {
