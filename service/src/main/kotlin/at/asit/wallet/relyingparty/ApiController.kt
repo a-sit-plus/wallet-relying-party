@@ -1,6 +1,5 @@
 package at.asit.wallet.relyingparty
 
-import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dcapi.DigitalCredentialInterface
 import at.asitplus.dcapi.IsoMdocResponse
@@ -17,7 +16,6 @@ import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult.*
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
-import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base64.Base64
@@ -162,9 +160,7 @@ class ApiController(
                 .also { Napier.w("${Paths.Transaction.GetUrl}/$id returns NOT_FOUND") }
 
         catching {
-            if (transaction.profile.supportedOptions.none { it.isDevice }) {
-                throw IllegalStateException("Profile does not support QR or same-device flow")
-            }
+            check(transaction.profile.supportedOptions.any { it.isDevice }) { "Profile does not device flow" }
 
             val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
             val body = transaction.transactionGet(responseUrl)
@@ -193,9 +189,7 @@ class ApiController(
                 .also { Napier.w("/transaction/get/dcapi/$id returns NOT_FOUND") }
 
         catching {
-            if (transaction.profile.supportedOptions.none { it.isDcApi }) {
-                throw IllegalStateException("Profile does not support DC API flow")
-            }
+            check(transaction.profile.supportedOptions.any { it.isDcApi }) { "Profile does not support DC API flow" }
             val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
             val body = transaction.transactionGetDcApi(responseUrl, dcApiSignedOid4vp)
                 .also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
@@ -235,11 +229,11 @@ class ApiController(
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
                 .also { Napier.w("${Paths.Transaction.ResultUrl}/$id returns NOT_FOUND") }
         val user = catching {
-            val parsedResponse =
-                catching { vckJsonSerializer.decodeFromString<DigitalCredentialInterface>(requestBody) }.getOrNull()
+            val parsedResponse = catching {
+                vckJsonSerializer.decodeFromString<DigitalCredentialInterface>(requestBody)
+            }.getOrNull()
             if (parsedResponse.isMdocResponse(transaction)) {
-                val verifier = transaction.profile.iso180137Verifier
-                    ?: throw IllegalStateException("Missing verifier")
+                val verifier = checkNotNull(transaction.profile.iso180137Verifier) { "Missing verifier" }
                 verifier.validateResponse(
                     receivedData = (parsedResponse as IsoMdocResponse).data,
                     externalId = id,
@@ -254,21 +248,19 @@ class ApiController(
                 } else {
                     check(parsedResponse is OpenId4VpResponseUnsigned) { "Expected unsigned response" }
                 }
-                val verifier = transaction.profile.oid4vpVerifier
-                    ?: throw IllegalStateException("Missing verifier")
+                val verifier = checkNotNull(transaction.profile.oid4vpVerifier) { "Missing verifier" }
                 verifier.validateAuthnResponse(
                     input = parsedResponse as OpenId4VpResponse,
                     externalId = id
                 ).convertToUser()
             } else if (transaction.profile.supportedOptions.any { it.isDevice }) {
-                val verifier = transaction.profile.oid4vpVerifier
-                    ?: throw IllegalStateException("Missing verifier")
+                val verifier = checkNotNull(transaction.profile.oid4vpVerifier) { "Missing verifier" }
                 verifier.validateAuthnResponse(
                     input = requestBody,
                     externalId = id
                 ).convertToUser()
             } else {
-                throw IllegalStateException("Unsupported response")
+                error("Unsupported response: $parsedResponse")
             }
         }.getOrElse {
             Napier.w("${Paths.Transaction.ResultUrl}/$id extracted got error", it)
@@ -313,24 +305,6 @@ class ApiController(
                 CredentialPresentationRequest.DCQLRequest(it)
             },
             deviceRequest = request.deviceRequest,
-        )
-    }
-
-    private fun buildTransactionUrl(
-        request: CredentialPresentationRequest,
-        transactionId: String,
-        profile: Profile,
-    ) = configuration.publicContext.appendPath("${Paths.Transaction.GetUrl}/$transactionId").also {
-        transactions[transactionId] = Transaction(
-            id = transactionId,
-            profile = profile,
-            presentationMechanism = when (request) {
-                is CredentialPresentationRequest.DCQLRequest -> PresentationMechanismEnum.DCQL
-                is CredentialPresentationRequest.PresentationExchangeRequest -> PresentationMechanismEnum.PresentationExchange
-            },
-            presentationExchangeRequest = request as? CredentialPresentationRequest.PresentationExchangeRequest,
-            dcqlRequest = request as? CredentialPresentationRequest.DCQLRequest,
-            deviceRequest = null,
         )
     }
 

@@ -2,7 +2,6 @@ package at.asit.wallet.relyingparty
 
 
 import at.asit.wallet.relyingparty.ApiController.Transaction
-import at.asitplus.KmmResult
 import at.asitplus.dcapi.request.IsoMdocRequest
 import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
 import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest
@@ -14,7 +13,11 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsSigned
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.Validator
+import at.asitplus.wallet.lib.agent.ValidatorMdoc
+import at.asitplus.wallet.lib.agent.ValidatorSdJwt
+import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
@@ -92,7 +95,7 @@ class VerifierProfiles(
 
         object : Profile {
             override val name = "HAIPd05"
-            override val label = "HAIP (d05)"
+            override val label = "OpenID4VP: HAIP (d05)"
             override val description = "x509_hash, OpenID4VP 1.0, direct_post.jwt"
             override val urlPrefix = Paths.Schemes.HaipVp
             override val clientIdScheme = runBlocking { x509Hash() }
@@ -116,7 +119,7 @@ class VerifierProfiles(
             override suspend fun transactionGet(
                 transactionId: String,
                 responseUrl: String,
-                presentationRequest: CredentialPresentationRequest?
+                presentationRequest: CredentialPresentationRequest?,
             ): String = directPostJwt(
                 transactionId = transactionId,
                 responseUrl = responseUrl,
@@ -129,7 +132,7 @@ class VerifierProfiles(
                 responseUrl: String,
                 dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
                 deviceRequest: DeviceRequest?,
-                dcApiSignedOid4vp: Boolean
+                dcApiSignedOid4vp: Boolean,
             ): String {
                 dcApiSignedOid4vpRequired = dcApiSignedOid4vp
                 val openId4VpRequest = buildOpenId4VpDcApiRequest(
@@ -149,8 +152,8 @@ class VerifierProfiles(
 
         object : Profile {
             override val name = "UOID4VP"
-            override val label = "Unencrypted OpenID4VP"
-            override val description = "OpenID4VP 1.0, direct_post"
+            override val label = "DCAPI: Unencrypted OpenID4VP"
+            override val description = "DCAPI, OpenID4VP 1.0, direct_post"
             override val urlPrefix = ""
             override val clientIdScheme = runBlocking { x509Hash() }
             override val oid4vpVerifier = OpenId4VpVerifier(
@@ -174,7 +177,7 @@ class VerifierProfiles(
                 responseUrl: String,
                 dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
                 deviceRequest: DeviceRequest?,
-                dcApiSignedOid4vp: Boolean
+                dcApiSignedOid4vp: Boolean,
             ): String {
                 dcApiSignedOid4vpRequired = dcApiSignedOid4vp
                 val openId4VpRequest = buildOpenId4VpDcApiRequest(
@@ -194,7 +197,7 @@ class VerifierProfiles(
 
         object : Profile {
             override val name = "MDOCd23"
-            override val label = "ISO 18013-7 (d23)"
+            override val label = "OpenID4VP: ISO 18013-7 (d23)"
             override val description = "x509_san_dns, OpenID4VP d23, direct_post.jwt"
             override val urlPrefix = Paths.Schemes.MdocOpenId4Vp
             override val clientIdScheme = runBlocking { x509SanDnsD23() }
@@ -229,7 +232,7 @@ class VerifierProfiles(
 
         object : Profile {
             override val name = "MDOCISO"
-            override val label = "ISO 18013-7 (ISO)"
+            override val label = "DCAPI: ISO 18013-7 (Annex C)"
             override val description = "ISO 18013-7 Annex C"
             override val urlPrefix = ""
             override val clientIdScheme = null
@@ -246,7 +249,7 @@ class VerifierProfiles(
                 responseUrl: String,
                 dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
                 deviceRequest: DeviceRequest?,
-                dcApiSignedOid4vp: Boolean
+                dcApiSignedOid4vp: Boolean,
             ): String {
                 val request = dcApiIsoMdoc(
                     deviceRequest = deviceRequest ?: throw IllegalStateException("Device request is not available"),
@@ -261,7 +264,7 @@ class VerifierProfiles(
 
         object : Profile {
             override val name = "EUDIW"
-            override val label = "EUDIW Ref."
+            override val label = "OpenID4VP: EUDIW Ref."
             override val description = "x509_san_dns, OpenID4VP d23, direct_post.jwt"
             override val urlPrefix = Paths.Schemes.OpenId4Vp
             override val clientIdScheme = runBlocking { x509SanDnsD23() }
@@ -295,7 +298,7 @@ class VerifierProfiles(
         },
         object : Profile {
             override val name = "DC_API_COMBINED"
-            override val label = "Unencrypted OpenID4VP + ISO 18013-7"
+            override val label = "DCAPI: Unencrypted OpenID4VP + ISO 18013-7"
             override val description = "Unencrypted OpenID4VP (signed/unsigned) and ISO 18013-7 Annex-C via DC API"
             override val urlPrefix = ""
             override val clientIdScheme = runBlocking { x509SanDnsD23() }
@@ -321,7 +324,7 @@ class VerifierProfiles(
                 responseUrl: String,
                 dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
                 deviceRequest: DeviceRequest?,
-                dcApiSignedOid4vp: Boolean
+                dcApiSignedOid4vp: Boolean,
             ): String {
                 dcApiSignedOid4vpRequired = dcApiSignedOid4vp
                 val openId4VpRequest = buildOpenId4VpDcApiRequest(
@@ -349,7 +352,7 @@ class VerifierProfiles(
 
         object : Profile {
             override val name = "DC_API_COMBINED_ENCRYPTED"
-            override val label = "Encrypted OpenID4VP + ISO 18013-7"
+            override val label = "DCAPI: Encrypted OpenID4VP + ISO 18013-7"
             override val description = "Encrypted OpenID4VP (signed/unsigned) and ISO 18013-7 Annex-C via DC API"
             override val urlPrefix = ""
             override val clientIdScheme = runBlocking { x509SanDnsD23() }
@@ -374,7 +377,7 @@ class VerifierProfiles(
                 responseUrl: String,
                 dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
                 deviceRequest: DeviceRequest?,
-                dcApiSignedOid4vp: Boolean
+                dcApiSignedOid4vp: Boolean,
             ): String {
                 dcApiSignedOid4vpRequired = dcApiSignedOid4vp
                 val openId4VpRequest = buildOpenId4VpDcApiRequest(
@@ -502,12 +505,7 @@ class VerifierProfiles(
         verifier: Iso180137AnnexCVerifier,
         id: String,
     ): IsoMdocRequest = try {
-        verifier.createRequest(
-            Iso180137AnnexCRequestOptions(
-                deviceRequest = deviceRequest,
-                state = id
-            )
-        )
+        verifier.createRequest(Iso180137AnnexCRequestOptions(deviceRequest, id))
     } catch (e: UnsupportedOperationException) {
         throw ClientFacingException(e.message, e.cause)
     }
