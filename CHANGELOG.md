@@ -2,6 +2,7 @@
 
 Version 5.12.0 (unreleased):
  - Update to VC-K 5.12.0
+ - Treat all attributes selected by the user as required
  - DC API:
     - Support verification of DC API responses
     - Support combined requests
