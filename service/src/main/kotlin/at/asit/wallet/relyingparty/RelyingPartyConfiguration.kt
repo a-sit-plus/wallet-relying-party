@@ -23,7 +23,7 @@ import org.springframework.core.io.ResourceLoader
 import org.springframework.util.StreamUtils
 import java.io.StringReader
 import java.net.URI
-import java.nio.charset.Charset
+import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 import java.security.PublicKey
 import java.security.Security
@@ -117,7 +117,7 @@ class RelyingPartyConfiguration {
     }
 
     private fun loadResource(resourceLoader: ResourceLoader, path: String) =
-        StreamUtils.copyToString(resourceLoader.getResource(path).inputStream, Charset.defaultCharset())
+        StreamUtils.copyToString(resourceLoader.getResource(path).inputStream, StandardCharsets.UTF_8)
 
     private fun loadCertificate(resourceLoader: ResourceLoader, src: URI) =
         JcaX509CertificateConverter().apply { setProvider("BC") }.getCertificate(

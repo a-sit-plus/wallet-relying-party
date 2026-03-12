@@ -1,6 +1,7 @@
 package at.asit.wallet.relyingparty
 
 import at.asitplus.catching
+import at.asitplus.dcapi.DCAPIResponse
 import at.asitplus.dcapi.DigitalCredentialInterface
 import at.asitplus.dcapi.IsoMdocResponse
 import at.asitplus.dcapi.OpenId4VpResponse

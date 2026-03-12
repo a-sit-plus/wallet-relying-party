@@ -1,5 +1,9 @@
 app:
   public-context: http://localhost:8080/
+  wrp:
+    certificates:
+      wrpac:
+        password: test-only-password
 spring:
   cloud:
     config:

@@ -85,22 +85,20 @@
             </li>
         </ul>
         <div class="bg-white border rounded py-3">
-            <request-details-comp-rich
-                :request="reqSelection" :config="config" :active-profile="activeProfile" :active-profile-name="activeProfileName"
-                :cert-options="certOptions" :cert-previews="certPreviews" :show-certificates="true"
-                @update-scheme-type="updateSchemeType"
-                @update-representation="updateRepresentation"
-                @update-presentation-mechanism-identifier="updatePresentationMechanismIdentifier"
-                @update-include-wrpac="updateIncludeWrpac"
-                @update-include-wrprc="updateIncludeWrprc"
-                @update-attribute="updateAttribute"
-                @add-credential="addCredential"
-                @remove-credential="removeCredential"
-                @update-presentation-definition="updatePresentationDefinition"
-                @update-dcql-query="updateDcqlQuery"
-                @update-device-request="updateDeviceRequest"
-                @generate-qr-code="generateQrCode"
-            ></request-details-comp-rich>
+            <request-details-comp
+                    :request="reqSelection" :config="config" :active-profile="activeProfile"
+                    :active-profile-name="activeProfileName"
+                    :cert-previews="certPreviews" :show-certificates="true"
+                    @update-scheme-type="updateSchemeType"
+                    @update-representation="updateRepresentation"
+                    @update-presentation-mechanism-identifier="updatePresentationMechanismIdentifier"
+                    @update-include-wrpac="updateIncludeWrpac"
+                    @update-include-wrprc="updateIncludeWrprc"
+                    @update-attribute="updateAttribute"
+                    @add-credential="addCredential"
+                    @remove-credential="removeCredential"
+                    @generate-qr-code="generateQrCode"
+            ></request-details-comp>
         </div>
     </div>
 

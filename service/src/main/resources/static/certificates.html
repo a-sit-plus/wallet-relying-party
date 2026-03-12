@@ -25,25 +25,17 @@
         <a class="btn btn-outline-primary btn-sm" href="/custom.html">Back to Custom Request</a>
     </div>
     <h2 class="mb-3">Certificates</h2>
-    <div id="statusAlert" class="alert alert-info d-none"></div>
-    <div id="errorAlert" class="alert alert-danger d-none"></div>
     <div class="card mb-4">
         <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h5 class="card-title mb-0">Certificates</h5>
-                <button id="refreshPreview" class="btn btn-outline-secondary btn-sm">Refresh</button>
-            </div>
-            <div class="small mb-1">WRP Access Certificate Status: <strong id="wrpacStatusValue">not available</strong>
-            </div>
-            <div class="small mb-2">WRP Registration Certificate Status: <strong id="wrprcStatusValue">not
-                available</strong></div>
+            <h5 class="card-title mb-3">Certificates</h5>
+            <p id="loadError" class="small text-danger d-none mb-3">Could not load certificate previews.</p>
             <div class="mb-2">
-                <label class="form-label small mb-1">WRPAC</label>
+                <label class="form-label small mb-1">WRPAC <span class="text-muted">(x509 chain)</span></label>
                 <textarea id="wrpacPreview" class="form-control form-control-sm" rows="5" readonly
                           placeholder="No WRPAC loaded yet"></textarea>
             </div>
             <div class="mb-2">
-                <label class="form-label small mb-1">WRPRC</label>
+                <label class="form-label small mb-1">WRPRC <span class="text-muted">(JWS)</span></label>
                 <textarea id="wrprcPreview" class="form-control form-control-sm" rows="5" readonly
                           placeholder="No WRPRC loaded yet"></textarea>
             </div>
@@ -52,57 +44,11 @@
 
     <div class="card">
         <div class="card-body">
-            <button class="btn btn-outline-secondary btn-sm mb-3" type="button" data-bs-toggle="collapse"
-                    data-bs-target="#uploadSection" aria-expanded="false" aria-controls="uploadSection">
-                Upload / Reset Certificates for Testing
-            </button>
-            <div id="uploadSection" class="collapse">
-                <div class="row g-4">
-                    <div class="col-lg-6">
-                        <div class="border rounded p-3 h-100">
-                            <h6 class="mb-2">WRPAC (x509_hash)</h6>
-                            <p class="small text-muted mb-3">Requires PEM chain and PKCS12 keystore.</p>
-                            <form id="wrpacForm">
-                                <div class="mb-3">
-                                    <label class="form-label">Certificate Chain (PEM)</label>
-                                    <textarea id="chainPem" class="form-control" rows="6" required></textarea>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">PKCS12 Keystore (.p12/.pfx)</label>
-                                    <input id="keyStore" type="file" class="form-control"
-                                           accept=".p12,.pfx,application/x-pkcs12" required>
-                                </div>
-                                <div class="mb-3">
-                                    <label class="form-label">Thumbprint (optional)</label>
-                                    <input id="thumbprint" type="text" class="form-control">
-                                </div>
-                                <div class="d-flex gap-2">
-                                    <button type="submit" class="btn btn-primary">Save WRPAC</button>
-                                    <button type="button" id="deleteWrpac" class="btn btn-outline-danger">Reset WRPAC
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                    <div class="col-lg-6">
-                        <div class="border rounded p-3 h-100">
-                            <h6 class="mb-2">WRPRC (registration_cert)</h6>
-                            <p class="small text-muted mb-3">Paste the signed WRPRC JWS payload (used as verifier_info format <code>registration_cert</code>).</p>
-                            <form id="wrprcForm">
-                                <div class="mb-3">
-                                    <label class="form-label">WRPRC JWS (registration_cert payload)</label>
-                                    <textarea id="wrprcJws" class="form-control" rows="10" required></textarea>
-                                </div>
-                                <div class="d-flex gap-2">
-                                    <button type="submit" class="btn btn-primary">Save WRPRC</button>
-                                    <button type="button" id="deleteWrprc" class="btn btn-outline-danger">Reset WRPRC
-                                    </button>
-                                </div>
-                            </form>
-                        </div>
-                    </div>
-                </div>
-            </div>
+            <h6 class="mb-2">Configured certificate files</h6>
+            <p class="small text-muted mb-0">
+                Certificates are loaded from the configured classpath resources and can be selected from
+                <code>/custom.html</code>.
+            </p>
         </div>
     </div>
 </div>
@@ -114,139 +60,24 @@
 <script>
     const api = {
         previews: "api/wrp/certs",
-        availability: "api/wrp/availability",
-        wrpac: "api/wrp/wrpac",
-        wrprc: "api/wrp/wrprc",
     };
-
-    const statusAlert = document.getElementById("statusAlert");
-    const errorAlert = document.getElementById("errorAlert");
-
-    function showStatus(message) {
-        statusAlert.textContent = message;
-        statusAlert.classList.remove("d-none");
-        errorAlert.classList.add("d-none");
-    }
-
-    function showError(message) {
-        errorAlert.textContent = message;
-        errorAlert.classList.remove("d-none");
-        statusAlert.classList.add("d-none");
-    }
-
-    function clearAlerts() {
-        statusAlert.classList.add("d-none");
-        errorAlert.classList.add("d-none");
-    }
+    const loadError = document.getElementById("loadError");
 
     async function refreshData() {
-        const [availabilityResp, previewsResp] = await Promise.all([
-            fetch(api.availability),
-            fetch(api.previews),
-        ]);
-
-        if (!availabilityResp.ok || !previewsResp.ok) {
+        const previewsResp = await fetch(api.previews);
+        if (!previewsResp.ok) {
             throw new Error("Could not load certificate state");
         }
 
-        const availability = await availabilityResp.json();
         const previews = await previewsResp.json();
-
         const wrpac = previews.find(item => item.id === "wrpac");
         const wrprc = previews.find(item => item.id === "wrprc");
-        document.getElementById("wrpacStatusValue").textContent =
-            (availability.hasWrpac || wrpac) ? "available" : "not available";
-        document.getElementById("wrprcStatusValue").textContent =
-            (availability.hasWrprc || wrprc) ? "available" : "not available";
         document.getElementById("wrpacPreview").value = wrpac ? wrpac.content : "";
         document.getElementById("wrprcPreview").value = wrprc ? wrprc.content : "";
+        loadError.classList.add("d-none");
     }
 
-    document.getElementById("wrpacForm").addEventListener("submit", async (event) => {
-        event.preventDefault();
-        clearAlerts();
-        try {
-            const keyStoreFile = document.getElementById("keyStore").files[0];
-            if (!keyStoreFile) {
-                throw new Error("Please choose a PKCS12 keystore file.");
-            }
-            const formData = new FormData();
-            formData.append("chainPem", document.getElementById("chainPem").value);
-            formData.append("keyStore", keyStoreFile);
-            formData.append("thumbprint", document.getElementById("thumbprint").value || "");
-
-            const response = await fetch(api.wrpac, {
-                method: "POST",
-                body: formData,
-            });
-            if (!response.ok) {
-                throw new Error(await response.text());
-            }
-            showStatus("WRPAC saved.");
-            await refreshData();
-        } catch (error) {
-            showError(`Saving WRPAC failed: ${error.message || error}`);
-        }
-    });
-
-    document.getElementById("wrprcForm").addEventListener("submit", async (event) => {
-        event.preventDefault();
-        clearAlerts();
-        try {
-            const response = await fetch(api.wrprc, {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({jws: document.getElementById("wrprcJws").value}),
-            });
-            if (!response.ok) {
-                throw new Error(await response.text());
-            }
-            showStatus("WRPRC saved.");
-            await refreshData();
-        } catch (error) {
-            showError(`Saving WRPRC failed: ${error.message || error}`);
-        }
-    });
-
-    document.getElementById("deleteWrpac").addEventListener("click", async () => {
-        clearAlerts();
-        try {
-            const response = await fetch(api.wrpac, {method: "DELETE"});
-            if (!response.ok) {
-                throw new Error(await response.text());
-            }
-            showStatus("WRPAC reset.");
-            await refreshData();
-        } catch (error) {
-            showError(`Reset WRPAC failed: ${error.message || error}`);
-        }
-    });
-
-    document.getElementById("deleteWrprc").addEventListener("click", async () => {
-        clearAlerts();
-        try {
-            const response = await fetch(api.wrprc, {method: "DELETE"});
-            if (!response.ok) {
-                throw new Error(await response.text());
-            }
-            showStatus("WRPRC reset.");
-            await refreshData();
-        } catch (error) {
-            showError(`Reset WRPRC failed: ${error.message || error}`);
-        }
-    });
-
-    document.getElementById("refreshPreview").addEventListener("click", async () => {
-        clearAlerts();
-        try {
-            await refreshData();
-            showStatus("Refreshed certificate state.");
-        } catch (error) {
-            showError(`Refresh failed: ${error.message || error}`);
-        }
-    });
-
-    refreshData().catch(error => showError(`Loading certificates failed: ${error.message || error}`));
+    refreshData().catch(() => loadError.classList.remove("d-none"));
 </script>
 </body>
 </html>

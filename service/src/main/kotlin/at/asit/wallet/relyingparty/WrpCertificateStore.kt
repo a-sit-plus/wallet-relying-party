@@ -4,64 +4,14 @@ import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.KeyStoreMaterial
-import kotlinx.serialization.Serializable
-import kotlinx.serialization.json.Json
-import org.springframework.beans.factory.annotation.Value
+import org.springframework.core.io.ResourceLoader
 import org.springframework.stereotype.Component
+import org.springframework.util.StreamUtils
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
-import java.nio.file.Files
-import java.nio.file.Path
-import java.nio.file.Paths
 import java.security.KeyStore
 import java.security.cert.CertificateFactory
 import java.security.cert.X509Certificate as JcaX509Certificate
-
-@Serializable
-data class WrpRegistrationData(
-    val displayName: String = "A-SIT EUDI Relying Party",
-    val tradeName: String = "A-SIT EUDI Relying Party",
-    val country: String = "AT",
-    val isPsb: Boolean = false,
-    val isIntermediary: Boolean = false,
-    val supportUri: String = "http://localhost:8080/",
-    val privacyPolicyUri: String = "http://localhost:8080/privacy",
-    val entitlement: List<String> = listOf("urn:eudi:entitlement:age-verification"),
-    val providerType: Int = 5,
-    val supervisoryAuthorityIdentifierType: String = "NATIONAL",
-    val supervisoryAuthorityIdentifier: String = "",
-)
-
-@Serializable
-data class ServiceCredentialSelection(
-    val credentialType: String,
-    val format: String,
-    val claims: List<String> = emptyList(),
-)
-
-@Serializable
-data class ServiceRegistrationData(
-    val serviceName: String = "Terminal Service Point",
-    val serviceUri: String = "http://localhost:8080/custom.html",
-    val purpose: String = "Age verification 18+",
-    val credentials: List<ServiceCredentialSelection> = listOf(
-        ServiceCredentialSelection(
-            credentialType = "AgeVerification",
-            format = "vc+sd-jwt",
-            claims = listOf("/age_over_18")
-        )
-    )
-)
-
-@Serializable
-data class WrpStoredState(
-    val wrpIdentifier: String? = null,
-    val requestStatus: String? = null,
-    val serviceUri: String? = null,
-    val wrpacThumbprint: String? = null,
-    val wrpRegistration: WrpRegistrationData = WrpRegistrationData(),
-    val serviceRegistration: ServiceRegistrationData = ServiceRegistrationData(),
-)
 
 data class WrpCertificatePreview(
     val id: String,
@@ -70,133 +20,37 @@ data class WrpCertificatePreview(
     val content: String,
 )
 
-data class WrpCertificateOption(
-    val id: String,
-    val label: String,
-    val scheme: String,
-)
-
 @Component
 class WrpCertificateStore(
-    @Value("\${app.wrp.storage-dir}") storageDir: String,
+    private val configuration: AppConfigurationProperties,
+    private val resourceLoader: ResourceLoader,
 ) {
-    private val json = Json { prettyPrint = true }
-    private val storagePath: Path = Paths.get(storageDir)
-    private val statePath = storagePath.resolve("state.json")
-    private val wrpacChainPath = storagePath.resolve("wrpac-chain.pem")
-    private val wrpacKeyStorePath = storagePath.resolve("wrpac.p12")
-    private val wrprcPath = storagePath.resolve("wrprc.jws")
+    private val configuredWrpac = configuration.wrp.certificates.wrpac?.takeIf { it.chain != null && it.keyStore != null }
+    private val configuredWrprc = configuration.wrp.certificates.wrprc?.takeIf { it.jws != null }
+    private val wrpacPassword = configuration.wrp.certificates.wrpac?.password?.takeIf { it.isNotBlank() }
 
-    init {
-        if (!Files.exists(storagePath)) {
-            Files.createDirectories(storagePath)
-        }
-    }
+    fun loadWrpacPem(): String? = configuredWrpac?.chain?.let { loadResourceAsString(it) }
 
-    fun loadState(): WrpStoredState =
-        if (Files.exists(statePath)) {
-            json.decodeFromString(WrpStoredState.serializer(), Files.readString(statePath))
-        } else {
-            WrpStoredState()
-        }
+    fun loadWrprcJws(): String? = configuredWrprc?.jws?.let { loadResourceAsString(it) }
 
-    fun saveState(state: WrpStoredState) {
-        Files.writeString(statePath, json.encodeToString(state), StandardCharsets.UTF_8)
-    }
+    fun hasWrpac(): Boolean = hasWrpacChain() && hasWrpacKeyMaterial()
 
-    fun saveRegistrationState(
-        wrpIdentifier: String? = null,
-        serviceUri: String? = null,
-        requestStatus: String? = null,
-        wrpRegistration: WrpRegistrationData? = null,
-        serviceRegistration: ServiceRegistrationData? = null
-    ) {
-        val current = loadState()
-        val normalizedWrp = wrpIdentifier?.trim()?.takeIf { it.isNotEmpty() } ?: current.wrpIdentifier
-        val normalizedService = serviceUri?.trim()?.takeIf { it.isNotEmpty() } ?: current.serviceUri
-        val derivedStatus = when {
-            normalizedWrp.isNullOrBlank() -> "unregistered"
-            normalizedService.isNullOrBlank() -> "wrp_registered"
-            else -> "service_registered"
-        }
-        val status = requestStatus?.trim()?.ifBlank { null } ?: derivedStatus
-        saveState(
-            current.copy(
-                wrpIdentifier = normalizedWrp,
-                serviceUri = normalizedService,
-                requestStatus = status,
-                wrpRegistration = wrpRegistration ?: current.wrpRegistration,
-                serviceRegistration = serviceRegistration ?: current.serviceRegistration
-            )
-        )
-    }
+    fun hasWrpacChain(): Boolean = configuredWrpac?.chain?.let { resourceExists(it) } == true
 
-    fun clearRegistrationState() {
-        val current = loadState()
-        saveState(
-            current.copy(
-                wrpIdentifier = null,
-                serviceUri = null,
-                requestStatus = "unregistered",
-            )
-        )
-    }
+    fun hasWrpacKeyMaterial(): Boolean = configuredWrpac?.keyStore?.let { resourceExists(it) } == true && wrpacPassword != null
 
-    fun saveWrpac(chainPem: String, keyStoreBytes: ByteArray, thumbprint: String) {
-        Files.writeString(wrpacChainPath, chainPem, StandardCharsets.UTF_8)
-        Files.write(wrpacKeyStorePath, keyStoreBytes)
-        val current = loadState()
-        saveState(current.copy(wrpacThumbprint = thumbprint))
-    }
-
-    fun saveWrpacChainOnly(chainPem: String, thumbprint: String = "") {
-        Files.writeString(wrpacChainPath, chainPem, StandardCharsets.UTF_8)
-        val current = loadState()
-        saveState(current.copy(wrpacThumbprint = thumbprint.ifBlank { current.wrpacThumbprint }))
-    }
-
-    fun saveWrprc(jws: String) {
-        Files.writeString(wrprcPath, jws, StandardCharsets.UTF_8)
-    }
-
-    fun deleteWrpac() {
-        Files.deleteIfExists(wrpacChainPath)
-        Files.deleteIfExists(wrpacKeyStorePath)
-        val current = loadState()
-        if (current.wrpacThumbprint != null) {
-            saveState(current.copy(wrpacThumbprint = null))
-        }
-    }
-
-    fun deleteWrprc() {
-        Files.deleteIfExists(wrprcPath)
-    }
-
-    fun loadWrpacPem(): String? =
-        if (Files.exists(wrpacChainPath)) Files.readString(wrpacChainPath) else null
-
-    fun loadWrprcJws(): String? =
-        if (Files.exists(wrprcPath)) Files.readString(wrprcPath) else null
-
-    fun hasWrpac(): Boolean = Files.exists(wrpacChainPath) && Files.exists(wrpacKeyStorePath)
-
-    fun hasWrpacChain(): Boolean = Files.exists(wrpacChainPath)
-
-    fun hasWrpacKeyMaterial(): Boolean = Files.exists(wrpacKeyStorePath)
-
-    fun hasWrprc(): Boolean = Files.exists(wrprcPath)
+    fun hasWrprc(): Boolean = configuredWrprc?.jws?.let { resourceExists(it) } == true
 
     fun loadWrpacKeyMaterial(): KeyMaterial? {
-        if (!Files.exists(wrpacKeyStorePath)) {
-            return null
-        }
+        val password = wrpacPassword ?: return null
+        val keyStoreBytes = configuredWrpac?.keyStore?.let { loadResourceAsBytes(it) } ?: return null
         val keyStore = KeyStore.getInstance("PKCS12").apply {
-            load(Files.newInputStream(wrpacKeyStorePath), WRPAC_PASSWORD.toCharArray())
+            load(ByteArrayInputStream(keyStoreBytes), password.toCharArray())
         }
         return KeyStoreMaterial(
             keyStore = keyStore,
             keyAlias = WRPAC_ALIAS,
-            privateKeyPassword = WRPAC_PASSWORD.toCharArray(),
+            privateKeyPassword = password.toCharArray(),
             certAlias = WRPAC_ALIAS,
         )
     }
@@ -204,19 +58,11 @@ class WrpCertificateStore(
     fun loadWrpacChain(): CertificateChain? {
         val pem = loadWrpacPem() ?: return null
         val certificates = parsePemCertificates(pem)
-        if (certificates.isEmpty()) {
-            return null
-        }
-        // Transport chains must exclude trust anchors; filter self-signed roots from persisted demo data.
-        val transportCertificates = certificates.filterNot {
-            it.subjectX500Principal == it.issuerX500Principal
-        }.ifEmpty { certificates }
-
-        val signumCerts = transportCertificates.mapNotNull { X509Certificate.decodeFromByteArray(it.encoded) }
-        if (signumCerts.isEmpty()) {
-            return null
-        }
-        return signumCerts
+        if (certificates.isEmpty()) return null
+        val decodedTransportCertificates =
+            certificates.mapNotNull { X509Certificate.decodeFromByteArray(it.encoded) }
+        if (decodedTransportCertificates.isEmpty()) return null
+        return decodedTransportCertificates
     }
 
     fun certificatePreviews(): List<WrpCertificatePreview> {
@@ -224,7 +70,7 @@ class WrpCertificateStore(
         loadWrpacPem()?.let {
             previews += WrpCertificatePreview(
                 id = CERT_ID_WRPAC,
-                label = "WRPAC",
+                label = configuredWrpac?.let { "WRPAC (configured)" } ?: "WRPAC",
                 type = "x509-chain",
                 content = it.trim(),
             )
@@ -232,37 +78,12 @@ class WrpCertificateStore(
         loadWrprcJws()?.let {
             previews += WrpCertificatePreview(
                 id = CERT_ID_WRPRC,
-                label = "WRPRC",
+                label = configuredWrprc?.let { "WRPRC (configured)" } ?: "WRPRC",
                 type = "jws",
                 content = it.trim(),
             )
         }
         return previews
-    }
-
-    fun certificateOptions(): List<WrpCertificateOption> {
-        val options = mutableListOf(
-            WrpCertificateOption(
-                id = CERT_ID_VERIFIER,
-                label = "Default verifier",
-                scheme = "x509_hash (WRPAC mode)",
-            )
-        )
-        if (hasWrpac()) {
-            options += WrpCertificateOption(
-                id = CERT_ID_WRPAC,
-                label = "WRPAC (x509_hash / x5c)",
-                scheme = "x509_hash / x5c",
-            )
-        }
-        if (hasWrprc()) {
-            options += WrpCertificateOption(
-                id = CERT_ID_WRPRC,
-                label = "WRPRC (registration_cert)",
-                scheme = "registration_cert",
-            )
-        }
-        return options
     }
 
     private fun parsePemCertificates(pem: String): List<JcaX509Certificate> {
@@ -276,12 +97,17 @@ class WrpCertificateStore(
             }
     }
 
+    private fun loadResourceAsString(uri: java.net.URI): String =
+        StreamUtils.copyToString(resourceLoader.getResource(uri.toString()).inputStream, StandardCharsets.UTF_8)
+
+    private fun loadResourceAsBytes(uri: java.net.URI): ByteArray =
+        resourceLoader.getResource(uri.toString()).inputStream.use { it.readBytes() }
+
+    private fun resourceExists(uri: java.net.URI): Boolean = resourceLoader.getResource(uri.toString()).exists()
+
     companion object {
-        const val CERT_ID_VERIFIER = "verifier"
         const val CERT_ID_WRPAC = "wrpac"
         const val CERT_ID_WRPRC = "wrprc"
         private const val WRPAC_ALIAS = "wrpac"
-        private const val WRPAC_PASSWORD = "changeit"
     }
 }
-

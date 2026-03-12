@@ -2,8 +2,6 @@ export default {
     props: {
         request: {},
         config: {},
-        registrationState: { default: null },
-        certOptions: { default: null },
         certPreviews: { default: null },
         showCertificates: { default: false },
         singleColumn: { default: false },
@@ -29,11 +27,10 @@ export default {
 <div class="row pt-2" v-if="showCertificates">
     <legend class="">
         Verifier Certificates
+        <a class="btn btn-light" href="/certificates.html">
+            <i class="bi-eye"></i>
+        </a>
     </legend>
-    <div class="d-flex flex-wrap gap-2 mb-2">
-        <a class="btn btn-outline-primary btn-sm" href="/registration.html">Open Registration Menu</a>
-        <a class="btn btn-outline-secondary btn-sm" href="/certificates.html">Open Certificates</a>
-    </div>
     <div :class="singleColumn ? '' : 'col-lg-7 overflow-hidden'">
         <fieldset class="row mb-3">
             <legend class="col-form-label col-sm-4 pt-0 fw-bold">Add Certificates to Request</legend>
@@ -42,42 +39,28 @@ export default {
                     <input class="form-check-input"
                            type="checkbox"
                            name="includeWrpac"
-                           :disabled="!((certPreviews && certPreviews.some(item => item && item.id === 'wrpac')) || (certOptions && certOptions.some(item => item && item.id === 'wrpac')) || (registrationState && registrationState.hasWrpac))"
+                           :disabled="!(certPreviews && certPreviews.some(item => item && item.id === 'wrpac'))"
                            :checked="request.includeWrpac"
                            @click="$emit('updateIncludeWrpac', !request.includeWrpac)">
                     <label class="form-check-label">
                         WRP Access Certificate (WRPAC) - <span class="text-primary">x509_hash / x5c</span>
-                        <span v-if="!((certPreviews && certPreviews.some(item => item && item.id === 'wrpac')) || (certOptions && certOptions.some(item => item && item.id === 'wrpac')) || (registrationState && registrationState.hasWrpac))" class="text-muted">(not available)</span>
+                        <span v-if="!(certPreviews && certPreviews.some(item => item && item.id === 'wrpac'))" class="text-muted">(not available)</span>
                     </label>
                 </div>
                 <div class="form-check">
                     <input class="form-check-input"
                            type="checkbox"
                            name="includeWrprc"
-                           :disabled="!((certPreviews && certPreviews.some(item => item && item.id === 'wrprc')) || (certOptions && certOptions.some(item => item && item.id === 'wrprc')) || (registrationState && registrationState.hasWrprc))"
+                           :disabled="!(certPreviews && certPreviews.some(item => item && item.id === 'wrprc'))"
                            :checked="request.includeWrprc"
                            @click="$emit('updateIncludeWrprc', !request.includeWrprc)">
                     <label class="form-check-label">
-                        WRP Registration Certificate (WRPRC) - <span class="text-primary">verifier_info / registration_cert</span>
-                        <span v-if="!((certPreviews && certPreviews.some(item => item && item.id === 'wrprc')) || (certOptions && certOptions.some(item => item && item.id === 'wrprc')) || (registrationState && registrationState.hasWrprc))" class="text-muted">(not available)</span>
+                        WRP Registration Certificate (WRPRC) - <span class="text-primary text-nowrap">verifier_info / registration_cert</span>
+                        <span v-if="!(certPreviews && certPreviews.some(item => item && item.id === 'wrprc'))" class="text-muted">(not available)</span>
                     </label>
                 </div>
             </div>
         </fieldset>
-    </div>
-</div>
-<div class="row border-top pt-2" v-if="showCertificates && certPreviews && certPreviews.length">
-    <legend class="">
-        Certificate Preview
-    </legend>
-    <div :class="singleColumn ? '' : 'col-lg-7 overflow-hidden'">
-        <div v-for="item in certPreviews"
-             v-if="item && ((item.id === 'wrpac' && request.includeWrpac) || (item.id === 'wrprc' && request.includeWrprc))"
-             :key="item.id"
-             class="mb-3">
-            <div class="fw-bold mb-1">{{ item.label }} <span class="text-muted">({{ item.type }})</span></div>
-            <textarea class="form-control" rows="5" readonly>{{ item.content }}</textarea>
-        </div>
     </div>
 </div>
 
