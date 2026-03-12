@@ -41,7 +41,7 @@ data class TransactionRequestCredential(
             RequestOptionsCredential(
                 credentialScheme = scheme,
                 representation = representation,
-                requestedOptionalAttributes = scheme.optionalAttributes(representation),
+                requestedOptionalAttributes = null,
                 requestedAttributes = scheme.requestedAttributes(representation),
             )
         }
@@ -53,19 +53,12 @@ data class TransactionRequestCredential(
             ?: AttributeIndex.resolveIsoDoctype(it)
     } ?: EuPidScheme
 
-    // if the credential is not selectively disclosable, do not request any attributes
-    private fun CredentialScheme.optionalAttributes(
-        representation: CredentialRepresentation,
-    ): Set<String>? =
-        if (!isSd() && representation == CredentialRepresentation.SD_JWT) null
-        else attributes?.ifEmpty { null }?.toSet()
-
     // if the credential is not selectively disclosable, request all attributes
     private fun CredentialScheme.requestedAttributes(
         representation: CredentialRepresentation,
     ): Set<String>? =
         if (!isSd() && representation == CredentialRepresentation.SD_JWT) mandatoryAttributes()
-        else null
+        else attributes?.ifEmpty { null }?.toSet()
 
     private fun CredentialScheme.mandatoryAttributes(): Set<String>? = when (this) {
         is EhicScheme -> with(EhicScheme.Attributes) {
