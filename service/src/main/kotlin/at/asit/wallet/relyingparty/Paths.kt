@@ -2,7 +2,7 @@ package at.asit.wallet.relyingparty
 
 /** These URLs are also defined in static Javascript files! */
 object Paths {
-    const val CustomerSuccessUrl = "customer-success.html"
+    const val CustomerSuccessUrl = "/customer-success.html"
     const val LogsUrl = "/logs"
 
     object Api {
