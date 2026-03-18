@@ -1,0 +1,9 @@
+.git
+.gitignore
+.gradle
+.idea
+.kotlin
+.vscode
+**/build
+out
+metrics
