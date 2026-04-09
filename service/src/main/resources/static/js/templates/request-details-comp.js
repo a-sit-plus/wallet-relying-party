@@ -15,12 +15,96 @@ export default {
         'updateRepresentation',
         'updatePresentationMechanismIdentifier',
         'updateIncludeWrpac',
-        'updateIncludeWrprc',
+        'updateSelectedWrprc',
         'updateAttribute',
         'addCredential',
         'removeCredential',
         'generateQrCode'
     ],
+    computed: {
+        normalizedCertPreviews() {
+            return Array.isArray(this.certPreviews) ? this.certPreviews.filter(item => item && typeof item === 'object') : []
+        },
+        wrpacPreviews() {
+            return this.normalizedCertPreviews.filter(item => item.category === 'wrpac')
+        },
+        wrprcPreviews() {
+            return this.normalizedCertPreviews
+                .filter(item => item.category === 'wrprc')
+                .map(item => ({
+                    ...item,
+                    summary: this.wrprcSummary(item)
+                }))
+        }
+    },
+    methods: {
+        wrprcSummary(item) {
+            const payload = this.parseJwsPayload(item?.content)
+            if (!payload || typeof payload !== 'object') {
+                return null
+            }
+
+            const credentials = Array.isArray(payload.credentials) ? payload.credentials : []
+            const claims = credentials.flatMap(credential => {
+                const entries = Array.isArray(credential.claim) ? credential.claim : []
+                return entries
+                    .map(entry => Array.isArray(entry.path) ? entry.path.join(" / ") : null)
+                    .filter(Boolean)
+            })
+
+            const purposes = Array.isArray(payload.purpose)
+                ? payload.purpose
+                    .map(entry => entry?.value)
+                    .filter(value => typeof value === 'string' && value.trim().length > 0)
+                : []
+
+            return {
+                service: this.firstLocalizedValue(payload.srv_description),
+                credentials: credentials
+                    .map(credential => {
+                        const format = credential?.format || null
+                        const doctype = credential?.meta?.doctype_value || null
+                        const vct = Array.isArray(credential?.meta?.vct_values) ? credential.meta.vct_values.join(", ") : null
+                        return [format, doctype || vct].filter(Boolean).join(" - ")
+                    })
+                    .filter(Boolean),
+                claims,
+                purposes
+            }
+        },
+        parseJwsPayload(compactJws) {
+            if (typeof compactJws !== 'string') return null
+            const parts = compactJws.split('.')
+            if (parts.length < 2) return null
+            try {
+                const normalized = parts[1]
+                    .replace(/-/g, '+')
+                    .replace(/_/g, '/')
+                const padded = normalized + '='.repeat((4 - normalized.length % 4) % 4)
+                const decoded = atob(padded)
+                const bytes = Uint8Array.from(decoded, char => char.charCodeAt(0))
+                return JSON.parse(new TextDecoder().decode(bytes))
+            } catch (error) {
+                console.warn('Failed to parse WRPRC payload', error)
+                return null
+            }
+        },
+        firstLocalizedValue(value) {
+            if (!Array.isArray(value)) return null
+            for (const group of value) {
+                if (!Array.isArray(group)) continue
+                for (const entry of group) {
+                    if (typeof entry?.value === 'string' && entry.value.trim().length > 0) {
+                        return entry.value
+                    }
+                    if (typeof entry?.content === 'string' && entry.content.trim().length > 0) {
+                        return entry.content
+                    }
+                }
+            }
+            return null
+        }
+    },
     template: `
 
 
@@ -39,25 +123,56 @@ export default {
                     <input class="form-check-input"
                            type="checkbox"
                            name="includeWrpac"
-                           :disabled="!(certPreviews && certPreviews.some(item => item && item.id === 'wrpac'))"
+                           :disabled="wrpacPreviews.length === 0"
                            :checked="request.includeWrpac"
                            @click="$emit('updateIncludeWrpac', !request.includeWrpac)">
                     <label class="form-check-label">
                         WRP Access Certificate (WRPAC) - <span class="text-primary">x509_hash / x5c</span>
-                        <span v-if="!(certPreviews && certPreviews.some(item => item && item.id === 'wrpac'))" class="text-muted">(not available)</span>
+                        <span v-if="wrpacPreviews.length === 0" class="text-muted">(not available)</span>
                     </label>
                 </div>
-                <div class="form-check">
-                    <input class="form-check-input"
-                           type="checkbox"
-                           name="includeWrprc"
-                           :disabled="!(certPreviews && certPreviews.some(item => item && item.id === 'wrprc'))"
-                           :checked="request.includeWrprc"
-                           @click="$emit('updateIncludeWrprc', !request.includeWrprc)">
-                    <label class="form-check-label">
+                <div class="mt-3">
+                    <label class="form-label mb-1">
                         WRP Registration Certificate (WRPRC) - <span class="text-primary text-nowrap">verifier_info / registration_cert</span>
-                        <span v-if="!(certPreviews && certPreviews.some(item => item && item.id === 'wrprc'))" class="text-muted">(not available)</span>
                     </label>
+                    <div v-if="wrprcPreviews.length === 0" class="text-muted small">(not available)</div>
+                    <div v-else class="form-check">
+                        <input class="form-check-input"
+                               type="radio"
+                               name="selectedWrprcId"
+                               :checked="!request.selectedWrprcId"
+                               @click="$emit('updateSelectedWrprc', null)">
+                        <label class="form-check-label">
+                            Do not include WRPRC
+                        </label>
+                    </div>
+                    <div v-for="item in wrprcPreviews"
+                         :key="item.id"
+                         class="form-check mb-2">
+                        <input class="form-check-input"
+                               type="radio"
+                               name="selectedWrprcId"
+                               :value="item.id"
+                               :checked="request.selectedWrprcId === item.id"
+                               @click="$emit('updateSelectedWrprc', item.id)">
+                        <label class="form-check-label">
+                            {{ item.label }}
+                        </label>
+                        <div v-if="item.summary" class="small text-muted mt-1 ms-4">
+                            <div v-if="item.summary.service">
+                                Service: {{ item.summary.service }}
+                            </div>
+                            <div v-if="item.summary.credentials.length > 0">
+                                Credentials: {{ item.summary.credentials.join("; ") }}
+                            </div>
+                            <div v-if="item.summary.claims.length > 0">
+                                Claims: {{ item.summary.claims.join(", ") }}
+                            </div>
+                            <div v-if="item.summary.purposes.length > 0">
+                                Purpose: {{ item.summary.purposes[0] }}
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </fieldset>

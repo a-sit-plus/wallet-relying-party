@@ -16,6 +16,7 @@ import java.security.cert.X509Certificate as JcaX509Certificate
 data class WrpCertificatePreview(
     val id: String,
     val label: String,
+    val category: String,
     val type: String,
     val content: String,
 )
@@ -26,12 +27,12 @@ class WrpCertificateStore(
     private val resourceLoader: ResourceLoader,
 ) {
     private val configuredWrpac = configuration.wrp.certificates.wrpac?.takeIf { it.chain != null && it.keyStore != null }
-    private val configuredWrprc = configuration.wrp.certificates.wrprc?.takeIf { it.jws != null }
+    private val configuredWrprc = configuration.wrp.certificates.wrprc.filterValues { it.jws != null }
     private val wrpacPassword = configuration.wrp.certificates.wrpac?.password?.takeIf { it.isNotBlank() }
 
     fun loadWrpacPem(): String? = configuredWrpac?.chain?.let { loadResourceAsString(it) }
 
-    fun loadWrprcJws(): String? = configuredWrprc?.jws?.let { loadResourceAsString(it) }
+    fun loadWrprcJws(id: String): String? = configuredWrprc[id]?.jws?.let { loadResourceAsString(it) }
 
     fun hasWrpac(): Boolean = hasWrpacChain() && hasWrpacKeyMaterial()
 
@@ -39,7 +40,7 @@ class WrpCertificateStore(
 
     fun hasWrpacKeyMaterial(): Boolean = configuredWrpac?.keyStore?.let { resourceExists(it) } == true && wrpacPassword != null
 
-    fun hasWrprc(): Boolean = configuredWrprc?.jws?.let { resourceExists(it) } == true
+    fun hasWrprc(): Boolean = configuredWrprc.any { (_, config) -> config.jws?.let(::resourceExists) == true }
 
     fun loadWrpacKeyMaterial(): KeyMaterial? {
         val password = wrpacPassword ?: return null
@@ -70,18 +71,22 @@ class WrpCertificateStore(
         loadWrpacPem()?.let {
             previews += WrpCertificatePreview(
                 id = CERT_ID_WRPAC,
-                label = configuredWrpac?.let { "WRPAC (configured)" } ?: "WRPAC",
+                label = configuredWrpac?.label ?: "WRPAC",
+                category = CERT_ID_WRPAC,
                 type = "x509-chain",
                 content = it.trim(),
             )
         }
-        loadWrprcJws()?.let {
-            previews += WrpCertificatePreview(
-                id = CERT_ID_WRPRC,
-                label = configuredWrprc?.let { "WRPRC (configured)" } ?: "WRPRC",
-                type = "jws",
-                content = it.trim(),
-            )
+        configuredWrprc.toSortedMap().forEach { (id, config) ->
+            loadWrprcJws(id)?.let {
+                previews += WrpCertificatePreview(
+                    id = id,
+                    label = config.label ?: id,
+                    category = CERT_ID_WRPRC,
+                    type = "jws",
+                    content = it.trim(),
+                )
+            }
         }
         return previews
     }

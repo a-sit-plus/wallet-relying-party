@@ -12,9 +12,20 @@ app:
   wrp:
     certificates:
       wrpac:
+        label: ${APP_WRPAC_LABEL:WRPAC}
         chain: ${APP_WRPAC_CHAIN_URI:classpath:demo-wrp/wrpac-chain.pem}
         key-store: ${APP_WRPAC_KEYSTORE_URI:classpath:demo-wrp/wrpac.p12}
         password: ${APP_WRPAC_PASSWORD}
-        thumbprint: ${APP_WRPAC_THUMBPRINT:WHI9hu2h23_tLG9E7d4e3JAlpyoi--fgWhUleVqPLqY}
       wrprc:
-        jws: ${APP_WRPRC_JWS_URI:classpath:demo-wrp/wrprc.jws}
+        entwicklung:
+          label: ${APP_WRPRC_ENTWICKLUNG_LABEL:Entwicklungsübersicht}
+          jws: ${APP_WRPRC_ENTWICKLUNG_JWS_URI:classpath:demo-wrp/wrprc-entwicklung.jws}
+        alterspruefung:
+          label: ${APP_WRPRC_ALTERSPRUEFUNG_LABEL:Altersprüfung 18+}
+          jws: ${APP_WRPRC_ALTERSPRUEFUNG_JWS_URI:classpath:demo-wrp/wrprc-alterspruefung.jws}
+        identitaetsprofil:
+          label: ${APP_WRPRC_IDENTITAETSPROFIL_LABEL:Identitätsprofil}
+          jws: ${APP_WRPRC_IDENTITAETSPROFIL_JWS_URI:classpath:demo-wrp/wrprc-identitaetsprofil.jws}
+        adressuebersicht:
+          label: ${APP_WRPRC_ADRESSUEBERSICHT_LABEL:Adressübersicht}
+          jws: ${APP_WRPRC_ADRESSUEBERSICHT_JWS_URI:classpath:demo-wrp/wrprc-adressuebersicht.jws}

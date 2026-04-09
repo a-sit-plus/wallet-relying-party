@@ -579,12 +579,13 @@ class VerifierProfiles(
     private suspend fun x509SanDnsD23(redirectUri: String = configuration.publicContext.toString()): ClientIdScheme.CertificateSanDns = ClientIdScheme.CertificateSanDns(
     fun buildVerifierInfo(
         requestOptionsCredentials: Set<RequestOptionsCredential>,
-        includeWrprc: Boolean,
+        selectedWrprcId: String?,
     ): List<VerifierInfo>? {
-        if (!includeWrprc) return null
+        val effectiveWrprcId = selectedWrprcId?.takeIf { it.isNotBlank() } ?: return null
 
         val credentialIds = requestOptionsCredentials.map { it.id }.toSet()
-        val wrprc = wrpCertificateStore.loadWrprcJws()?.trim()?.takeIf { it.isNotBlank() } ?: return null
+        val wrprc = wrpCertificateStore.loadWrprcJws(effectiveWrprcId)?.trim()?.takeIf { it.isNotBlank() }
+            ?: throw ClientFacingException("Selected WRPRC '$effectiveWrprcId' is not available")
 
         return listOf(
             VerifierInfo(

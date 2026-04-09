@@ -29,16 +29,7 @@
         <div class="card-body">
             <h5 class="card-title mb-3">Certificates</h5>
             <p id="loadError" class="small text-danger d-none mb-3">Could not load certificate previews.</p>
-            <div class="mb-2">
-                <label class="form-label small mb-1">WRPAC <span class="text-muted">(x509 chain)</span></label>
-                <textarea id="wrpacPreview" class="form-control form-control-sm" rows="5" readonly
-                          placeholder="No WRPAC loaded yet"></textarea>
-            </div>
-            <div class="mb-2">
-                <label class="form-label small mb-1">WRPRC <span class="text-muted">(JWS)</span></label>
-                <textarea id="wrprcPreview" class="form-control form-control-sm" rows="5" readonly
-                          placeholder="No WRPRC loaded yet"></textarea>
-            </div>
+            <div id="certificatePreviewList" class="vstack gap-3"></div>
         </div>
     </div>
 
@@ -62,6 +53,31 @@
         previews: "api/wrp/certs",
     };
     const loadError = document.getElementById("loadError");
+    const certificatePreviewList = document.getElementById("certificatePreviewList");
+
+    function escapeHtml(value) {
+        return String(value)
+            .replaceAll("&", "&amp;")
+            .replaceAll("<", "&lt;")
+            .replaceAll(">", "&gt;");
+    }
+
+    function renderGroup(title, previews, placeholder) {
+        const items = previews.length > 0
+            ? previews.map(item => `
+                <div class="mb-2">
+                    <label class="form-label small mb-1">${escapeHtml(item.label)} <span class="text-muted">(${escapeHtml(item.type)})</span></label>
+                    <textarea class="form-control form-control-sm" rows="5" readonly>${escapeHtml(item.content)}</textarea>
+                </div>
+            `).join("")
+            : `<p class="small text-muted mb-0">${escapeHtml(placeholder)}</p>`;
+        return `
+            <section>
+                <h6 class="mb-2">${escapeHtml(title)}</h6>
+                ${items}
+            </section>
+        `;
+    }
 
     async function refreshData() {
         const previewsResp = await fetch(api.previews);
@@ -70,10 +86,11 @@
         }
 
         const previews = await previewsResp.json();
-        const wrpac = previews.find(item => item.id === "wrpac");
-        const wrprc = previews.find(item => item.id === "wrprc");
-        document.getElementById("wrpacPreview").value = wrpac ? wrpac.content : "";
-        document.getElementById("wrprcPreview").value = wrprc ? wrprc.content : "";
+        const wrpac = previews.filter(item => item.category === "wrpac");
+        const wrprc = previews.filter(item => item.category === "wrprc");
+        certificatePreviewList.innerHTML =
+            renderGroup("WRPAC", wrpac, "No WRPAC loaded yet") +
+            renderGroup("WRPRC", wrprc, "No WRPRC loaded yet");
         loadError.classList.add("d-none");
     }
 

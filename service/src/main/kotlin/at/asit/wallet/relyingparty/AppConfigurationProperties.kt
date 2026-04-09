@@ -55,16 +55,17 @@ data class WrpConfiguration(
 
 data class WrpCertificateConfiguration(
     val wrpac: WrpacConfiguration? = null,
-    val wrprc: WrprcConfiguration? = null,
+    val wrprc: Map<String, WrprcConfiguration> = emptyMap(),
 )
 
 data class WrpacConfiguration(
+    val label: String? = null,
     val chain: URI? = null,
     val keyStore: URI? = null,
     val password: String? = null,
-    val thumbprint: String? = null,
 )
 
 data class WrprcConfiguration(
+    val label: String? = null,
     val jws: URI? = null,
 )

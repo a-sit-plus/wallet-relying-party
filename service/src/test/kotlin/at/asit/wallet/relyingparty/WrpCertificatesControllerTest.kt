@@ -26,12 +26,14 @@ class WrpCertificatesControllerTest {
                 WrpCertificatePreview(
                     id = "wrpac",
                     label = "WRPAC",
+                    category = "wrpac",
                     type = "x509-chain",
                     content = "chain",
                 ),
                 WrpCertificatePreview(
-                    id = "wrprc",
-                    label = "WRPRC",
+                    id = "identity",
+                    label = "Identitätsprofil",
+                    category = "wrprc",
                     type = "jws",
                     content = "token",
                 )
@@ -42,8 +44,10 @@ class WrpCertificatesControllerTest {
             .andExpect {
                 status { isOk() }
                 jsonPath("$[0].id") { value("wrpac") }
+                jsonPath("$[0].category") { value("wrpac") }
                 jsonPath("$[0].type") { value("x509-chain") }
-                jsonPath("$[1].id") { value("wrprc") }
+                jsonPath("$[1].id") { value("identity") }
+                jsonPath("$[1].category") { value("wrprc") }
                 jsonPath("$[1].type") { value("jws") }
             }
     }

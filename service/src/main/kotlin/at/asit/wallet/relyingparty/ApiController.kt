@@ -187,7 +187,7 @@ class ApiController(
             val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
             val verifierInfo = profiles.buildVerifierInfo(
                 requestOptionsCredentials = transaction.request.toCredentials(),
-                includeWrprc = transaction.request.includeWrprc,
+                selectedWrprcId = transaction.request.selectedWrprcId,
             )
             val body = transaction.transactionGet(responseUrl, verifierInfo)
                 .also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
@@ -219,7 +219,7 @@ class ApiController(
             val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
             val verifierInfo = profiles.buildVerifierInfo(
                 requestOptionsCredentials = transaction.request.toCredentials(),
-                includeWrprc = transaction.request.includeWrprc,
+                selectedWrprcId = transaction.request.selectedWrprcId,
             )
             val body = transaction.transactionGetDcApi(responseUrl, dcApiSignedOid4vp, verifierInfo)
                 .also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }

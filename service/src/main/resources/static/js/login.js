@@ -32,7 +32,7 @@ const createBasicSetup = function (config) {
         deviceRequest: null,
         deviceRequestError: null,
         includeWrpac: false,
-        includeWrprc: false,
+        selectedWrprcId: null,
     })
     const selections = ref({})
     const credentialRequestOptions = ref({})
@@ -229,7 +229,7 @@ const createBasicSetup = function (config) {
             profileName: profile.name,
             presentationMechanismIdentifier: "dcql_query",
             includeWrpac: reqSelection.value.includeWrpac || false,
-            includeWrprc: reqSelection.value.includeWrprc || false,
+            selectedWrprcId: reqSelection.value.selectedWrprcId || null,
         }
         console.log('updateProfile result', reqSelection.value)
 
@@ -257,10 +257,10 @@ const createBasicSetup = function (config) {
         handleRequestChanged()
     }
 
-    async function updateIncludeWrprc(includeWrprc) {
-        console.log('updateIncludeWrprc', includeWrprc)
-        reqSelection.value.includeWrprc = includeWrprc
-        handleRequestChanged()
+    async function updateSelectedWrprc(selectedWrprcId) {
+        console.log('updateSelectedWrprc', selectedWrprcId)
+        reqSelection.value.selectedWrprcId = selectedWrprcId
+        compareRequestChanged()
     }
 
     async function updateRepresentation(credential, representation) {
@@ -328,7 +328,6 @@ const createBasicSetup = function (config) {
                 errors.push("Credential Type not set")
             } else if (!allowedSchemeTypes.includes(schemeType.value)) {
                 errors.push("Credential Type invalid")
-            }
 
             // check representation type
             const representation = credential.representation
@@ -359,7 +358,7 @@ const createBasicSetup = function (config) {
             dcqlQuery: dcqlQuery,
             deviceRequest: deviceRequest,
             includeWrpac: reqSelection.value.includeWrpac,
-            includeWrprc: reqSelection.value.includeWrprc,
+            selectedWrprcId: reqSelection.value.selectedWrprcId,
         }
 
         return JSON.stringify(request)
@@ -647,13 +646,17 @@ const createBasicSetup = function (config) {
     }
 
     function syncCertificateSelection() {
-        const hasWrpac = certPreviews.value.some(item => item.id === "wrpac")
-        const hasWrprc = certPreviews.value.some(item => item.id === "wrprc")
+        const hasWrpac = certPreviews.value.some(item => item.category === "wrpac")
+        const wrprcIds = new Set(
+            certPreviews.value
+                .filter(item => item.category === "wrprc")
+                .map(item => item.id)
+        )
         if (!hasWrpac && reqSelection.value.includeWrpac) {
             reqSelection.value.includeWrpac = false
         }
-        if (!hasWrprc && reqSelection.value.includeWrprc) {
-            reqSelection.value.includeWrprc = false
+        if (reqSelection.value.selectedWrprcId && !wrprcIds.has(reqSelection.value.selectedWrprcId)) {
+            reqSelection.value.selectedWrprcId = null
         }
     }
     // --- RETURNS -------------------------------------------------
@@ -673,7 +676,7 @@ const createBasicSetup = function (config) {
         updateRepresentation,
         updatePresentationMechanismIdentifier,
         updateIncludeWrpac,
-        updateIncludeWrprc,
+        updateSelectedWrprc,
         addCredential,
         removeCredential,
         updatePresentationDefinition,
