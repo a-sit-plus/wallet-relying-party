@@ -1,5 +1,6 @@
 package at.asit.wallet.relyingparty
 
+import at.asitplus.openid.IdToken
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonElement
@@ -13,6 +14,9 @@ data class ApiItem(
     val lastname: String,
     val imageDataBase64: String?,
     val timestamp: Long,
+    val idToken: IdToken?,
+    val idTokenError: String?,
+    val presentationError: String?,
     val credentials: Collection<ApiItemCredential>,
 )
 

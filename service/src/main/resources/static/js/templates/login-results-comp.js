@@ -16,6 +16,9 @@ export default {
             delete deepCopy.expiredTime
             delete deepCopy.imageDataBase64
             delete deepCopy.showDetails
+            delete deepCopy.idToken
+            delete deepCopy.idTokenError
+            delete deepCopy.presentationError
             return deepCopy
         }
 
@@ -36,6 +39,14 @@ export default {
 
       <div v-for="item in loginList" :key="item.id" class="col-md-6">
           <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm bg-white">
+              <div v-if="item.idTokenError != null">
+                  <h4>Id token error</h4>
+                  <p><span class="row alert alert-danger" role="alert">{{ item.idTokenError }}</span></p>
+              </div>
+              <div v-if="item.presentationError != null">
+                  <h4>Presentation error</h4>
+                  <p><span class="row alert alert-danger" role="alert"> {{ item.presentationError }}</span></p>
+              </div>
               <div v-if="isSet(item.imageDataBase64)" class="col-lg-4 text-bg-dark" style="text-align: center">
                   <img style="max-height: 400px;max-width: 100%" :src="item.imageDataBase64"/>
               </div>

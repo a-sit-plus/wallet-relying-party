@@ -13,8 +13,6 @@ import at.asitplus.signum.indispensable.asn1.encodeToPEM
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.openid.AuthnResponseResult
-import at.asitplus.wallet.lib.openid.AuthnResponseResult.*
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import io.github.aakira.napier.Napier
@@ -36,7 +34,12 @@ import org.springframework.http.MediaType.APPLICATION_JSON_VALUE
 import org.springframework.http.ResponseEntity
 import org.springframework.security.core.AuthenticatedPrincipal
 import org.springframework.stereotype.Controller
-import org.springframework.web.bind.annotation.*
+import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
+import org.springframework.web.bind.annotation.PostMapping
+import org.springframework.web.bind.annotation.RequestBody
+import org.springframework.web.bind.annotation.RequestParam
+import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import qrcode.QRCode
@@ -341,18 +344,6 @@ class ApiController(
             ciphertext = ciphertext,
             aad = ByteArray(0),
         )
-    }
-
-    private fun AuthnResponseResult.convertToUser(): User = when (this) {
-        is VerifiableDCQLPresentationValidationResults -> this.toUser()
-        is Success -> this.toUser()
-        is SuccessSdJwt -> this.toUser()
-        is SuccessIso -> this.toUser()
-        is VerifiablePresentationValidationResults -> this.toUser()
-        is Error -> throw RuntimeException(this.reason, this.cause)
-        is ValidationError -> throw RuntimeException("Failed: ${this.field}", this.cause)
-        is IdToken -> throw RuntimeException("Only got id_token")
-        is SuccessUnsigned -> this.toUser()
     }
 }
 
