@@ -40,12 +40,16 @@ export default {
       <div v-for="item in loginList" :key="item.id" class="col-md-6">
           <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm bg-white">
               <div v-if="item.idTokenError != null">
-                  <h4>Id token error</h4>
-                  <p><span class="row alert alert-danger" role="alert">{{ item.idTokenError }}</span></p>
+                  <p><span class="row alert alert-danger" role="alert">
+                    <h4>Id token error</h4>
+                    <span> {{ item.idTokenError }}</span>
+                  </span></p>
               </div>
               <div v-if="item.presentationError != null">
+                <p><span class="row alert alert-danger" role="alert">
                   <h4>Presentation error</h4>
-                  <p><span class="row alert alert-danger" role="alert"> {{ item.presentationError }}</span></p>
+                  <span> {{ item.presentationError }}</span>
+                </span></p>
               </div>
               <div v-if="isSet(item.imageDataBase64)" class="col-lg-4 text-bg-dark" style="text-align: center">
                   <img style="max-height: 400px;max-width: 100%" :src="item.imageDataBase64"/>
