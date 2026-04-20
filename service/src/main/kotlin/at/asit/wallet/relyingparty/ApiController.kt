@@ -58,11 +58,12 @@ class ApiController(
 
     data class Transaction(
         val id: String,
-        val profile: Profile,
+        val profile: PreparedProfile,
         val presentationMechanism: PresentationMechanismEnum,
         val presentationExchangeRequest: CredentialPresentationRequest.PresentationExchangeRequest? = null,
         val dcqlRequest: CredentialPresentationRequest.DCQLRequest? = null,
         val deviceRequest: DeviceRequest? = null,
+        var dcApiSignedOid4vpRequired: Boolean? = null,
     )
 
     @GetMapping(Paths.Api.ItemsUrl)
@@ -121,25 +122,37 @@ class ApiController(
     @ResponseBody
     fun transactionCreate(
         @RequestBody request: TransactionRequest,
-    ): ResponseEntity<TransactionResponse> = run {
+    ): ResponseEntity<TransactionResponse> = runBlocking {
         Napier.i("${Paths.Transaction.CreateUrl} called with $request")
         val profiles = profiles.knownProfiles.map {
             val transactionId = Uuid.random().toString()
-            val transactionUrl = buildTransactionUrl(request, transactionId, it)
-            val dcApiUrl = it.supportedOptions.any { it.isDcApi }.takeIf { it }
-                ?.let { configuration.publicContext.appendPath("${Paths.Transaction.GetDcApiUrl}/$transactionId") }
-            val qrCodeUrl = it.buildQrCodeUrl(transactionUrl)
+            val transactionContext = buildTransactionContext(transactionId, it.supportedOptions)
+            val preparedProfile = it.prepare(transactionContext)
+            val transaction = Transaction(
+                id = transactionId,
+                profile = preparedProfile,
+                presentationMechanism = request.presentationMechanism,
+                presentationExchangeRequest = request.presentationDefinition?.let {
+                    CredentialPresentationRequest.PresentationExchangeRequest(it)
+                },
+                dcqlRequest = request.dcqlQuery?.let {
+                    CredentialPresentationRequest.DCQLRequest(it)
+                },
+                deviceRequest = request.deviceRequest,
+            )
+            transactions[transactionId] = transaction
+            val qrCodeUrl = preparedProfile.buildWalletUrl(transaction, transactionContext)
             val qrCodeBytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
             TransactionProfile(
                 id = transactionId,
-                name = it.name,
-                description = it.description,
-                label = it.label,
-                prefix = it.urlPrefix,
+                name = preparedProfile.name,
+                description = preparedProfile.description,
+                label = preparedProfile.label,
+                prefix = preparedProfile.urlPrefix,
                 png = qrCodeBytes.toDataUrl(),
                 url = qrCodeUrl,
-                dcApiUrl = dcApiUrl,
-                supportedOptions = it.supportedOptions
+                dcApiUrl = transactionContext.dcApiUrl,
+                supportedOptions = preparedProfile.supportedOptions
             )
         }
         val response = TransactionResponse(profiles)
@@ -244,7 +257,7 @@ class ApiController(
                     expectedOrigin = configuration.publicContext.toString()
                 ).getOrThrow().toUser()
             } else if (parsedResponse.isOpenId4VpResponse(transaction)) {
-                val dcApiSignedOid4vpRequired = transaction.profile.dcApiSignedOid4vpRequired
+                val dcApiSignedOid4vpRequired = transaction.dcApiSignedOid4vpRequired
                 require(dcApiSignedOid4vpRequired != null)
                 if (dcApiSignedOid4vpRequired) {
                     check(parsedResponse is OpenId4VpResponseSigned) { "Expected signed response" }
@@ -292,24 +305,17 @@ class ApiController(
     ): Boolean = transaction.profile.supportedOptions.contains(SupportedOptions.OID4VP_DC_API) &&
             (this is OpenId4VpResponseSigned || this is OpenId4VpResponseUnsigned)
 
-    private fun buildTransactionUrl(
-        request: TransactionRequest,
+    private fun buildTransactionContext(
         transactionId: String,
-        profile: Profile,
-    ) = configuration.publicContext.appendPath("${Paths.Transaction.GetUrl}/$transactionId").also {
-        transactions[transactionId] = Transaction(
-            id = transactionId,
-            profile = profile,
-            presentationMechanism = request.presentationMechanism,
-            presentationExchangeRequest = request.presentationDefinition?.let {
-                CredentialPresentationRequest.PresentationExchangeRequest(it)
-            },
-            dcqlRequest = request.dcqlQuery?.let {
-                CredentialPresentationRequest.DCQLRequest(it)
-            },
-            deviceRequest = request.deviceRequest,
-        )
-    }
+        supportedOptions: Set<SupportedOptions>,
+    ) = TransactionContext(
+        id = transactionId,
+        transactionGetUrl = configuration.publicContext.appendPath("${Paths.Transaction.GetUrl}/$transactionId"),
+        responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transactionId}"),
+        dcApiUrl = supportedOptions.any { it.isDcApi }
+            .takeIf { it }
+            ?.let { configuration.publicContext.appendPath("${Paths.Transaction.GetDcApiUrl}/$transactionId") }
+    )
 
     // TODO replace with signum implementation when available
     private suspend fun decryptHpke(

@@ -19,6 +19,7 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNotNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
@@ -28,6 +29,7 @@ import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import java.net.URLDecoder
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
@@ -60,7 +62,65 @@ class ProcessTest {
         runProcess(PresentationMechanismEnum.DCQL)
     }
 
-    private suspend fun runProcess(presentationMechanism: PresentationMechanismEnum) {
+    @Test
+    fun `AV transaction roundtrip uses transaction scoped redirect uri`() = runTest {
+        val requestBuilder = CredentialPresentationRequestBuilder(
+            listOf(
+                TransactionRequestCredential(
+                    credentialType = AtomicAttribute2023.sdJwtType,
+                    representation = ConstantIndex.CredentialRepresentation.SD_JWT.name,
+                    attributes = listOf(AtomicAttribute2023.CLAIM_GIVEN_NAME),
+                )
+            ).map {
+                it.toRequestOptionsCredential()
+            }
+        )
+        val transactionResult = mockMvc.post("/transaction/create") {
+            content = Json.encodeToString(
+                TransactionRequest(
+                    presentationMechanism = PresentationMechanismEnum.DCQL,
+                    presentationDefinition = requestBuilder.toPresentationExchangeRequest().presentationDefinition,
+                    dcqlQuery = requestBuilder.toDCQLRequest()?.dcqlQuery,
+                    deviceRequest = catching {
+                        requestBuilder.toIso180137AnnexCDeviceRequest()
+                    }.getOrNull(),
+                )
+            )
+            contentType = MediaType.APPLICATION_JSON
+            accept = MediaType.APPLICATION_JSON
+        }.andExpect {
+            status { isOk() }
+        }.andReturn()
+
+        val transactionResponse =
+            Json.decodeFromString<TransactionResponse>(transactionResult.response.contentAsString)
+        val avProfile = transactionResponse.profiles.first { it.name == "AV" }
+        val decodedQrUrl = URLDecoder.decode(avProfile.url, Charsets.UTF_8)
+        assertTrue(decodedQrUrl.startsWith("av://?"))
+        assertTrue(!decodedQrUrl.startsWith("av://localhost"))
+        assertTrue(decodedQrUrl.contains("dcql_query="))
+        assertTrue(decodedQrUrl.contains("response_mode=direct_post"))
+        assertTrue(decodedQrUrl.contains("nonce="))
+        assertTrue(decodedQrUrl.contains("state=${avProfile.id}"))
+        assertTrue(decodedQrUrl.contains("response_uri=http://localhost:8080/transaction/result/${avProfile.id}"))
+        assertTrue(decodedQrUrl.contains("client_id=redirect_uri:http://localhost:8080/transaction/result/${avProfile.id}"))
+        assertTrue(decodedQrUrl.contains("/transaction/result/${avProfile.id}"))
+        assertTrue(!decodedQrUrl.contains("request_uri="))
+
+        val authnRequest = mockMvc.get("/transaction/get/${avProfile.id}") {
+            accept = MediaType.ALL
+        }.andExpect {
+            status { isOk() }
+        }.andReturn().response.contentAsString
+
+        val decodedAuthnRequest = URLDecoder.decode(authnRequest, Charsets.UTF_8)
+        assertTrue(decodedAuthnRequest.contains("/transaction/result/${avProfile.id}"))
+    }
+
+    private suspend fun runProcess(
+        presentationMechanism: PresentationMechanismEnum,
+        profileName: String? = null,
+    ) {
         val givenName = uuid4().toString()
         val requestBuilder = CredentialPresentationRequestBuilder(
             listOf(
@@ -115,8 +175,10 @@ class ProcessTest {
             remoteResourceRetriever = { data ->
                 mockMvc.get(data.url).andReturn().response.contentAsString
             })
-        val firstProfile = transactionResponse.profiles.first()
-        val authenticationResponseResult = wallet.createAuthnResponse(firstProfile.url).getOrThrow()
+        val selectedProfile = profileName?.let { expectedProfileName ->
+            transactionResponse.profiles.first { it.name == expectedProfileName }
+        } ?: transactionResponse.profiles.first()
+        val authenticationResponseResult = wallet.createAuthnResponse(selectedProfile.url).getOrThrow()
 
         authenticationResponseResult as AuthenticationResponseResult.Post
         mockMvc.post(authenticationResponseResult.url) {
@@ -128,7 +190,7 @@ class ProcessTest {
             status { isOk() }
         }
 
-        val user = transactionStore.getApiItem(firstProfile.id)
+        val user = transactionStore.getApiItem(selectedProfile.id)
         assertNotNull(user)
         assertEquals(givenName, user!!.firstname)
     }
