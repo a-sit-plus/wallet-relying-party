@@ -20,7 +20,7 @@ object Paths {
     }
 
     object Schemes {
-        const val Haip = "haip://"
+        const val Av = "av://"
         const val HaipVp = "haip-vp://"
         const val MdocOpenId4Vp = "mdoc-openid4vp://"
         const val OpenId4Vp = "openid4vp://"

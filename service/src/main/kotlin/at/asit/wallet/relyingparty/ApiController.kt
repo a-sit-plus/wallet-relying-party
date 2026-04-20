@@ -251,17 +251,17 @@ class ApiController(
                 } else {
                     check(parsedResponse is OpenId4VpResponseUnsigned) { "Expected unsigned response" }
                 }
-                val verifier = checkNotNull(transaction.profile.oid4vpVerifier) { "Missing verifier" }
-                verifier.validateAuthnResponse(
-                    input = parsedResponse as OpenId4VpResponse,
-                    externalId = id
-                ).convertToUser()
+                checkNotNull(transaction.profile.oid4vpVerifier) { "Missing verifier" }
+                    .validateAuthnResponse(
+                        input = parsedResponse as OpenId4VpResponse,
+                        externalId = id
+                    ).convertToUser()
             } else if (transaction.profile.supportedOptions.any { it.isDevice }) {
-                val verifier = checkNotNull(transaction.profile.oid4vpVerifier) { "Missing verifier" }
-                verifier.validateAuthnResponse(
-                    input = requestBody,
-                    externalId = id
-                ).convertToUser()
+                checkNotNull(transaction.profile.oid4vpVerifier) { "Missing verifier" }
+                    .validateAuthnResponse(
+                        input = requestBody,
+                        externalId = id
+                    ).convertToUser()
             } else {
                 error("Unsupported response: $parsedResponse")
             }

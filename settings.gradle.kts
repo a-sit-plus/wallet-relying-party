@@ -16,22 +16,10 @@ rootProject.name = "Wallet Relying Party"
 include("service")
 
 //If we have a working composite build, use it!
-if (File("../vck/signum").isDirectory && File("../vck/signum/build.gradle.kts").exists()) {
+if (File("../vck").isDirectory && File("../vck/build.gradle.kts").exists()) {
     logger.warn("\u001b[7m\u001b[1mDetected VC-K in ${File("../vck").absolutePath}.")
-    logger.warn("Including VC-K and Signum as composite build.")
+    logger.warn("Including VC-K as composite build.")
     logger.warn("If you do not want this, move the VC-K to another location!\u001b[0m")
-    includeBuild("../vck/signum") {
-        dependencySubstitution {
-            substitute(module("at.asitplus.wallet:indispensable")).using(project(":indispensable"))
-            substitute(module("at.asitplus.wallet:indispensable-jvm")).using(project(":indispensable"))
-            substitute(module("at.asitplus.signum:indispensable-josef")).using(project(":indispensable-josef"))
-            substitute(module("at.asitplus.signum:indispensable-josef-jvm")).using(project(":indispensable-josef"))
-            substitute(module("at.asitplus.signum:indispensable-cosef")).using(project(":indispensable-cosef"))
-            substitute(module("at.asitplus.signum:indispensable-cosef-jvm")).using(project(":indispensable-cosef"))
-            substitute(module("at.asitplus.signum:supreme")).using(project(":supreme"))
-            substitute(module("at.asitplus.signum:supreme-jvm")).using(project(":supreme"))
-        }
-    }
     includeBuild("../vck") {
         dependencySubstitution {
             substitute(module("at.asitplus.wallet:vck")).using(project(":vck"))
