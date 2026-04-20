@@ -105,6 +105,7 @@ class ProcessTest {
         assertTrue(decodedQrUrl.contains("response_uri=http://localhost:8080/transaction/result/${avProfile.id}"))
         assertTrue(decodedQrUrl.contains("client_id=redirect_uri:http://localhost:8080/transaction/result/${avProfile.id}"))
         assertTrue(decodedQrUrl.contains("/transaction/result/${avProfile.id}"))
+        assertTrue(!decodedQrUrl.contains("client_metadata="))
         assertTrue(!decodedQrUrl.contains("request_uri="))
 
         val authnRequest = mockMvc.get("/transaction/get/${avProfile.id}") {

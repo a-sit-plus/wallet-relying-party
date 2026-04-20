@@ -35,6 +35,7 @@ import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
+import at.asitplus.wallet.lib.openid.VerifierMetadataMode
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -616,6 +617,7 @@ class VerifierProfiles(
             responseMode = ResponseMode.DirectPost,
             responseUrl = responseUrl,
             presentationRequest = presentationRequest,
+            verifierMetadataMode = VerifierMetadataMode.OMIT_IF_OUT_OF_BAND,
         ),
         creationOptions = OpenId4VpVerifier.CreationOptions.Query("av://"),
     ).getOrThrow().url.normalizeAvWalletUrl()
