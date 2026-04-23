@@ -1,6 +1,6 @@
 # Changelog
 
-Version 5.12.0 (unreleased):
+Version 5.12.0:
  - Update to VC-K 5.12.0
  - Treat all attributes selected by the user as required
  - DC API:
