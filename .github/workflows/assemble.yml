@@ -25,6 +25,12 @@ jobs:
       - name: Run tests
         run: |
           ./gradlew --continue clean assemble test build
+      - name: Upload JAR
+        uses: actions/upload-artifact@v4
+        with:
+          name: wallet-relying-party-jar
+          path: service/build/libs/*.jar
+          if-no-files-found: error
       - name: Test Report
         uses: dorny/test-reporter@v1
         if: success() || failure()
