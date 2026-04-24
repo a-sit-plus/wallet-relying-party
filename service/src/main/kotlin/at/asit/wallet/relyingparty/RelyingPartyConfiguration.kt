@@ -7,10 +7,12 @@ import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.KeyStoreMaterial
+import io.github.aakira.napier.Napier
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
 import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
+import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.openssl.PEMParser
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import org.springframework.beans.factory.annotation.Autowired
@@ -24,6 +26,7 @@ import java.net.URI
 import java.nio.charset.Charset
 import java.security.KeyStore
 import java.security.PublicKey
+import java.security.Security
 
 
 @Configuration
@@ -35,6 +38,20 @@ class RelyingPartyConfiguration {
 
     @Autowired
     private lateinit var resourceLoader: ResourceLoader
+
+    init {
+        Napier.takeLogarithm()
+        Napier.base(AntilogSlf4jAdapter)
+        Security.addProvider(BouncyCastleProvider())
+        at.asitplus.wallet.taxid.Initializer.initWithVCK()
+        at.asitplus.wallet.eupid.Initializer.initWithVCK()
+        at.asitplus.wallet.eupidsdjwt.Initializer.initWithVCK()
+        at.asitplus.wallet.mdl.Initializer.initWithVCK()
+        at.asitplus.wallet.cor.Initializer.initWithVCK()
+        at.asitplus.wallet.por.Initializer.initWithVCK()
+        at.asitplus.wallet.ehic.Initializer.initWithVCK()
+        at.asitplus.wallet.ageverification.Initializer.initWithVCK()   
+    }
 
     @Bean("verifierKeyMaterial")
     fun verifierKeyMaterial(): KeyMaterial = when (configuration.verifierKey.type) {
