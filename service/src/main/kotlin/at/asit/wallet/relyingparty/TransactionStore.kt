@@ -1,24 +1,29 @@
 package at.asit.wallet.relyingparty
 
-import io.ktor.utils.io.*
-import io.ktor.utils.io.locks.*
 import org.springframework.stereotype.Service
+import org.springframework.scheduling.annotation.Scheduled
+import java.time.Instant
 import java.util.concurrent.locks.ReentrantLock
-import kotlin.time.Clock
-import kotlin.time.Duration.Companion.minutes
-import kotlin.time.Instant
+import kotlin.concurrent.withLock
 
 @Service
-class TransactionStore {
-    private val lifetime = 5.minutes
+class TransactionStore(
+    configuration: AppConfigurationProperties,
+) {
+    private val lifetime = configuration.resultTtl
     private val lock = ReentrantLock()
-    private val entries: MutableList<Entry> = mutableListOf()
+    private val entries: MutableList<ResultEntry> = mutableListOf()
 
-    fun getApiItems(): List<ApiItem> = entries.map { it.apiItem }
+    fun getApiItems(): List<ApiItem> = lock.withLock {
+        removeExpiredEntries()
+        entries.map { it.apiItem }
+    }
 
-    fun getApiItem(id: String): ApiItem? = entries.firstOrNull { it.id == id }?.apiItem
+    fun getApiItem(id: String): ApiItem? = lock.withLock {
+        removeExpiredEntries()
+        entries.firstOrNull { it.id == id }?.apiItem
+    }
 
-    @OptIn(InternalAPI::class)
     fun removeApiItem(id: String): ApiItem? = lock.withLock {
         removeExpiredEntries()
         val entry = entries.firstOrNull { it.id == id }
@@ -28,18 +33,21 @@ class TransactionStore {
         return entry?.apiItem
     }
 
-    @OptIn(InternalAPI::class)
     fun put(id: String, user: User): Boolean? = lock.withLock {
         removeExpiredEntries()
-        user.toApiItem()?.let { entries.add(Entry(id, it, Clock.System.now().plus(lifetime))) }
+        user.toApiItem()?.let { entries.add(ResultEntry(id, it, Instant.now().plus(lifetime))) }
+    }
+
+    @Scheduled(fixedDelay = 60_000)
+    fun removeExpiredEntriesScheduled() = lock.withLock {
+        removeExpiredEntries()
     }
 
     private fun removeExpiredEntries() {
-        entries.removeAll { it.notAfter < Clock.System.now() }
+        val now = Instant.now()
+        entries.removeAll { it.notAfter < now }
     }
 
 }
 
-
-data class Entry(val id: String, val apiItem: ApiItem, val notAfter: Instant)
-
+private data class ResultEntry(val id: String, val apiItem: ApiItem, val notAfter: Instant)

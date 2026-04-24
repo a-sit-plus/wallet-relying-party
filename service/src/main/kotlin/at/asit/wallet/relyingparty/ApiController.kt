@@ -32,6 +32,7 @@ import org.springframework.http.HttpStatus
 import org.springframework.http.MediaType
 import org.springframework.http.MediaType.APPLICATION_JSON_VALUE
 import org.springframework.http.ResponseEntity
+import org.springframework.scheduling.annotation.Scheduled
 import org.springframework.security.core.AuthenticatedPrincipal
 import org.springframework.stereotype.Controller
 import org.springframework.web.bind.annotation.GetMapping
@@ -43,6 +44,9 @@ import org.springframework.web.bind.annotation.ResponseBody
 import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import qrcode.QRCode
+import java.time.Instant
+import java.util.concurrent.locks.ReentrantLock
+import kotlin.concurrent.withLock
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -53,7 +57,8 @@ class ApiController(
     private val profiles: VerifierProfiles,
 ) {
     private val statisticLogger = LoggerFactory.getLogger("statistic")
-    private val transactions: MutableMap<String, Transaction> = HashMap()
+    private val transactionLock = ReentrantLock()
+    private val transactions: MutableMap<String, StoredTransaction> = HashMap()
     private val customerSuccessUrl = configuration.publicContext.appendPath(Paths.CustomerSuccessUrl)
 
     data class Transaction(
@@ -140,7 +145,7 @@ class ApiController(
                 },
                 deviceRequest = request.deviceRequest,
             )
-            transactions[transactionId] = transaction
+            putTransaction(transaction)
             val qrCodeUrl = preparedProfile.buildWalletUrl(transaction, transactionContext)
             val qrCodeBytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
             TransactionProfile(
@@ -171,7 +176,7 @@ class ApiController(
         MDC.put(MDC_REQUEST_ID, id)
         Napier.i("${Paths.Transaction.GetUrl}/$id called")
         statisticLogger.info("$id get (${request.getHeader(HttpHeaders.USER_AGENT)})")
-        val transaction = transactions[id]
+        val transaction = getTransaction(id)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
                 .also { Napier.w("${Paths.Transaction.GetUrl}/$id returns NOT_FOUND") }
 
@@ -200,7 +205,7 @@ class ApiController(
         MDC.put(MDC_REQUEST_ID, id)
         Napier.i("/transaction/get/dcapi/$id called (dcApiSignedOid4vp=$dcApiSignedOid4vp)")
         statisticLogger.info("$id get-dcapi (${request.getHeader(HttpHeaders.USER_AGENT)})")
-        val transaction = transactions[id]
+        val transaction = getTransaction(id)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
                 .also { Napier.w("/transaction/get/dcapi/$id returns NOT_FOUND") }
 
@@ -241,7 +246,7 @@ class ApiController(
     ): ResponseEntity<OpenId4VpSuccess> = runBlocking {
         MDC.put(MDC_REQUEST_ID, id)
         Napier.i("${Paths.Transaction.ResultUrl}/$id called with $requestBody")
-        val transaction = transactions.remove(id)
+        val transaction = removeTransaction(id)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
                 .also { Napier.w("${Paths.Transaction.ResultUrl}/$id returns NOT_FOUND") }
         val user = catching {
@@ -317,6 +322,34 @@ class ApiController(
             ?.let { configuration.publicContext.appendPath("${Paths.Transaction.GetDcApiUrl}/$transactionId") }
     )
 
+    private fun putTransaction(transaction: Transaction) = transactionLock.withLock {
+        removeExpiredTransactions()
+        transactions[transaction.id] = StoredTransaction(
+            transaction = transaction,
+            notAfter = Instant.now().plus(configuration.transactionTtl),
+        )
+    }
+
+    private fun getTransaction(id: String): Transaction? = transactionLock.withLock {
+        removeExpiredTransactions()
+        transactions[id]?.transaction
+    }
+
+    private fun removeTransaction(id: String): Transaction? = transactionLock.withLock {
+        removeExpiredTransactions()
+        transactions.remove(id)?.transaction
+    }
+
+    @Scheduled(fixedDelay = 60_000)
+    fun removeExpiredTransactionsScheduled() = transactionLock.withLock {
+        removeExpiredTransactions()
+    }
+
+    private fun removeExpiredTransactions() {
+        val now = Instant.now()
+        transactions.entries.removeAll { it.value.notAfter < now }
+    }
+
     // TODO replace with signum implementation when available
     private suspend fun decryptHpke(
         enc: ByteArray,
@@ -352,6 +385,11 @@ class ApiController(
         )
     }
 }
+
+private data class StoredTransaction(
+    val transaction: ApiController.Transaction,
+    val notAfter: Instant,
+)
 
 fun AuthenticatedPrincipal.toApiItem() = if (this is User) this.apiItem else null
 

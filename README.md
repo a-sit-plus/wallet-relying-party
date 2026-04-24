@@ -147,6 +147,8 @@ Minimal local configuration:
 ```yaml
 app:
   public-context: "http://localhost:8080/"
+  transaction-ttl: 30m
+  result-ttl: 30m
   verifier-key:
     type: MEMORY
 ```
@@ -154,6 +156,11 @@ app:
 `app.public-context` must be the externally reachable base URL of this relying
 party. It is embedded in request objects, wallet links, callback URLs, metadata,
 and expected origins.
+
+`app.transaction-ttl` controls how long pending wallet presentation transactions
+remain valid. `app.result-ttl` controls how long validated demo results remain
+available through `/api/items` and `/api/single/{id}`. Both default to 30
+minutes, and expired entries are removed by a scheduled cleanup task.
 
 ### Verifier Key
 
@@ -229,7 +236,7 @@ not a drop-in production service. Keep these points in mind when using it:
 - **Use HTTPS and a public URL for real wallet tests**: many wallet and browser flows require an externally reachable `app.public-context` with HTTPS. `localhost` is only suitable for local development and same-machine experiments.
 - **The default verifier key is ephemeral**: `type: MEMORY` creates a new self-signed key on startup. Use a stable file or keystore-backed verifier certificate when testing trust, signed requests, or interoperability with real wallets.
 - **Trust anchors are wallet-specific**: wallets may reject authorization requests unless the verifier certificate chain is trusted by that wallet or test environment.
-- **Transactions are kept in memory**: active transactions and demo results are not persisted across restarts and are not shared across multiple service instances.
+- **Transactions are kept in memory**: active transactions and demo results expire after the configured TTL, but they are not persisted across restarts and are not shared across multiple service instances.
 - **The demo stores presentation results**: validated credential data is exposed through `/api/items` and related demo endpoints. Do not run this unchanged with real personal data unless you have reviewed retention, access control, and logging behavior.
 - **Logging is verbose for integration work**: request and response details can be useful while debugging, but may contain personal or protocol-sensitive data.
 - **Supported profiles are hard-coded**: verifier profiles are defined in `VerifierProfiles.kt`. Adjust that file if your wallet requires a different client identifier scheme, response mode, protocol draft, or DC API variant.

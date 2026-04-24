@@ -4,6 +4,7 @@ import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.web.util.UriComponentsBuilder
 import java.net.URI
 import java.net.URL
+import java.time.Duration
 
 @ConfigurationProperties(prefix = "app")
 data class AppConfigurationProperties(
@@ -11,6 +12,10 @@ data class AppConfigurationProperties(
     val publicContext: URL = URL("http://localhost:8080/"),
     /** Key used for signing authn requests */
     val verifierKey: KeyConfiguration = KeyConfiguration(),
+    /** How long pending wallet presentation transactions remain valid. */
+    val transactionTtl: Duration = Duration.ofMinutes(30),
+    /** How long validated demo results remain available through the result API. */
+    val resultTtl: Duration = Duration.ofMinutes(30),
 )
 
 fun URL.appendPath(path: String): String = UriComponentsBuilder.fromUri(toURI()).path(path).toUriString()
@@ -41,5 +46,4 @@ enum class KeyType {
     MEMORY,
     KEYSTORE,
 }
-
 

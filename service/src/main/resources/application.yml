@@ -1,5 +1,7 @@
 app:
   public-context: http://localhost:8080
+  transaction-ttl: 30m
+  result-ttl: 30m
 spring:
   mvc:
     problemdetails:
