@@ -1,8 +1,11 @@
+spring:
+  application:
+    name: ${SPRING_APPLICATION_NAME:wallet-relying-party}
+  config:
+    import: "${SPRING_CONFIG_IMPORT:optional:configserver:}"
+  cloud:
+    config:
+      enabled: ${SPRING_CLOUD_CONFIG_ENABLED:false}
+      uri: ${SPRING_CLOUD_CONFIG_URI:}
 app:
   public-context: http://localhost:8080
-  transaction-ttl: 30m
-  result-ttl: 30m
-spring:
-  mvc:
-    problemdetails:
-      enabled: true

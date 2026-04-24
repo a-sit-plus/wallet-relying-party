@@ -28,9 +28,11 @@ kotlin {
 
 dependencies {
     implementation(platform(org.springframework.boot.gradle.plugin.SpringBootPlugin.BOM_COORDINATES))
+    implementation(platform("org.springframework.cloud:spring-cloud-dependencies:${libs.versions.spring.cloud.get()}"))
     implementation("org.springframework.boot:spring-boot-starter-security")
     implementation("org.springframework.boot:spring-boot-starter-web")
     implementation("org.springframework.boot:spring-boot-starter")
+    implementation("org.springframework.cloud:spring-cloud-starter-config")
     implementation("org.springframework.session:spring-session-core")
     implementation("org.jetbrains.kotlin:kotlin-reflect")
     implementation(libs.qrcode.kotlin)

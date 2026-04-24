@@ -153,6 +153,31 @@ app:
     type: MEMORY
 ```
 
+### Optional Spring Cloud Config Client
+
+The service can read configuration from a Spring Cloud Config Server, such as an
+internal service endpoint. This remains disabled by default, so the application
+still starts normally when no config server is available.
+
+Set these environment variables to enable it:
+
+- `SPRING_CLOUD_CONFIG_ENABLED=true`
+- `SPRING_CLOUD_CONFIG_URI=http://<internal-config-service>:8888`
+
+Optional override:
+
+- `SPRING_CONFIG_IMPORT=optional:configserver:` if you want to override the default import value explicitly
+- `SPRING_APPLICATION_NAME=wallet-relying-party` to control which config server application name is resolved
+- `SPRING_PROFILES_ACTIVE=<profile>` if the remote config is profile-specific.
+
+Example:
+
+```bash
+SPRING_CLOUD_CONFIG_ENABLED=true \
+SPRING_CLOUD_CONFIG_URI=http://config.internal.svc.cluster.local:8888 \
+./gradlew :service:bootRun
+```
+
 `app.public-context` must be the externally reachable base URL of this relying
 party. It is embedded in request objects, wallet links, callback URLs, metadata,
 and expected origins.

@@ -1,2 +1,8 @@
 app:
-  public-url: http://localhost:8080/
+  public-context: http://localhost:8080/
+spring:
+  cloud:
+    config:
+      enabled: false
+  config:
+    import: "optional:configserver:"
