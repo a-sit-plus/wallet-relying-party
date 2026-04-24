@@ -22,15 +22,10 @@ FROM eclipse-temurin:17-jre-jammy AS runtime
 
 WORKDIR /app
 
-ENV PORT=8080
 ENV JAVA_OPTS=""
-
-RUN groupadd --system app && useradd --system --gid app --create-home --home-dir /app app
 
 COPY --from=build /workspace/service.jar /app/app.jar
 
-USER app
-
 EXPOSE 8080
 
-ENTRYPOINT ["sh", "-c", "exec java ${JAVA_OPTS} -Dserver.port=${PORT:-8080} -jar /app/app.jar"]
+ENTRYPOINT ["sh", "-c", "exec java ${JAVA_OPTS} -jar /app/app.jar"]
