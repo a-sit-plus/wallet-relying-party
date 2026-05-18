@@ -231,6 +231,10 @@ spring:
       client:
         url: http://<admin-server>:9090
         enabled: true
+        instance:
+          metadata:
+            user.name: actuator-user
+            user.password: secret
 ```
 
 Or via environment variables:
@@ -238,10 +242,21 @@ Or via environment variables:
 ```bash
 SPRING_BOOT_ADMIN_CLIENT_URL=http://admin.internal.svc.cluster.local:9090 \
 SPRING_BOOT_ADMIN_CLIENT_ENABLED=true \
+SPRING_BOOT_ADMIN_CLIENT_INSTANCE_METADATA_USER_NAME=actuator-user \
+SPRING_BOOT_ADMIN_CLIENT_INSTANCE_METADATA_USER_PASSWORD=secret \
 ./gradlew :service:bootRun
 ```
 
 Once registered, the admin server provides a UI for health checks, log levels, metrics, and environment inspection. This is optional infrastructure — the relying party runs fully without it.
+
+#### Actuator endpoint security
+
+Access to `/actuator/**` is controlled based on whether the admin client credentials are configured:
+
+- **Admin client not configured** (default): all `/actuator/**` requests are denied with `403 Forbidden`.
+- **Admin client configured** with `instance.metadata.user.name` and `instance.metadata.user.password`: `/actuator/**` requires HTTP Basic authentication with those credentials. Requests without credentials receive `401 Unauthorized`. The admin server passes the credentials when polling the actuator endpoints automatically.
+
+The actuator endpoints are never reachable without credentials, even when `spring.boot.admin.client.enabled=true` — both the client flag and the credentials must be set.
 
 ### Verifier Key
 
