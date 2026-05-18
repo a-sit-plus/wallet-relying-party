@@ -139,6 +139,17 @@ class ProcessTest {
     fun `includeWrpac uses wrpac certificate hash as client id`() = runTest {
         val wrpacDnsName = "wrpac.example.com"
         val wrpacKeyMaterial = createSanDnsKeyMaterial(wrpacDnsName)
+        val requestBuilder = CredentialPresentationRequestBuilder(
+            listOf(
+                TransactionRequestCredential(
+                    credentialType = AtomicAttribute2023.sdJwtType,
+                    representation = ConstantIndex.CredentialRepresentation.SD_JWT.name,
+                    attributes = listOf(AtomicAttribute2023.CLAIM_GIVEN_NAME),
+                )
+            ).map {
+                it.toRequestOptionsCredential()
+            }
+        )
         Mockito.`when`(wrpCertificateStore.loadWrpacChain()).thenReturn(listOf(wrpacKeyMaterial.getCertificate()!!))
         Mockito.`when`(wrpCertificateStore.loadWrpacKeyMaterial()).thenReturn(wrpacKeyMaterial)
 
@@ -147,13 +158,7 @@ class ProcessTest {
                 TransactionRequest(
                     includeWrpac = true,
                     presentationMechanism = PresentationMechanismEnum.PresentationExchange,
-                    credentials = listOf(
-                        TransactionRequestCredential(
-                            credentialType = AtomicAttribute2023.sdJwtType,
-                            representation = ConstantIndex.CredentialRepresentation.SD_JWT.name,
-                            attributes = listOf(AtomicAttribute2023.CLAIM_GIVEN_NAME),
-                        )
-                    )
+                    presentationDefinition = requestBuilder.toPresentationExchangeRequest().presentationDefinition,
                 )
             )
             contentType = MediaType.APPLICATION_JSON
@@ -163,7 +168,7 @@ class ProcessTest {
         }.andReturn()
 
         val transactionResponse = Json.decodeFromString<TransactionResponse>(transactionResult.response.contentAsString)
-        val profile = transactionResponse.profiles.first { it.name == DEFAULT_PROFILE }
+        val profile = transactionResponse.profiles.first { it.name == "HAIPd05" }
 
         val requestObject = mockMvc.get("/transaction/get/${profile.id}") {
             accept = MediaType.valueOf("application/oauth-authz-req+jwt")

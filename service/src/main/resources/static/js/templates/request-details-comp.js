@@ -103,6 +103,13 @@ export default {
                 }
             }
             return null
+        },
+        certificateInputId(prefix, id = '') {
+            const suffix = String(id)
+                .replace(/[^a-zA-Z0-9_-]/g, '-')
+                .replace(/-+/g, '-')
+                .replace(/^-|-$/g, '')
+            return suffix ? `${prefix}-${suffix}` : prefix
         }
     },
     template: `
@@ -121,12 +128,13 @@ export default {
             <div class="col-sm-8">
                 <div class="form-check">
                     <input class="form-check-input"
+                           id="includeWrpac"
                            type="checkbox"
                            name="includeWrpac"
                            :disabled="wrpacPreviews.length === 0"
                            :checked="request.includeWrpac"
                            @click="$emit('updateIncludeWrpac', !request.includeWrpac)">
-                    <label class="form-check-label">
+                    <label class="form-check-label" for="includeWrpac">
                         WRP Access Certificate (WRPAC) - <span class="text-primary">x509_hash / x5c</span>
                         <span v-if="wrpacPreviews.length === 0" class="text-muted">(not available)</span>
                     </label>
@@ -138,11 +146,12 @@ export default {
                     <div v-if="wrprcPreviews.length === 0" class="text-muted small">(not available)</div>
                     <div v-else class="form-check">
                         <input class="form-check-input"
+                               id="selectedWrprcId-none"
                                type="radio"
                                name="selectedWrprcId"
                                :checked="!request.selectedWrprcId"
                                @click="$emit('updateSelectedWrprc', null)">
-                        <label class="form-check-label">
+                        <label class="form-check-label" for="selectedWrprcId-none">
                             Do not include WRPRC
                         </label>
                     </div>
@@ -151,11 +160,12 @@ export default {
                          class="form-check mb-2">
                         <input class="form-check-input"
                                type="radio"
+                               :id="certificateInputId('selectedWrprcId', item.id)"
                                name="selectedWrprcId"
                                :value="item.id"
                                :checked="request.selectedWrprcId === item.id"
                                @click="$emit('updateSelectedWrprc', item.id)">
-                        <label class="form-check-label">
+                        <label class="form-check-label" :for="certificateInputId('selectedWrprcId', item.id)">
                             {{ item.label }}
                         </label>
                         <div v-if="item.summary" class="small text-muted mt-1 ms-4">

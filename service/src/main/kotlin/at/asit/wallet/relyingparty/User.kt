@@ -103,7 +103,10 @@ fun AuthnResponseResult.toUser() = User(
         it.toApiItemCredentials()
     },
     presentationError = vpTokenValidationResult?.exceptionOrNull()?.message ?: when(val presentation = vpTokenValidationResult?.getOrNull()) {
-        is VpTokenValidationResultDCQL -> presentation.submissionRequirementsValidationResult.exceptionOrNull()?.message
+        is VpTokenValidationResultDCQL -> presentation.credentialQueryResponseValidations
+            .values
+            .flatten()
+            .firstNotNullOfOrNull { it.exceptionOrNull()?.message }
         is VpTokenValidationResultPresentationExchange -> null
         null -> null
     },

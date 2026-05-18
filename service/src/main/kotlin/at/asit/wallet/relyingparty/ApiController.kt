@@ -1,7 +1,6 @@
 package at.asit.wallet.relyingparty
 
 import at.asitplus.catching
-import at.asitplus.dcapi.DCAPIResponse
 import at.asitplus.dcapi.DigitalCredentialInterface
 import at.asitplus.dcapi.IsoMdocResponse
 import at.asitplus.dcapi.OpenId4VpResponse
@@ -65,6 +64,7 @@ class ApiController(
     data class Transaction(
         val id: String,
         val profile: PreparedProfile,
+        val request: TransactionRequest,
         val presentationMechanism: PresentationMechanismEnum,
         val presentationExchangeRequest: CredentialPresentationRequest.PresentationExchangeRequest? = null,
         val dcqlRequest: CredentialPresentationRequest.DCQLRequest? = null,
@@ -137,6 +137,7 @@ class ApiController(
             val transaction = Transaction(
                 id = transactionId,
                 profile = preparedProfile,
+                request = request,
                 presentationMechanism = request.presentationMechanism,
                 presentationExchangeRequest = request.presentationDefinition?.let {
                     CredentialPresentationRequest.PresentationExchangeRequest(it)
@@ -186,7 +187,6 @@ class ApiController(
 
             val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
             val verifierInfo = profiles.buildVerifierInfo(
-                requestOptionsCredentials = transaction.request.toCredentials(),
                 selectedWrprcId = transaction.request.selectedWrprcId,
             )
             val body = transaction.transactionGet(responseUrl, verifierInfo)
@@ -218,7 +218,6 @@ class ApiController(
             check(transaction.profile.supportedOptions.any { it.isDcApi }) { "Profile does not support DC API flow" }
             val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
             val verifierInfo = profiles.buildVerifierInfo(
-                requestOptionsCredentials = transaction.request.toCredentials(),
                 selectedWrprcId = transaction.request.selectedWrprcId,
             )
             val body = transaction.transactionGetDcApi(responseUrl, dcApiSignedOid4vp, verifierInfo)
