@@ -218,6 +218,31 @@ remain valid. `app.result-ttl` controls how long validated demo results remain
 available through `/api/items` and `/api/single/{id}`. Both default to 30
 minutes, and expired entries are removed by a scheduled cleanup task.
 
+### Optional Spring Boot Admin Client
+
+The service includes the [Spring Boot Admin](https://github.com/codecentric/spring-boot-admin) client. It is inactive by default — no registration attempt is made unless a server URL is configured.
+
+To connect the service to a running Spring Boot Admin server, set:
+
+```yaml
+spring:
+  boot:
+    admin:
+      client:
+        url: http://<admin-server>:9090
+        enabled: true
+```
+
+Or via environment variables:
+
+```bash
+SPRING_BOOT_ADMIN_CLIENT_URL=http://admin.internal.svc.cluster.local:9090 \
+SPRING_BOOT_ADMIN_CLIENT_ENABLED=true \
+./gradlew :service:bootRun
+```
+
+Once registered, the admin server provides a UI for health checks, log levels, metrics, and environment inspection. This is optional infrastructure — the relying party runs fully without it.
+
 ### Verifier Key
 
 The verifier key signs authorization requests and provides verifier identity
