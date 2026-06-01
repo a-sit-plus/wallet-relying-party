@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 
-FROM eclipse-temurin:17-jdk-jammy AS build
+FROM eclipse-temurin:21-jdk-jammy AS build
 
 WORKDIR /workspace
 
@@ -18,7 +18,7 @@ RUN set -eux; \
     test -n "$jar"; \
     cp "$jar" /workspace/service.jar
 
-FROM eclipse-temurin:17-jre-jammy AS runtime
+FROM eclipse-temurin:21-jre-jammy AS runtime
 
 WORKDIR /app
 
