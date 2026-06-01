@@ -20,6 +20,8 @@ import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import jakarta.servlet.http.HttpServletRequest
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.multipaz.crypto.AsymmetricKey
 import org.multipaz.crypto.EcCurve
 import org.multipaz.crypto.EcPrivateKey
@@ -45,8 +47,6 @@ import org.springframework.web.server.ResponseStatusException
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import qrcode.QRCode
 import java.time.Instant
-import java.util.concurrent.locks.ReentrantLock
-import kotlin.concurrent.withLock
 import kotlin.uuid.ExperimentalUuidApi
 import kotlin.uuid.Uuid
 
@@ -57,7 +57,7 @@ class ApiController(
     private val profiles: VerifierProfiles,
 ) {
     private val statisticLogger = LoggerFactory.getLogger("statistic")
-    private val transactionLock = ReentrantLock()
+    private val transactionMutex = Mutex()
     private val transactions: MutableMap<String, StoredTransaction> = HashMap()
     private val customerSuccessUrl = configuration.publicContext.appendPath(Paths.CustomerSuccessUrl)
 
@@ -73,11 +73,11 @@ class ApiController(
 
     @GetMapping(Paths.Api.ItemsUrl)
     @ResponseBody
-    fun apiItems(): List<ApiItem> = transactionStore.getApiItems()
+    suspend fun apiItems(): List<ApiItem> = transactionStore.getApiItems()
 
     @GetMapping("${Paths.Api.SingleUrl}/{id}")
     @ResponseBody
-    fun apiSingle(
+    suspend fun apiSingle(
         @PathVariable id: String,
     ): ResponseEntity<ApiItem> = transactionStore.getApiItem(id)?.let {
         Napier.i("${Paths.Api.SingleUrl}/$id returns $it")
@@ -88,7 +88,7 @@ class ApiController(
 
     @PostMapping(Paths.Api.RemoveUrl)
     @ResponseBody
-    fun removeApiItem(
+    suspend fun removeApiItem(
         @RequestBody id: String,
     ): ResponseEntity<ApiItem> = transactionStore.removeApiItem(id).let {
         ResponseEntity.ok(it)
@@ -125,9 +125,9 @@ class ApiController(
     @OptIn(ExperimentalUuidApi::class)
     @PostMapping(Paths.Transaction.CreateUrl, produces = [APPLICATION_JSON_VALUE])
     @ResponseBody
-    fun transactionCreate(
+    suspend fun transactionCreate(
         @RequestBody request: TransactionRequest,
-    ): ResponseEntity<TransactionResponse> = runBlocking {
+    ): ResponseEntity<TransactionResponse> {
         Napier.i("${Paths.Transaction.CreateUrl} called with $request")
         val profiles = profiles.knownProfiles.map {
             val transactionId = Uuid.random().toString()
@@ -162,17 +162,17 @@ class ApiController(
         }
         val response = TransactionResponse(profiles)
         Napier.i("${Paths.Transaction.CreateUrl} returns $response")
-        ResponseEntity.ok().body(response)
+        return ResponseEntity.ok().body(response)
     }
 
     private fun ByteArray.toDataUrl(): String = "data:image/png;base64," + encodeToString(Base64())
 
     @GetMapping("${Paths.Transaction.GetUrl}/{id}")
     @ResponseBody
-    fun transactionGet(
+    suspend fun transactionGet(
         @PathVariable id: String,
         request: HttpServletRequest,
-    ): ResponseEntity<String> = runBlocking {
+    ): ResponseEntity<String> {
         MDC.put(MDC_REQUEST_ID, id)
         Napier.i("${Paths.Transaction.GetUrl}/$id called")
         statisticLogger.info("$id get (${request.getHeader(HttpHeaders.USER_AGENT)})")
@@ -180,7 +180,7 @@ class ApiController(
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
                 .also { Napier.w("${Paths.Transaction.GetUrl}/$id returns NOT_FOUND") }
 
-        catching {
+        return catching {
             check(transaction.profile.supportedOptions.any { it.isDevice }) { "Profile does not device flow" }
 
             val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
@@ -197,11 +197,11 @@ class ApiController(
 
     @GetMapping("${Paths.Transaction.GetDcApiUrl}/{id}", produces = [APPLICATION_JSON_VALUE])
     @ResponseBody
-    fun transactionGetDcApi(
+    suspend fun transactionGetDcApi(
         @PathVariable id: String,
         @RequestParam(name = "dcApiSignedOid4vp", required = false, defaultValue = "true") dcApiSignedOid4vp: Boolean,
         request: HttpServletRequest,
-    ): ResponseEntity<String> = runBlocking {
+    ): ResponseEntity<String> {
         MDC.put(MDC_REQUEST_ID, id)
         Napier.i("/transaction/get/dcapi/$id called (dcApiSignedOid4vp=$dcApiSignedOid4vp)")
         statisticLogger.info("$id get-dcapi (${request.getHeader(HttpHeaders.USER_AGENT)})")
@@ -209,7 +209,7 @@ class ApiController(
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
                 .also { Napier.w("/transaction/get/dcapi/$id returns NOT_FOUND") }
 
-        catching {
+        return catching {
             check(transaction.profile.supportedOptions.any { it.isDcApi }) { "Profile does not support DC API flow" }
             val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
             val body = transaction.transactionGetDcApi(responseUrl, dcApiSignedOid4vp)
@@ -239,11 +239,11 @@ class ApiController(
      * called from Wallet App upon answering authn request from [transactionGet].
      */
     @PostMapping("${Paths.Transaction.ResultUrl}/{id}")
-    fun transactionPost(
+    suspend fun transactionPost(
         @PathVariable id: String,
         @RequestBody requestBody: String,
         request: HttpServletRequest,
-    ): ResponseEntity<OpenId4VpSuccess> = runBlocking {
+    ): ResponseEntity<OpenId4VpSuccess> {
         MDC.put(MDC_REQUEST_ID, id)
         Napier.i("${Paths.Transaction.ResultUrl}/$id called with $requestBody")
         val transaction = removeTransaction(id)
@@ -295,7 +295,7 @@ class ApiController(
             .fromUriString(customerSuccessUrl)
             .queryParam("id", id)
             .toUriString()
-        ResponseEntity.ok()
+        return ResponseEntity.ok()
             .contentType(MediaType.APPLICATION_JSON)
             .body(OpenId4VpSuccess(redirectUrlWithId))
     }
@@ -322,7 +322,7 @@ class ApiController(
             ?.let { configuration.publicContext.appendPath("${Paths.Transaction.GetDcApiUrl}/$transactionId") }
     )
 
-    private fun putTransaction(transaction: Transaction) = transactionLock.withLock {
+    private suspend fun putTransaction(transaction: Transaction) = transactionMutex.withLock {
         removeExpiredTransactions()
         transactions[transaction.id] = StoredTransaction(
             transaction = transaction,
@@ -330,19 +330,21 @@ class ApiController(
         )
     }
 
-    private fun getTransaction(id: String): Transaction? = transactionLock.withLock {
+    private suspend fun getTransaction(id: String): Transaction? = transactionMutex.withLock {
         removeExpiredTransactions()
         transactions[id]?.transaction
     }
 
-    private fun removeTransaction(id: String): Transaction? = transactionLock.withLock {
+    private suspend fun removeTransaction(id: String): Transaction? = transactionMutex.withLock {
         removeExpiredTransactions()
         transactions.remove(id)?.transaction
     }
 
     @Scheduled(fixedDelay = 60_000)
-    fun removeExpiredTransactionsScheduled() = transactionLock.withLock {
-        removeExpiredTransactions()
+    fun removeExpiredTransactionsScheduled() = runBlocking {
+        transactionMutex.withLock {
+            removeExpiredTransactions()
+        }
     }
 
     private fun removeExpiredTransactions() {

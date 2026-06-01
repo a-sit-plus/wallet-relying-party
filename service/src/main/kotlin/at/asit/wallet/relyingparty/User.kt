@@ -180,7 +180,7 @@ private fun EuPidCredential.toApiItemCredential(): ApiItemCredential =
 
 fun Verifier.VerifyPresentationResult.SuccessSdJwt.toApiItemCredentials(): Collection<ApiItemCredential> = listOf(
     ApiItemCredential(
-        allFields = reconstructed,
+        allFields = reconstructedJsonObject,
         credentialType = verifiableCredentialSdJwt.verifiableCredentialType,
         error = freshnessSummary.errorMessage()
     )

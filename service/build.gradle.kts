@@ -1,6 +1,5 @@
 import at.asitplus.gradle.ktor
 import at.asitplus.gradle.napier
-import org.springframework.boot.gradle.tasks.bundling.BootJar
 
 plugins {
     kotlin("jvm")
@@ -18,7 +17,7 @@ group = "at.asitplus.wallet"
 version = artifactVersion
 
 kotlin {
-    jvmToolchain(17)
+    jvmToolchain(21)
     sourceSets {
         all {
             languageSettings.optIn("kotlin.time.ExperimentalTime")
@@ -42,7 +41,8 @@ dependencies {
     implementation(ktor("client-logging"))
     implementation(ktor("client-content-negotiation"))
     implementation(ktor("serialization-kotlinx-json"))
-    testImplementation("org.springframework.boot:spring-boot-starter-test")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-core")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
 
     implementation(napier())
     implementation(libs.wallet.vck.jvm)
@@ -60,6 +60,7 @@ dependencies {
     implementation("org.multipaz:multipaz:0.96.0")
 
     testImplementation("org.springframework.boot:spring-boot-starter-test")
+    testImplementation("org.springframework.boot:spring-boot-webmvc-test")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")
     testImplementation(ktor("client-java"))
 }
@@ -81,9 +82,6 @@ springBoot {
     buildInfo()
 }
 
-tasks.getByName<BootJar>("bootJar") {
-    this.launchScript()
-}
 
 repositories {
     mavenCentral()

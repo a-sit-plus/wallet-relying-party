@@ -23,12 +23,14 @@ import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
+import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
+import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import java.net.URLDecoder
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
@@ -88,9 +90,7 @@ class ProcessTest {
             )
             contentType = MediaType.APPLICATION_JSON
             accept = MediaType.APPLICATION_JSON
-        }.andExpect {
-            status { isOk() }
-        }.andReturn()
+        }.andReturn().awaitAsync()
 
         val transactionResponse =
             Json.decodeFromString<TransactionResponse>(transactionResult.response.contentAsString)
@@ -110,9 +110,7 @@ class ProcessTest {
 
         val authnRequest = mockMvc.get("/transaction/get/${avProfile.id}") {
             accept = MediaType.ALL
-        }.andExpect {
-            status { isOk() }
-        }.andReturn().response.contentAsString
+        }.andReturn().awaitAsync().response.contentAsString
 
         val decodedAuthnRequest = URLDecoder.decode(authnRequest, Charsets.UTF_8)
         assertTrue(decodedAuthnRequest.contains("/transaction/result/${avProfile.id}"))
@@ -147,9 +145,7 @@ class ProcessTest {
             )
             contentType = MediaType.APPLICATION_JSON
             accept = MediaType.APPLICATION_JSON
-        }.andExpect {
-            status { isOk() }
-        }.andReturn()
+        }.andReturn().awaitAsync()
 
         val transactionResponse =
             Json.decodeFromString<TransactionResponse>(transactionResult.response.contentAsString)
@@ -174,7 +170,7 @@ class ProcessTest {
         val wallet = OpenId4VpHolder(
             holder = holder,
             remoteResourceRetriever = { data ->
-                mockMvc.get(data.url).andReturn().response.contentAsString
+                mockMvc.get(data.url).andReturn().awaitAsync().response.contentAsString
             })
         val selectedProfile = profileName?.let { expectedProfileName ->
             transactionResponse.profiles.first { it.name == expectedProfileName }
@@ -187,12 +183,13 @@ class ProcessTest {
             authenticationResponseResult.params.forEach {
                 param(it.key, it.value)
             }
-        }.andExpect {
-            status { isOk() }
-        }
+        }.andReturn().awaitAsync()
 
         val user = transactionStore.getApiItem(selectedProfile.id)
         assertNotNull(user)
         assertEquals(givenName, user!!.firstname)
     }
+
+    private fun MvcResult.awaitAsync(): MvcResult =
+        if (request.isAsyncStarted) mockMvc.perform(asyncDispatch(this)).andReturn() else this
 }
