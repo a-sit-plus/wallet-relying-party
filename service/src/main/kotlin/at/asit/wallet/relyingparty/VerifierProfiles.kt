@@ -25,7 +25,6 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.Iso180137AnnexCRequestOptions
 import at.asitplus.wallet.lib.iso.Iso180137AnnexCVerifier
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
@@ -152,7 +151,7 @@ class VerifierProfiles(
 
                         val getRequests = listOf(openId4VpRequest)
                         val credentialRequestOptions = CredentialRequestOptions.create(getRequests)
-                        return vckJsonSerializer.encodeToString(credentialRequestOptions)
+                        return joseCompliantSerializer.encodeToString(credentialRequestOptions)
                     }
                 }
             }
@@ -205,7 +204,7 @@ class VerifierProfiles(
                         dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
                         deviceRequest: DeviceRequest?,
                         dcApiSignedOid4vp: Boolean,
-                    ): String = vckJsonSerializer.encodeToString(
+                    ): String = joseCompliantSerializer.encodeToString(
                         CredentialRequestOptions.create(
                             listOf(
                                 DigitalCredentialGetRequest.IsoMdoc(
@@ -261,7 +260,7 @@ class VerifierProfiles(
                         dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
                         deviceRequest: DeviceRequest?,
                         dcApiSignedOid4vp: Boolean,
-                    ): String = vckJsonSerializer.encodeToString(
+                    ): String = joseCompliantSerializer.encodeToString(
                         CredentialRequestOptions.create(
                             listOf(
                                 buildOpenId4VpDcApiRequest(
@@ -355,7 +354,7 @@ class VerifierProfiles(
                         dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
                         deviceRequest: DeviceRequest?,
                         dcApiSignedOid4vp: Boolean,
-                    ): String = vckJsonSerializer.encodeToString(
+                    ): String = joseCompliantSerializer.encodeToString(
                         CredentialRequestOptions.create(
                             listOf(
                                 DigitalCredentialGetRequest.IsoMdoc(
@@ -450,7 +449,7 @@ class VerifierProfiles(
                         dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
                         deviceRequest: DeviceRequest?,
                         dcApiSignedOid4vp: Boolean,
-                    ): String = vckJsonSerializer.encodeToString(
+                    ): String = joseCompliantSerializer.encodeToString(
                         CredentialRequestOptions.create(
                             listOf(
                                 DigitalCredentialGetRequest.IsoMdoc(
@@ -510,7 +509,7 @@ class VerifierProfiles(
                         dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
                         deviceRequest: DeviceRequest?,
                         dcApiSignedOid4vp: Boolean,
-                    ): String = vckJsonSerializer.encodeToString(
+                    ): String = joseCompliantSerializer.encodeToString(
                         CredentialRequestOptions.create(
                             listOf(
                                 DigitalCredentialGetRequest.IsoMdoc(
