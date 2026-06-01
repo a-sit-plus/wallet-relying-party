@@ -10,8 +10,8 @@ import at.asitplus.iso.DeviceRequest
 import at.asitplus.signum.indispensable.CryptoPrivateKey
 import at.asitplus.signum.indispensable.ECCurve
 import at.asitplus.signum.indispensable.asn1.encodeToPEM
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
@@ -251,7 +251,7 @@ class ApiController(
                 .also { Napier.w("${Paths.Transaction.ResultUrl}/$id returns NOT_FOUND") }
         val user = catching {
             val parsedResponse = catching {
-                vckJsonSerializer.decodeFromString<DigitalCredentialInterface>(requestBody)
+                joseCompliantSerializer.decodeFromString<DigitalCredentialInterface>(requestBody)
             }.getOrNull()
             if (parsedResponse.isMdocResponse(transaction)) {
                 val verifier = checkNotNull(transaction.profile.iso180137Verifier) { "Missing verifier" }

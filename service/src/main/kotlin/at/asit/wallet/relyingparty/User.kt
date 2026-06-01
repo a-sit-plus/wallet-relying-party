@@ -3,15 +3,12 @@ package at.asit.wallet.relyingparty
 import at.asitplus.KmmResult
 import at.asitplus.openid.IdToken
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.wallet.eupid.EuPidCredential
 import at.asitplus.wallet.eupid.EuPidScheme
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
 import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
-import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary.Mdoc
-import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary.SdJwt
-import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary.VcJws
+import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary.*
 import at.asitplus.wallet.lib.agent.validation.common.EntityExpiredError
 import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
@@ -19,7 +16,6 @@ import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.VcJwsVerificationResultWrapper
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
-import at.asitplus.wallet.lib.data.vckJsonSerializer
 import at.asitplus.wallet.lib.iso.Iso180137AnnexCVerifiedPresentationResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.VpTokenValidationResult
@@ -39,7 +35,6 @@ import kotlinx.serialization.Transient
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
-import kotlinx.serialization.json.encodeToJsonElement
 import org.springframework.security.core.AuthenticatedPrincipal
 import java.security.MessageDigest
 import java.time.Instant
@@ -171,12 +166,6 @@ fun VcJwsVerificationResultWrapper.toApiItemCredentials(): List<ApiItemCredentia
 
 fun CredentialFreshnessSummary.VcJws.toApiItemCredential(): ApiItemCredential =
     ApiItemCredential(error = errorMessage())
-
-private fun EuPidCredential.toApiItemCredential(): ApiItemCredential =
-    ApiItemCredential(
-        jwtCredential = runCatching { vckJsonSerializer.encodeToJsonElement(this) }.getOrNull(),
-        credentialType = EuPidScheme.vcType,
-    )
 
 fun Verifier.VerifyPresentationResult.SuccessSdJwt.toApiItemCredentials(): Collection<ApiItemCredential> = listOf(
     ApiItemCredential(
