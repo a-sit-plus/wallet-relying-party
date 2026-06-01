@@ -1,53 +1,55 @@
 package at.asit.wallet.relyingparty
 
-import org.springframework.stereotype.Service
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import org.springframework.scheduling.annotation.Scheduled
+import org.springframework.stereotype.Service
 import java.time.Instant
-import java.util.concurrent.locks.ReentrantLock
-import kotlin.concurrent.withLock
 
 @Service
 class TransactionStore(
     configuration: AppConfigurationProperties,
 ) {
     private val lifetime = configuration.resultTtl
-    private val lock = ReentrantLock()
+    private val mutex = Mutex()
     private val entries: MutableList<ResultEntry> = mutableListOf()
 
-    fun getApiItems(): List<ApiItem> = lock.withLock {
+    suspend fun getApiItems(): List<ApiItem> = mutex.withLock {
         removeExpiredEntries()
         entries.map { it.apiItem }
     }
 
-    fun getApiItem(id: String): ApiItem? = lock.withLock {
+    suspend fun getApiItem(id: String): ApiItem? = mutex.withLock {
         removeExpiredEntries()
         entries.firstOrNull { it.id == id }?.apiItem
     }
 
-    fun removeApiItem(id: String): ApiItem? = lock.withLock {
+    suspend fun removeApiItem(id: String): ApiItem? = mutex.withLock {
         removeExpiredEntries()
         val entry = entries.firstOrNull { it.id == id }
         if (entry != null) {
             entries.remove(entry)
         }
-        return entry?.apiItem
+        entry?.apiItem
     }
 
-    fun put(id: String, user: User): Boolean? = lock.withLock {
+    suspend fun put(id: String, user: User): Boolean? = mutex.withLock {
         removeExpiredEntries()
         user.toApiItem()?.let { entries.add(ResultEntry(id, it, Instant.now().plus(lifetime))) }
     }
 
     @Scheduled(fixedDelay = 60_000)
-    fun removeExpiredEntriesScheduled() = lock.withLock {
-        removeExpiredEntries()
+    fun removeExpiredEntriesScheduled() = runBlocking {
+        mutex.withLock {
+            removeExpiredEntries()
+        }
     }
 
     private fun removeExpiredEntries() {
         val now = Instant.now()
         entries.removeAll { it.notAfter < now }
     }
-
 }
 
 private data class ResultEntry(val id: String, val apiItem: ApiItem, val notAfter: Instant)

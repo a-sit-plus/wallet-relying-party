@@ -1,5 +1,14 @@
 # Changelog
 
+Version 5.13.0:
+ - Migrate to Spring Boot 4.0.6 (Spring Framework 7, Spring Security 7, Jakarta EE 11)
+ - Update Spring Cloud to 2025.1.1 (Oakwood)
+ - Update Spring Boot Admin client to 4.0.4
+ - Upgrade JVM toolchain to Java 21
+ - Enable virtual threads (`spring.threads.virtual.enabled`)
+ - Switch primary HTTP message converter to kotlinx.serialization backed by `joseCompliantSerializer`
+ - Coroutine migration: controller handler methods are now `suspend`; `ReentrantLock` replaced by `Mutex` in `ApiController` and `TransactionStore`; `TransactionStore` public API is now suspending
+
 Version 5.12.0:
  - Update to VC-K 5.12.0
  - Treat all attributes selected by the user as required

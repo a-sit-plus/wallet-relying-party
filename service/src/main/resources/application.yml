@@ -7,5 +7,8 @@ spring:
     config:
       enabled: ${SPRING_CLOUD_CONFIG_ENABLED:false}
       uri: ${SPRING_CLOUD_CONFIG_URI:}
+  threads:
+    virtual:
+      enabled: true
 app:
   public-context: http://localhost:8080
