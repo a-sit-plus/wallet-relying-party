@@ -132,7 +132,7 @@ class ApiController(
         val profiles = profiles.knownProfiles.map {
             val transactionId = Uuid.random().toString()
             val transactionContext = buildTransactionContext(transactionId, it.supportedOptions)
-            val preparedProfile = it.prepare(transactionContext)
+            val preparedProfile = profiles.prepare(it, transactionContext)
             val transaction = Transaction(
                 id = transactionId,
                 profile = preparedProfile,

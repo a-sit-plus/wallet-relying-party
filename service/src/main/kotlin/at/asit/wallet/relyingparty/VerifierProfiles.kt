@@ -64,6 +64,53 @@ enum class SupportedOptions {
         get() = this == OID4VP_DC_API || this == ISO_MDOC_DC_API
 }
 
+// --- Declarative profile configuration types ---
+
+sealed class ClientIdSchemeType {
+    data object X509Hash : ClientIdSchemeType()
+    data object X509SanDns : ClientIdSchemeType()
+    data object RedirectUri : ClientIdSchemeType()
+}
+
+enum class DeviceResponseMode { DirectPost, DirectPostJwt }
+
+enum class WalletUrlStyle {
+    ByReference,  // QR code is a request_uri deep link resolved by the wallet
+    Inline,       // QR code embeds the full request (used by AV/redirect_uri profiles)
+}
+
+data class DeviceFlowConfig(
+    val responseMode: DeviceResponseMode,
+    val verifierMetadataMode: VerifierMetadataMode = VerifierMetadataMode.AUTO,
+    val walletUrlStyle: WalletUrlStyle = WalletUrlStyle.ByReference,
+)
+
+data class DcApiConfig(
+    val oid4vpEncrypted: Boolean? = null,  // null = no OID4VP DC API; false/true = unencrypted/encrypted
+    val isoMdoc: Boolean = false,
+)
+
+data class VerifierProfile(
+    val name: String,
+    val label: String,
+    val description: String,
+    val urlPrefix: String,
+    val clientIdSchemeType: ClientIdSchemeType? = null,
+    val deviceFlowConfig: DeviceFlowConfig? = null,
+    val dcApiConfig: DcApiConfig? = null,
+) {
+    val supportedOptions: Set<SupportedOptions> = buildSet {
+        if (deviceFlowConfig != null) {
+            add(SupportedOptions.CROSS_DEVICE)
+            add(SupportedOptions.SAME_DEVICE)
+        }
+        if (dcApiConfig?.oid4vpEncrypted != null) add(SupportedOptions.OID4VP_DC_API)
+        if (dcApiConfig?.isoMdoc == true) add(SupportedOptions.ISO_MDOC_DC_API)
+    }
+}
+
+// --- Component ---
+
 @Component
 class VerifierProfiles(
     private val configuration: AppConfigurationProperties,
@@ -91,448 +138,182 @@ class VerifierProfiles(
             httpClient.get(url).body<JwtVcIssuerMetadata>().jsonWebKeySet?.keys?.toSet()
         }
 
-    val knownProfiles: List<ProfileDefinition> = listOf(
+    val knownProfiles: List<VerifierProfile> = listOf(
+        VerifierProfile(
+            name = "HAIPd05",
+            label = "OpenID4VP: HAIP (d05)",
+            description = "x509_hash, OpenID4VP 1.0, direct_post.jwt",
+            urlPrefix = Paths.Schemes.HaipVp,
+            clientIdSchemeType = ClientIdSchemeType.X509Hash,
+            deviceFlowConfig = DeviceFlowConfig(DeviceResponseMode.DirectPostJwt),
+            dcApiConfig = DcApiConfig(oid4vpEncrypted = true),
+        ),
+        VerifierProfile(
+            name = "AV",
+            label = "OpenID4VP: AV",
+            description = "redirect_uri, OpenID4VP 1.0, direct_post",
+            urlPrefix = Paths.Schemes.Av,
+            clientIdSchemeType = ClientIdSchemeType.RedirectUri,
+            deviceFlowConfig = DeviceFlowConfig(
+                responseMode = DeviceResponseMode.DirectPost,
+                verifierMetadataMode = VerifierMetadataMode.OMIT_IF_OUT_OF_BAND,
+                walletUrlStyle = WalletUrlStyle.Inline,
+            ),
+            dcApiConfig = DcApiConfig(isoMdoc = true),
+        ),
+        VerifierProfile(
+            name = "UOID4VP",
+            label = "DCAPI: Unencrypted OpenID4VP",
+            description = "DCAPI, OpenID4VP 1.0, direct_post",
+            urlPrefix = "",
+            clientIdSchemeType = ClientIdSchemeType.X509Hash,
+            dcApiConfig = DcApiConfig(oid4vpEncrypted = false),
+        ),
+        VerifierProfile(
+            name = "MDOCd23",
+            label = "OpenID4VP: ISO 18013-7 (d23)",
+            description = "x509_san_dns, OpenID4VP d23, direct_post.jwt",
+            urlPrefix = Paths.Schemes.MdocOpenId4Vp,
+            clientIdSchemeType = ClientIdSchemeType.X509SanDns,
+            deviceFlowConfig = DeviceFlowConfig(DeviceResponseMode.DirectPostJwt),
+        ),
+        VerifierProfile(
+            name = "MDOCISO",
+            label = "DCAPI: ISO 18013-7 (Annex C)",
+            description = "ISO 18013-7 Annex C",
+            urlPrefix = "",
+            dcApiConfig = DcApiConfig(isoMdoc = true),
+        ),
+        VerifierProfile(
+            name = "EUDIW",
+            label = "OpenID4VP: EUDIW Ref.",
+            description = "x509_san_dns, OpenID4VP d23, direct_post.jwt",
+            urlPrefix = Paths.Schemes.OpenId4Vp,
+            clientIdSchemeType = ClientIdSchemeType.X509SanDns,
+            deviceFlowConfig = DeviceFlowConfig(DeviceResponseMode.DirectPostJwt),
+        ),
+        VerifierProfile(
+            name = "DC_API_COMBINED",
+            label = "DCAPI: Unencrypted OpenID4VP + ISO 18013-7",
+            description = "Unencrypted OpenID4VP (signed/unsigned) and ISO 18013-7 Annex-C via DC API",
+            urlPrefix = "",
+            clientIdSchemeType = ClientIdSchemeType.X509SanDns,
+            dcApiConfig = DcApiConfig(oid4vpEncrypted = false, isoMdoc = true),
+        ),
+        VerifierProfile(
+            name = "DC_API_COMBINED_ENCRYPTED",
+            label = "DCAPI: Encrypted OpenID4VP + ISO 18013-7",
+            description = "Encrypted OpenID4VP (signed/unsigned) and ISO 18013-7 Annex-C via DC API",
+            urlPrefix = "",
+            clientIdSchemeType = ClientIdSchemeType.X509SanDns,
+            dcApiConfig = DcApiConfig(oid4vpEncrypted = true, isoMdoc = true),
+        ),
+    )
 
-        object : ProfileDefinition {
-            override val name = "HAIPd05"
-            override val label = "OpenID4VP: HAIP (d05)"
-            override val description = "x509_hash, OpenID4VP 1.0, direct_post.jwt"
-            override val urlPrefix = Paths.Schemes.HaipVp
-            override val supportedOptions: Set<SupportedOptions> =
-                setOf(SupportedOptions.CROSS_DEVICE, SupportedOptions.SAME_DEVICE, SupportedOptions.OID4VP_DC_API)
+    suspend fun prepare(profile: VerifierProfile, context: TransactionContext): PreparedProfile =
+        profile.doPrepare(context)
 
-            override suspend fun prepare(context: TransactionContext): PreparedProfile {
-                val profileName = name
-                val profileLabel = label
-                val profileDescription = description
-                val profileUrlPrefix = urlPrefix
-                val profileSupportedOptions = supportedOptions
-                val preparedClientIdScheme = x509Hash()
-                val preparedOid4vpVerifier = openId4VpVerifier(preparedClientIdScheme)
-                return object : PreparedProfile {
-                    override val name = profileName
-                    override val label = profileLabel
-                    override val description = profileDescription
-                    override val urlPrefix = profileUrlPrefix
-                    override val clientIdScheme = preparedClientIdScheme
-                    override val oid4vpVerifier = preparedOid4vpVerifier
-                    override val iso180137Verifier: Iso180137AnnexCVerifier? = null
-                    override val supportedOptions = profileSupportedOptions
+    private suspend fun VerifierProfile.doPrepare(context: TransactionContext): PreparedProfile {
+        suspend fun ClientIdSchemeType.build(): ClientIdScheme = when (this) {
+            ClientIdSchemeType.X509Hash -> x509Hash()
+            ClientIdSchemeType.X509SanDns -> x509SanDnsD23()
+            ClientIdSchemeType.RedirectUri -> redirectUri(context.responseUrl)
+        }
+        val clientIdScheme = clientIdSchemeType?.build()
+        val oid4vpVerifier = clientIdScheme?.let { openId4VpVerifier(it) }
+        val iso180137 = if (dcApiConfig?.isoMdoc == true) iso180137Verifier() else null
+        val deviceFlow = deviceFlowConfig
+        val dcApi = dcApiConfig
 
-                    override fun buildQrCodeUrl(requestUrl: String) =
-                        buildQrCodeUrlByReference(urlPrefix, requestUrl, preparedClientIdScheme)
-
-                    override suspend fun transactionGet(
-                        transactionId: String,
-                        responseUrl: String,
-                        presentationRequest: CredentialPresentationRequest?,
-                    ): String = directPostJwt(
-                        transactionId = transactionId,
-                        responseUrl = responseUrl,
-                        presentationRequest = presentationRequest,
-                        verifier = preparedOid4vpVerifier
-                    )
-
-                    override suspend fun transactionGetDcApi(
-                        transactionId: String,
-                        responseUrl: String,
-                        dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
-                        deviceRequest: DeviceRequest?,
-                        dcApiSignedOid4vp: Boolean,
-                    ): String {
-                        val openId4VpRequest = buildOpenId4VpDcApiRequest(
-                            transactionId = transactionId,
-                            responseUrl = responseUrl,
-                            presentationRequest = dcqlRequest,
-                            verifier = preparedOid4vpVerifier,
-                            dcApiSignedOid4vp = dcApiSignedOid4vp,
-                            encryption = true,
-                        )
-
-                        val getRequests = listOf(openId4VpRequest)
-                        val credentialRequestOptions = CredentialRequestOptions.create(getRequests)
-                        return joseCompliantSerializer.encodeToString(credentialRequestOptions)
-                    }
+        return PreparedVerifierProfile(
+            name = name,
+            label = label,
+            description = description,
+            urlPrefix = urlPrefix,
+            supportedOptions = supportedOptions,
+            clientIdScheme = clientIdScheme,
+            oid4vpVerifier = oid4vpVerifier,
+            iso180137Verifier = iso180137,
+            buildQrCodeUrlFn = { requestUrl ->
+                if (deviceFlow != null) buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme!!)
+                else requestUrl
+            },
+            buildWalletUrlFn = { tx, ctx ->
+                when {
+                    deviceFlow?.walletUrlStyle == WalletUrlStyle.Inline ->
+                        tx.transactionGet(ctx.responseUrl)
+                    deviceFlow != null ->
+                        buildQrCodeUrlByReference(urlPrefix, ctx.transactionGetUrl, clientIdScheme!!)
+                    else -> ctx.transactionGetUrl
                 }
-            }
-        },
-
-        object : ProfileDefinition {
-            override val name = "AV"
-            override val label = "OpenID4VP: AV"
-            override val description = "redirect_uri, OpenID4VP 1.0, direct_post"
-            override val urlPrefix = Paths.Schemes.Av
-            override val supportedOptions: Set<SupportedOptions> =
-                setOf(SupportedOptions.CROSS_DEVICE, SupportedOptions.SAME_DEVICE, SupportedOptions.ISO_MDOC_DC_API)
-
-            override suspend fun prepare(context: TransactionContext): PreparedProfile {
-                val profileName = name
-                val profileLabel = label
-                val profileDescription = description
-                val profileUrlPrefix = urlPrefix
-                val profileSupportedOptions = supportedOptions
-                val preparedClientIdScheme = redirectUri(context.responseUrl)
-                val preparedOid4vpVerifier = openId4VpVerifier(preparedClientIdScheme)
-                val preparedIso180137Verifier = iso180137Verifier()
-                return object : PreparedProfile {
-                    override val name = profileName
-                    override val label = profileLabel
-                    override val description = profileDescription
-                    override val urlPrefix = profileUrlPrefix
-                    override val clientIdScheme = preparedClientIdScheme
-                    override val oid4vpVerifier = preparedOid4vpVerifier
-                    override val iso180137Verifier = preparedIso180137Verifier
-                    override val supportedOptions = profileSupportedOptions
-
-                    override fun buildQrCodeUrl(requestUrl: String) =
-                        buildQrCodeUrlByReference(urlPrefix, requestUrl, preparedClientIdScheme)
-
-                    override suspend fun transactionGet(
-                        transactionId: String,
-                        responseUrl: String,
-                        presentationRequest: CredentialPresentationRequest?,
-                    ): String = directPost(
-                        transactionId = transactionId,
-                        responseUrl = responseUrl,
-                        presentationRequest = presentationRequest,
-                        verifier = preparedOid4vpVerifier
-                    )
-
-                    override suspend fun transactionGetDcApi(
-                        transactionId: String,
-                        responseUrl: String,
-                        dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
-                        deviceRequest: DeviceRequest?,
-                        dcApiSignedOid4vp: Boolean,
-                    ): String = joseCompliantSerializer.encodeToString(
-                        CredentialRequestOptions.create(
-                            listOf(
-                                DigitalCredentialGetRequest.IsoMdoc(
-                                    dcApiIsoMdoc(
-                                        deviceRequest = deviceRequest
-                                            ?: throw IllegalStateException("Device request is not available"),
-                                        verifier = preparedIso180137Verifier,
-                                        id = transactionId
-                                    )
-                                )
-                            )
-                        )
-                    )
-
-                    override suspend fun buildWalletUrl(
-                        transaction: Transaction,
-                        context: TransactionContext,
-                    ): String = transaction.transactionGet(context.responseUrl)
+            },
+            transactionGetFn = { txId, responseUrl, request ->
+                when (deviceFlow!!.responseMode) {
+                    DeviceResponseMode.DirectPost ->
+                        directPost(txId, responseUrl, request, oid4vpVerifier!!, deviceFlow.verifierMetadataMode)
+                    DeviceResponseMode.DirectPostJwt ->
+                        directPostJwt(txId, responseUrl, request, oid4vpVerifier!!)
                 }
-            }
-        },
+            },
+            transactionGetDcApiFn = { txId, responseUrl, dcqlRequest, deviceRequest, signed ->
+                buildDcApiResponse(txId, responseUrl, dcqlRequest, deviceRequest, signed, oid4vpVerifier, iso180137, dcApi!!)
+            },
+        )
+    }
 
-        object : ProfileDefinition {
-            override val name = "UOID4VP"
-            override val label = "DCAPI: Unencrypted OpenID4VP"
-            override val description = "DCAPI, OpenID4VP 1.0, direct_post"
-            override val urlPrefix = ""
-            override val supportedOptions: Set<SupportedOptions> = setOf(SupportedOptions.OID4VP_DC_API)
+    private class PreparedVerifierProfile(
+        override val name: String,
+        override val label: String,
+        override val description: String,
+        override val urlPrefix: String,
+        override val supportedOptions: Set<SupportedOptions>,
+        override val clientIdScheme: ClientIdScheme?,
+        override val oid4vpVerifier: OpenId4VpVerifier?,
+        override val iso180137Verifier: Iso180137AnnexCVerifier?,
+        private val buildQrCodeUrlFn: (String) -> String,
+        private val buildWalletUrlFn: suspend (Transaction, TransactionContext) -> String,
+        private val transactionGetFn: suspend (String, String, CredentialPresentationRequest?) -> String,
+        private val transactionGetDcApiFn: suspend (String, String, CredentialPresentationRequest.DCQLRequest?, DeviceRequest?, Boolean) -> String,
+    ) : PreparedProfile {
+        override fun buildQrCodeUrl(requestUrl: String) = buildQrCodeUrlFn(requestUrl)
+        override suspend fun buildWalletUrl(transaction: Transaction, context: TransactionContext) = buildWalletUrlFn(transaction, context)
+        override suspend fun transactionGet(transactionId: String, responseUrl: String, presentationRequest: CredentialPresentationRequest?) =
+            transactionGetFn(transactionId, responseUrl, presentationRequest)
+        override suspend fun transactionGetDcApi(transactionId: String, responseUrl: String, dcqlRequest: CredentialPresentationRequest.DCQLRequest?, deviceRequest: DeviceRequest?, dcApiSignedOid4vp: Boolean) =
+            transactionGetDcApiFn(transactionId, responseUrl, dcqlRequest, deviceRequest, dcApiSignedOid4vp)
+    }
 
-            override suspend fun prepare(context: TransactionContext): PreparedProfile {
-                val profileName = name
-                val profileLabel = label
-                val profileDescription = description
-                val profileUrlPrefix = urlPrefix
-                val profileSupportedOptions = supportedOptions
-                val preparedClientIdScheme = x509Hash()
-                val preparedOid4vpVerifier = openId4VpVerifier(preparedClientIdScheme)
-                return object : PreparedProfile {
-                    override val name = profileName
-                    override val label = profileLabel
-                    override val description = profileDescription
-                    override val urlPrefix = profileUrlPrefix
-                    override val clientIdScheme = preparedClientIdScheme
-                    override val oid4vpVerifier = preparedOid4vpVerifier
-                    override val iso180137Verifier: Iso180137AnnexCVerifier? = null
-                    override val supportedOptions = profileSupportedOptions
-
-                    override fun buildQrCodeUrl(requestUrl: String) = requestUrl
-
-                    override suspend fun transactionGetDcApi(
-                        transactionId: String,
-                        responseUrl: String,
-                        dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
-                        deviceRequest: DeviceRequest?,
-                        dcApiSignedOid4vp: Boolean,
-                    ): String = joseCompliantSerializer.encodeToString(
-                        CredentialRequestOptions.create(
-                            listOf(
-                                buildOpenId4VpDcApiRequest(
-                                    transactionId = transactionId,
-                                    responseUrl = responseUrl,
-                                    presentationRequest = dcqlRequest,
-                                    verifier = preparedOid4vpVerifier,
-                                    dcApiSignedOid4vp = dcApiSignedOid4vp,
-                                    encryption = false,
-                                )
-                            )
-                        )
+    private suspend fun buildDcApiResponse(
+        transactionId: String,
+        responseUrl: String,
+        dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
+        deviceRequest: DeviceRequest?,
+        dcApiSignedOid4vp: Boolean,
+        oid4vpVerifier: OpenId4VpVerifier?,
+        iso180137Verifier: Iso180137AnnexCVerifier?,
+        config: DcApiConfig,
+    ): String = joseCompliantSerializer.encodeToString(
+        CredentialRequestOptions.create(buildList {
+            if (config.isoMdoc) add(
+                DigitalCredentialGetRequest.IsoMdoc(
+                    dcApiIsoMdoc(
+                        deviceRequest ?: throw IllegalStateException("Device request is not available"),
+                        iso180137Verifier!!,
+                        transactionId,
                     )
-                }
-            }
-        },
-
-        object : ProfileDefinition {
-            override val name = "MDOCd23"
-            override val label = "OpenID4VP: ISO 18013-7 (d23)"
-            override val description = "x509_san_dns, OpenID4VP d23, direct_post.jwt"
-            override val urlPrefix = Paths.Schemes.MdocOpenId4Vp
-            override val supportedOptions: Set<SupportedOptions> =
-                setOf(SupportedOptions.CROSS_DEVICE, SupportedOptions.SAME_DEVICE)
-
-            override suspend fun prepare(context: TransactionContext): PreparedProfile {
-                val profileName = name
-                val profileLabel = label
-                val profileDescription = description
-                val profileUrlPrefix = urlPrefix
-                val profileSupportedOptions = supportedOptions
-                val preparedClientIdScheme = x509SanDnsD23()
-                val preparedOid4vpVerifier = openId4VpVerifier(preparedClientIdScheme)
-                return object : PreparedProfile {
-                    override val name = profileName
-                    override val label = profileLabel
-                    override val description = profileDescription
-                    override val urlPrefix = profileUrlPrefix
-                    override val clientIdScheme = preparedClientIdScheme
-                    override val oid4vpVerifier = preparedOid4vpVerifier
-                    override val iso180137Verifier: Iso180137AnnexCVerifier? = null
-                    override val supportedOptions = profileSupportedOptions
-
-                    override fun buildQrCodeUrl(requestUrl: String): String =
-                        buildQrCodeUrlByReference(urlPrefix, requestUrl, preparedClientIdScheme)
-
-                    override suspend fun transactionGet(
-                        transactionId: String,
-                        responseUrl: String,
-                        presentationRequest: CredentialPresentationRequest?,
-                    ): String = directPostJwt(
-                        transactionId = transactionId,
-                        responseUrl = responseUrl,
-                        presentationRequest = presentationRequest,
-                        verifier = preparedOid4vpVerifier
-                    )
-                }
-            }
-        },
-
-        object : ProfileDefinition {
-            override val name = "MDOCISO"
-            override val label = "DCAPI: ISO 18013-7 (Annex C)"
-            override val description = "ISO 18013-7 Annex C"
-            override val urlPrefix = ""
-            override val supportedOptions: Set<SupportedOptions> =
-                setOf(SupportedOptions.ISO_MDOC_DC_API)
-
-            override suspend fun prepare(context: TransactionContext): PreparedProfile {
-                val profileName = name
-                val profileLabel = label
-                val profileDescription = description
-                val profileUrlPrefix = urlPrefix
-                val profileSupportedOptions = supportedOptions
-                val preparedIso180137Verifier = iso180137Verifier()
-                return object : PreparedProfile {
-                    override val name = profileName
-                    override val label = profileLabel
-                    override val description = profileDescription
-                    override val urlPrefix = profileUrlPrefix
-                    override val clientIdScheme: ClientIdScheme? = null
-                    override val oid4vpVerifier: OpenId4VpVerifier? = null
-                    override val iso180137Verifier = preparedIso180137Verifier
-                    override val supportedOptions = profileSupportedOptions
-
-                    override fun buildQrCodeUrl(requestUrl: String): String = requestUrl
-
-                    override suspend fun transactionGetDcApi(
-                        transactionId: String,
-                        responseUrl: String,
-                        dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
-                        deviceRequest: DeviceRequest?,
-                        dcApiSignedOid4vp: Boolean,
-                    ): String = joseCompliantSerializer.encodeToString(
-                        CredentialRequestOptions.create(
-                            listOf(
-                                DigitalCredentialGetRequest.IsoMdoc(
-                                    dcApiIsoMdoc(
-                                        deviceRequest = deviceRequest
-                                            ?: throw IllegalStateException("Device request is not available"),
-                                        verifier = preparedIso180137Verifier,
-                                        id = transactionId
-                                    )
-                                )
-                            )
-                        )
-                    )
-                }
-            }
-        },
-
-        object : ProfileDefinition {
-            override val name = "EUDIW"
-            override val label = "OpenID4VP: EUDIW Ref."
-            override val description = "x509_san_dns, OpenID4VP d23, direct_post.jwt"
-            override val urlPrefix = Paths.Schemes.OpenId4Vp
-            override val supportedOptions: Set<SupportedOptions> =
-                setOf(SupportedOptions.CROSS_DEVICE, SupportedOptions.SAME_DEVICE)
-
-            override suspend fun prepare(context: TransactionContext): PreparedProfile {
-                val profileName = name
-                val profileLabel = label
-                val profileDescription = description
-                val profileUrlPrefix = urlPrefix
-                val profileSupportedOptions = supportedOptions
-                val preparedClientIdScheme = x509SanDnsD23()
-                val preparedOid4vpVerifier = openId4VpVerifier(preparedClientIdScheme)
-                return object : PreparedProfile {
-                    override val name = profileName
-                    override val label = profileLabel
-                    override val description = profileDescription
-                    override val urlPrefix = profileUrlPrefix
-                    override val clientIdScheme = preparedClientIdScheme
-                    override val oid4vpVerifier = preparedOid4vpVerifier
-                    override val iso180137Verifier: Iso180137AnnexCVerifier? = null
-                    override val supportedOptions = profileSupportedOptions
-
-                    override fun buildQrCodeUrl(requestUrl: String) =
-                        buildQrCodeUrlByReference(urlPrefix, requestUrl, preparedClientIdScheme)
-
-                    override suspend fun transactionGet(
-                        transactionId: String,
-                        responseUrl: String,
-                        presentationRequest: CredentialPresentationRequest?,
-                    ): String = directPostJwt(
-                        transactionId = transactionId,
-                        responseUrl = responseUrl,
-                        presentationRequest = presentationRequest,
-                        verifier = preparedOid4vpVerifier
-                    )
-                }
-            }
-        },
-        object : ProfileDefinition {
-            override val name = "DC_API_COMBINED"
-            override val label = "DCAPI: Unencrypted OpenID4VP + ISO 18013-7"
-            override val description = "Unencrypted OpenID4VP (signed/unsigned) and ISO 18013-7 Annex-C via DC API"
-            override val urlPrefix = ""
-            override val supportedOptions: Set<SupportedOptions> =
-                setOf(SupportedOptions.OID4VP_DC_API, SupportedOptions.ISO_MDOC_DC_API)
-
-            override suspend fun prepare(context: TransactionContext): PreparedProfile {
-                val profileName = name
-                val profileLabel = label
-                val profileDescription = description
-                val profileUrlPrefix = urlPrefix
-                val profileSupportedOptions = supportedOptions
-                val preparedClientIdScheme = x509SanDnsD23()
-                val preparedOid4vpVerifier = openId4VpVerifier(preparedClientIdScheme)
-                val preparedIso180137Verifier = iso180137Verifier()
-                return object : PreparedProfile {
-                    override val name = profileName
-                    override val label = profileLabel
-                    override val description = profileDescription
-                    override val urlPrefix = profileUrlPrefix
-                    override val clientIdScheme = preparedClientIdScheme
-                    override val oid4vpVerifier = preparedOid4vpVerifier
-                    override val iso180137Verifier = preparedIso180137Verifier
-                    override val supportedOptions = profileSupportedOptions
-
-                    override fun buildQrCodeUrl(requestUrl: String) = requestUrl
-
-                    override suspend fun transactionGetDcApi(
-                        transactionId: String,
-                        responseUrl: String,
-                        dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
-                        deviceRequest: DeviceRequest?,
-                        dcApiSignedOid4vp: Boolean,
-                    ): String = joseCompliantSerializer.encodeToString(
-                        CredentialRequestOptions.create(
-                            listOf(
-                                DigitalCredentialGetRequest.IsoMdoc(
-                                    dcApiIsoMdoc(
-                                        deviceRequest = deviceRequest
-                                            ?: throw IllegalStateException("Device request is not available"),
-                                        verifier = preparedIso180137Verifier,
-                                        id = transactionId
-                                    )
-                                ), buildOpenId4VpDcApiRequest(
-                                    transactionId = transactionId,
-                                    responseUrl = responseUrl,
-                                    presentationRequest = dcqlRequest,
-                                    verifier = preparedOid4vpVerifier,
-                                    dcApiSignedOid4vp = dcApiSignedOid4vp,
-                                    encryption = false,
-                                )
-                            )
-                        )
-                    )
-                }
-            }
-        },
-
-        object : ProfileDefinition {
-            override val name = "DC_API_COMBINED_ENCRYPTED"
-            override val label = "DCAPI: Encrypted OpenID4VP + ISO 18013-7"
-            override val description = "Encrypted OpenID4VP (signed/unsigned) and ISO 18013-7 Annex-C via DC API"
-            override val urlPrefix = ""
-            override val supportedOptions: Set<SupportedOptions> =
-                setOf(SupportedOptions.OID4VP_DC_API, SupportedOptions.ISO_MDOC_DC_API)
-
-            override suspend fun prepare(context: TransactionContext): PreparedProfile {
-                val profileName = name
-                val profileLabel = label
-                val profileDescription = description
-                val profileUrlPrefix = urlPrefix
-                val profileSupportedOptions = supportedOptions
-                val preparedClientIdScheme = x509SanDnsD23()
-                val preparedOid4vpVerifier = openId4VpVerifier(preparedClientIdScheme)
-                val preparedIso180137Verifier = iso180137Verifier()
-                return object : PreparedProfile {
-                    override val name = profileName
-                    override val label = profileLabel
-                    override val description = profileDescription
-                    override val urlPrefix = profileUrlPrefix
-                    override val clientIdScheme = preparedClientIdScheme
-                    override val oid4vpVerifier = preparedOid4vpVerifier
-                    override val iso180137Verifier = preparedIso180137Verifier
-                    override val supportedOptions = profileSupportedOptions
-
-                    override fun buildQrCodeUrl(requestUrl: String) = requestUrl
-
-                    override suspend fun transactionGetDcApi(
-                        transactionId: String,
-                        responseUrl: String,
-                        dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
-                        deviceRequest: DeviceRequest?,
-                        dcApiSignedOid4vp: Boolean,
-                    ): String = joseCompliantSerializer.encodeToString(
-                        CredentialRequestOptions.create(
-                            listOf(
-                                DigitalCredentialGetRequest.IsoMdoc(
-                                    dcApiIsoMdoc(
-                                        deviceRequest = deviceRequest
-                                            ?: throw IllegalStateException("Device request is not available"),
-                                        verifier = preparedIso180137Verifier,
-                                        id = transactionId
-                                    )
-                                ), buildOpenId4VpDcApiRequest(
-                                    transactionId = transactionId,
-                                    responseUrl = responseUrl,
-                                    presentationRequest = dcqlRequest,
-                                    verifier = preparedOid4vpVerifier,
-                                    dcApiSignedOid4vp = dcApiSignedOid4vp,
-                                    encryption = true,
-                                )
-                            )
-                        )
-                    )
-                }
-            }
-        },
+                )
+            )
+            if (config.oid4vpEncrypted != null) add(
+                buildOpenId4VpDcApiRequest(
+                    transactionId = transactionId,
+                    responseUrl = responseUrl,
+                    presentationRequest = dcqlRequest,
+                    verifier = oid4vpVerifier!!,
+                    dcApiSignedOid4vp = dcApiSignedOid4vp,
+                    encryption = config.oid4vpEncrypted,
+                )
+            )
+        })
     )
 
     private suspend fun openId4VpVerifier(clientIdScheme: ClientIdScheme) = OpenId4VpVerifier(
@@ -610,13 +391,14 @@ class VerifierProfiles(
         responseUrl: String,
         presentationRequest: CredentialPresentationRequest?,
         verifier: OpenId4VpVerifier,
+        verifierMetadataMode: VerifierMetadataMode = VerifierMetadataMode.OMIT_IF_OUT_OF_BAND,
     ): String = verifier.createAuthnRequest(
         requestOptions = OpenId4VpRequestOptions(
             state = transactionId,
             responseMode = ResponseMode.DirectPost,
             responseUrl = responseUrl,
             presentationRequest = presentationRequest,
-            verifierMetadataMode = VerifierMetadataMode.OMIT_IF_OUT_OF_BAND,
+            verifierMetadataMode = verifierMetadataMode,
         ),
         creationOptions = OpenId4VpVerifier.CreationOptions.Query("av://"),
     ).getOrThrow().url.normalizeAvWalletUrl()
