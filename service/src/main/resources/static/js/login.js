@@ -232,6 +232,11 @@ const createBasicSetup = function (config) {
         credential.attributes = schemeType.attributes
         credential.validRepresentations = schemeType.validRepresentations
         credential.sd = schemeType.sd
+        // pre-select the first valid representation if none is selected or the current one is not supported
+        if (!credential.representation || !schemeType.validRepresentations.includes(credential.representation.value)) {
+            credential.representation = config.representation
+                .find(r => schemeType.validRepresentations.includes(r.value)) || null
+        }
         handleRequestChanged()
     }
 
