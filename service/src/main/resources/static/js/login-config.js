@@ -127,7 +127,7 @@ export default { "schemeTypes": [
         { "label": "address.region", "value": "address.region" },
         { "label": "address.locality", "value": "address.locality" },
         { "label": "address.postal_code", "value": "address.postal_code" },
-        { "label": "address.street", "value": "address.street" },
+        { "label": "address.street_address", "value": "address.street_address" },
         { "label": "address.house_number", "value": "address.house_number" },
         { "label": "sex", "value": "sex" },
         { "label": "nationalities", "value": "nationalities", "isSelected": true },
