@@ -3,6 +3,7 @@ package at.asit.wallet.relyingparty
 import at.asitplus.dif.PresentationDefinition
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.iso.DeviceRequestBase64UrlSerializer
+import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.wallet.ehic.EhicScheme
 import at.asitplus.wallet.eupid.EuPidScheme
@@ -41,8 +42,8 @@ data class TransactionRequestCredential(
             RequestOptionsCredential(
                 credentialScheme = scheme,
                 representation = representation,
-                requestedOptionalAttributes = null,
-                requestedAttributes = scheme.requestedAttributes(representation),
+                optionalAttributePaths = null,
+                attributePaths = scheme.requestedAttributePaths(representation),
             )
         }
     }
@@ -54,11 +55,21 @@ data class TransactionRequestCredential(
     } ?: EuPidScheme
 
     // if the credential is not selectively disclosable, request all attributes
-    private fun CredentialScheme.requestedAttributes(
+    private fun CredentialScheme.requestedAttributePaths(
         representation: CredentialRepresentation,
-    ): Set<String>? =
-        if (!isSd() && representation == CredentialRepresentation.SD_JWT) mandatoryAttributes()
-        else attributes?.ifEmpty { null }?.toSet()
+    ): Set<DCQLClaimsPathPointer>? =
+        (if (!isSd() && representation == CredentialRepresentation.SD_JWT) mandatoryAttributes()
+        else attributes?.ifEmpty { null }?.toSet())
+            ?.map { it.toClaimPath(representation) }?.toSet()
+
+    private fun String.toClaimPath(representation: CredentialRepresentation): DCQLClaimsPathPointer =
+        when (representation) {
+            // ISO mdoc data element identifiers are literal names;
+            // single-segment paths are prefixed with the scheme's isoNamespace by VC-K
+            CredentialRepresentation.ISO_MDOC -> DCQLClaimsPathPointer(this)
+            // JSON-based credentials use dots as nested-claim shorthand, e.g. "address.formatted"
+            else -> split(".").let { DCQLClaimsPathPointer(it.first(), *it.drop(1).toTypedArray()) }
+        }
 
     private fun CredentialScheme.mandatoryAttributes(): Set<String>? = when (this) {
         is EhicScheme -> with(EhicScheme.Attributes) {

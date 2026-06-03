@@ -1,6 +1,11 @@
 package at.asit.wallet.relyingparty
 
+import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
+import at.asitplus.wallet.lib.data.ConstantIndex
+import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
+import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
 import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
@@ -9,6 +14,31 @@ import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 
 class TransactionRequestTest {
+    @Test
+    fun `address subfields are requested as nested claim paths`() {
+        at.asitplus.wallet.eupidsdjwt.Initializer.initWithVCK()
+
+        val dcqlQuery = CredentialPresentationRequestBuilder(
+            listOf(
+                TransactionRequestCredential(
+                    credentialType = EuPidSdJwtScheme.sdJwtType,
+                    representation = ConstantIndex.CredentialRepresentation.SD_JWT.name,
+                    attributes = listOf(
+                        EuPidSdJwtScheme.SdJwtAttributes.FAMILY_NAME,
+                        EuPidSdJwtScheme.SdJwtAttributes.ADDRESS_STREET,
+                    ),
+                )
+            ).map { it.toRequestOptionsCredential() }
+        ).toDCQLRequest().shouldNotBeNull().dcqlQuery
+
+        val paths = dcqlQuery.credentials.first().claims.shouldNotBeNull().map { claim ->
+            claim.path.map { (it as DCQLClaimsPathPointerSegment.NameSegment).name }
+        }
+        paths shouldContain listOf(EuPidSdJwtScheme.SdJwtAttributes.FAMILY_NAME)
+        // "address.street_address" must be requested as a nested path, not a literal dotted claim name
+        paths shouldContain listOf("address", "street_address")
+    }
+
     @Test
     fun deserializationWorks() {
         val tmp = """{
