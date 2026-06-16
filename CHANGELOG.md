@@ -1,5 +1,11 @@
 # Changelog
 
+Version 6.0.0 (unreleased):
+- Update to VC-K 6.0.0
+- Update to EU PID 3.5.0
+- Remove `jvm` suffix from `vck` in `lib.versions` to restore composite build functionality
+- Use `JwsCompactTyped` instead of `JwsSigned`
+
 Version 5.13.0:
  - Update to VC-K 5.13.0
  - Migrate to Spring Boot 4.0.6 (Spring Framework 7, Spring Security 7, Jakarta EE 11)
