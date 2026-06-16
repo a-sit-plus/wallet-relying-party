@@ -12,7 +12,8 @@ import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ResponseMode
 import at.asitplus.signum.indispensable.josef.JsonWebKey
-import at.asitplus.signum.indispensable.josef.JwsSigned
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.Validator
@@ -44,7 +45,7 @@ import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.JsonPrimitive
 import org.springframework.stereotype.Component
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import kotlin.time.Clock
@@ -131,8 +132,8 @@ class VerifierProfiles(
         }
     }
 
-    private suspend fun remoteKeyLookup(jwsSigned: JwsSigned<*>): Set<JsonWebKey>? =
-        (jwsSigned.payload as? JsonObject)?.get("iss")?.jsonPrimitive?.content?.let { iss ->
+    private suspend fun remoteKeyLookup(jwsCompact: JwsCompact): Set<JsonWebKey>? =
+        (jwsCompact.getPayload<JsonObject>().getOrNull()?.get("iss") as? JsonPrimitive?)?.content?.let { iss ->
             val url = OAuth2Utils.insertWellKnownPath(iss, OpenIdConstants.WellKnownPaths.JwtVcIssuer)
             Napier.i("Resolving Key for $iss from $url")
             httpClient.get(url).body<JwtVcIssuerMetadata>().jsonWebKeySet?.keys?.toSet()
@@ -252,7 +253,7 @@ class VerifierProfiles(
                     DeviceResponseMode.DirectPost ->
                         directPost(txId, responseUrl, request, oid4vpVerifier!!, deviceFlow.verifierMetadataMode)
                     DeviceResponseMode.DirectPostJwt ->
-                        directPostJwt(txId, responseUrl, request, oid4vpVerifier!!)
+                        directPostJwt(txId, responseUrl, request, oid4vpVerifier!!).toString()
                 }
             },
             transactionGetDcApiFn = { txId, responseUrl, dcqlRequest, deviceRequest, signed ->
@@ -343,15 +344,13 @@ class VerifierProfiles(
         encryption: Boolean,
     ): DigitalCredentialGetRequest = if (dcApiSignedOid4vp) {
         DigitalCredentialGetRequest.OpenId4VpSigned(
-            JarRequestParameters(
-                request = dcApiSigned(
-                    responseUrl = responseUrl,
-                    presentationRequest = presentationRequest,
-                    verifier = verifier,
-                    encryption = encryption,
-                    transactionId = transactionId
-                )
-            )
+            DigitalCredentialGetRequest.OpenId4Vp.SignedDataElement(dcApiSigned(
+                responseUrl = responseUrl,
+                presentationRequest = presentationRequest,
+                verifier = verifier,
+                encryption = encryption,
+                transactionId = transactionId
+            ))
         )
     } else {
         DigitalCredentialGetRequest.OpenId4VpUnsigned(
@@ -408,14 +407,14 @@ class VerifierProfiles(
         responseUrl: String,
         presentationRequest: CredentialPresentationRequest?,
         verifier: OpenId4VpVerifier,
-    ): String = verifier.createAuthnRequestAsSignedRequestObject(
+    ) = verifier.createAuthnRequestAsSignedRequestObject(
         OpenId4VpRequestOptions(
             state = transactionId,
             responseMode = ResponseMode.DirectPostJwt,
             responseUrl = responseUrl,
             presentationRequest = presentationRequest,
         ),
-    ).getOrThrow().serialize()
+    ).getOrThrow().jws
 
     private suspend fun dcApi(
         responseUrl: String,
@@ -440,7 +439,7 @@ class VerifierProfiles(
         verifier: OpenId4VpVerifier,
         encryption: Boolean,
         transactionId: String,
-    ): String = verifier.createAuthnRequestAsSignedRequestObject(
+    ) = verifier.createAuthnRequestAsSignedRequestObject(
         OpenId4VpRequestOptions(
             responseMode = if (!encryption) ResponseMode.DcApi else ResponseMode.DcApiJwt,
             responseUrl = responseUrl,
@@ -448,7 +447,7 @@ class VerifierProfiles(
             expectedOrigins = listOf(configuration.publicContext.toString()),
             state = transactionId,
         ),
-    ).getOrThrow().serialize()
+    ).getOrThrow().jws
 
     private suspend fun dcApiIsoMdoc(
         deviceRequest: DeviceRequest,
@@ -468,8 +467,8 @@ class VerifierProfiles(
 
     fun potentialValidatorSdJwt(): ValidatorSdJwt = ValidatorSdJwt(
         verifyJwsObject = VerifyJwsObject(
-            publicKeyLookup = { jwsSigned ->
-                remoteKeyLookup(jwsSigned)
+            publicKeyLookup = { jwsCompact ->
+                remoteKeyLookup(jwsCompact)
             }
         ),
         validator = validator(),
@@ -486,7 +485,7 @@ class VerifierProfiles(
                 header(HttpHeaders.Accept, MediaTypes.Application.STATUSLIST_JWT)
             }.body<String>()
         }.let {
-            JwsSigned.deserialize<StatusListTokenPayload>(StatusListTokenPayload.serializer(), it).getOrThrow()
+            JwsCompactTyped<StatusListTokenPayload>(it)
         }.let {
             StatusListJwt(it, Clock.System.now())
         }

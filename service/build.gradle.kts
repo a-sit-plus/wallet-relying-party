@@ -45,8 +45,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
 
     implementation(napier())
-    implementation(libs.wallet.vck.jvm)
-    implementation(libs.wallet.vck.openid.jvm)
+    implementation(libs.wallet.vck)
+    implementation(libs.wallet.vck.openid)
     implementation(libs.wallet.av)
     implementation(libs.wallet.eupid)
     implementation(libs.wallet.eupid.sdjwt)
