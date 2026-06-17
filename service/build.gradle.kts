@@ -47,14 +47,10 @@ dependencies {
     implementation(napier())
     implementation(libs.wallet.vck)
     implementation(libs.wallet.vck.openid)
-    implementation(libs.wallet.av)
+    implementation(libs.wallet.vck.openid.ktor)
+    // eupid + mdl kept only for their ISO mdoc value serializers; all schemes come from remote metadata
     implementation(libs.wallet.eupid)
-    implementation(libs.wallet.eupid.sdjwt)
     implementation(libs.wallet.mdl)
-    implementation(libs.wallet.por)
-    implementation(libs.wallet.cor)
-    implementation(libs.wallet.taxid)
-    implementation(libs.wallet.ehic)
 
     // Temporary dependency for Hpke decryption
     implementation("org.multipaz:multipaz:0.96.0")

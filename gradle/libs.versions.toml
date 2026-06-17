@@ -1,12 +1,7 @@
 [versions]
+# eupid + mdl kept only for their ISO mdoc value serializers; schemes come from remote metadata
 eupid = "3.5.0"
-eupid-sdjwt = "1.4.0"
 mdl = "1.4.0"
-taxid = "1.3.0"
-por = "1.4.0"
-cor = "2.3.0"
-ehic = "1.3.0"
-av = "1.1.0"
 qrcode = "4.5.0"
 vck = "7.0.0-SNAPSHOT"
 
@@ -19,26 +14,8 @@ kotlin = "2.3.0"
 [libraries]
 spring-boot-admin-starter-client = { module = "de.codecentric:spring-boot-admin-starter-client", version.ref = "spring-admin-starter-client" }
 qrcode-kotlin = { module = "io.github.g0dkar:qrcode-kotlin", version.ref = "qrcode" }
-wallet-taxid = { module = "at.asitplus.wallet:taxid", version.ref = "taxid" }
 wallet-eupid = { module = "at.asitplus.wallet:eupidcredential", version.ref = "eupid" }
-wallet-eupid-sdjwt = { module = "at.asitplus.wallet:eupidcredential-sdjwt", version.ref = "eupid-sdjwt" }
 wallet-mdl = { module = "at.asitplus.wallet:mobiledrivinglicence", version.ref = "mdl" }
-wallet-por = { module = "at.asitplus.wallet:powerofrepresentation", version.ref = "por" }
-wallet-cor = { module = "at.asitplus.wallet:certificateofresidence", version.ref = "cor" }
-wallet-ehic = { module = "at.asitplus.wallet:ehic", version.ref = "ehic" }
-wallet-av = { module = "at.asitplus.wallet:ageverification", version.ref = "av" }
 wallet-vck = { module = "at.asitplus.wallet:vck", version.ref = "vck" }
 wallet-vck-openid = { module = "at.asitplus.wallet:vck-openid", version.ref = "vck" }
-
-[bundles]
-wallet = [
-    "wallet-taxid",
-    "wallet-eupid",
-    "wallet-eupid-sdjwt",
-    "wallet-mdl",
-    "wallet-por",
-    "wallet-cor",
-    "wallet-ehic",
-    "wallet-av",
-    "wallet-vck"
-]
+wallet-vck-openid-ktor = { module = "at.asitplus.wallet:vck-openid-ktor", version.ref = "vck" }
