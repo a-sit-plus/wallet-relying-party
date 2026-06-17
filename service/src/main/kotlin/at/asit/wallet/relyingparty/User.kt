@@ -3,8 +3,8 @@ package at.asit.wallet.relyingparty
 import at.asitplus.KmmResult
 import at.asitplus.openid.IdToken
 import at.asitplus.signum.indispensable.io.Base64UrlStrict
-import at.asitplus.wallet.eupid.EuPidScheme
-import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtScheme
+import at.asitplus.wallet.eupid.EuPidDataElements
+import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtDataElements
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.agent.validation.CredentialFreshnessSummary
 import at.asitplus.wallet.lib.agent.validation.CredentialTimelinessValidationSummary
@@ -13,6 +13,7 @@ import at.asitplus.wallet.lib.agent.validation.common.EntityExpiredError
 import at.asitplus.wallet.lib.agent.validation.common.EntityNotYetValidError
 import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
+import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VcJwsVerificationResultWrapper
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
@@ -68,20 +69,17 @@ data class User(
 
 private fun String?.toImage() = this?.let { "data:image;base64,${it.replace("-", "+").replace("_", "/")}" }
 
-private fun ApiItemCredential.getPortrait() =
-    getClaim(MobileDrivingLicenceDataElements.PORTRAIT)
-        ?: getClaim(EuPidSdJwtScheme.SdJwtAttributes.PORTRAIT)
-        ?: getClaim(EuPidScheme.Attributes.PORTRAIT)
+private fun ApiItemCredential.getPortrait() = getClaim(EuPidDataElements.PORTRAIT)
+    ?: getClaim(EuPidSdJwtDataElements.PORTRAIT)
+    ?: getClaim(MobileDrivingLicenceDataElements.PORTRAIT)
 
-private fun ApiItemCredential.getFamilyName() =
-    getClaim(EuPidScheme.Attributes.FAMILY_NAME)
-        ?: getClaim(EuPidSdJwtScheme.SdJwtAttributes.FAMILY_NAME)
-        ?: getClaim(MobileDrivingLicenceDataElements.FAMILY_NAME)
+private fun ApiItemCredential.getFamilyName() = getClaim(EuPidDataElements.FAMILY_NAME)
+    ?: getClaim(EuPidSdJwtDataElements.FAMILY_NAME)
+    ?: getClaim(MobileDrivingLicenceDataElements.FAMILY_NAME)
 
-private fun ApiItemCredential.getGivenName() =
-    getClaim(EuPidScheme.Attributes.GIVEN_NAME)
-        ?: getClaim(EuPidSdJwtScheme.SdJwtAttributes.GIVEN_NAME)
-        ?: getClaim(MobileDrivingLicenceDataElements.GIVEN_NAME)
+private fun ApiItemCredential.getGivenName() = getClaim(EuPidDataElements.GIVEN_NAME)
+    ?: getClaim(EuPidSdJwtDataElements.GIVEN_NAME)
+    ?: getClaim(MobileDrivingLicenceDataElements.GIVEN_NAME)
 
 fun ApiItemCredential.getClaim(claim: String) = allFields?.entries
     ?.firstOrNull { it.key == claim }?.value
@@ -98,7 +96,8 @@ fun AuthnResponseResult.toUser() = User(
     credentials = vpTokenValidationResult?.getOrNull()?.presentations()?.flatMap {
         it.toApiItemCredentials()
     },
-    presentationError = vpTokenValidationResult?.exceptionOrNull()?.message ?: when(val presentation = vpTokenValidationResult?.getOrNull()) {
+    presentationError = vpTokenValidationResult?.exceptionOrNull()?.message ?: when (val presentation =
+        vpTokenValidationResult?.getOrNull()) {
         is VpTokenValidationResultDCQL -> presentation.submissionRequirementsValidationResult.exceptionOrNull()?.message
         is VpTokenValidationResultPresentationExchange -> null
         null -> null
@@ -106,10 +105,7 @@ fun AuthnResponseResult.toUser() = User(
 )
 
 fun VpTokenValidationResult.presentations() = when (this) {
-    is VpTokenValidationResultDCQL -> credentialQueryResponseValidations.flatMap {
-        it.value
-    }
-
+    is VpTokenValidationResultDCQL -> credentialQueryResponseValidations.flatMap { it.value }
     is VpTokenValidationResultPresentationExchange -> inputDescriptorResponseValidations.values
 }
 
@@ -141,7 +137,7 @@ fun VerifiablePresentationParsed.toApiItemCredentials(): List<ApiItemCredential>
         it.map {
             ApiItemCredential(
                 jwtCredential = it.vcJws.vc.credentialSubject,
-                credentialType = EuPidScheme.vcType,
+                credentialType = it.vcJws.vc.type.filterNot { it == VERIFIABLE_CREDENTIAL }.firstOrNull(),
             )
         }
     } ?: notVerifiablyFreshVerifiableCredentials.takeIf { it.isNotEmpty() }?.let {
