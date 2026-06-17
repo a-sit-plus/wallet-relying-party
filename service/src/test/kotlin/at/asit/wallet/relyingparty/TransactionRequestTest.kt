@@ -1,8 +1,6 @@
 package at.asit.wallet.relyingparty
 
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
-import at.asitplus.wallet.eupidsdjwt.EU_PID_SD_JWT_VCT
-import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtDataElements
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
@@ -18,17 +16,14 @@ import org.junit.jupiter.api.Test
 class TransactionRequestTest {
     @Test
     fun `address subfields are requested as nested claim paths`() = runTest {
-        at.asitplus.wallet.eupidsdjwt.Initializer.initWithVCK()
-
+        // No metadata registry is registered here, so resolution falls back to a generic SD-JWT scheme; this test only
+        // exercises how the user-selected attributes are turned into claim paths.
         val dcqlQuery = CredentialPresentationRequestBuilder(
             listOf(
                 TransactionRequestCredential(
-                    credentialType = EU_PID_SD_JWT_VCT,
+                    credentialType = "urn:eudi:pid:1",
                     representation = ConstantIndex.CredentialRepresentation.SD_JWT.name,
-                    attributes = listOf(
-                        EuPidSdJwtDataElements.FAMILY_NAME,
-                        EuPidSdJwtDataElements.ADDRESS_STREET,
-                    ),
+                    attributes = listOf("family_name", "address.street_address"),
                 )
             ).map { it.toRequestOptionsCredential() }
         ).toDCQLRequest().shouldNotBeNull().dcqlQuery
@@ -36,7 +31,7 @@ class TransactionRequestTest {
         val paths = dcqlQuery.credentials.first().claims.shouldNotBeNull().map { claim ->
             claim.path.map { (it as DCQLClaimsPathPointerSegment.NameSegment).name }
         }
-        paths shouldContain listOf(EuPidSdJwtDataElements.FAMILY_NAME)
+        paths shouldContain listOf("family_name")
         // "address.street_address" must be requested as a nested path, not a literal dotted claim name
         paths shouldContain listOf("address", "street_address")
     }
