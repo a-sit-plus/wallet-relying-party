@@ -92,11 +92,11 @@ class ApiController(
         @RequestBody id: String,
     ): ResponseEntity<ApiItem> = transactionStore.removeApiItem(id).let {
         ResponseEntity.ok(it)
-    } ?: ResponseEntity.notFound().build()
+    }
 
     @PostMapping(Paths.Utilities.BuildCredentialQueriesUrl)
     @ResponseBody
-    fun buildCredentialQueries(
+    suspend fun buildCredentialQueries(
         @RequestBody credentials: List<TransactionRequestCredential>,
     ): ResponseEntity<TransactionRequestQueries> = CredentialPresentationRequestBuilder(
         credentials.map { it.toRequestOptionsCredential() }
@@ -232,7 +232,7 @@ class ApiController(
         AntilogSlf4jAdapter.transactionLogs[id].takeIf { it != null }.let {
             ResponseEntity.ok(it)
         }
-    } ?: ResponseEntity.noContent().build()
+    }
 
     /**
      * Expects OpenID4VP authn response as request body,

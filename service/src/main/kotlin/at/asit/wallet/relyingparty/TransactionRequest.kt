@@ -6,11 +6,10 @@ import at.asitplus.iso.DeviceRequestBase64UrlSerializer
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.wallet.ehic.EhicScheme
-import at.asitplus.wallet.eupid.EuPidScheme
+import at.asitplus.wallet.eupid.EU_PID_DOCTYPE
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
-import at.asitplus.wallet.lib.data.ConstantIndex.CredentialScheme
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import at.asitplus.wallet.por.PowerOfRepresentationDataElements
 import at.asitplus.wallet.por.PowerOfRepresentationScheme
@@ -27,8 +26,7 @@ data class TransactionRequest(
     val dcqlQuery: DCQLQuery? = null,
     @Serializable(with = DeviceRequestBase64UrlSerializer::class)
     val deviceRequest: DeviceRequest? = null,
-) {
-}
+)
 
 @Serializable
 data class TransactionRequestCredential(
@@ -36,26 +34,24 @@ data class TransactionRequestCredential(
     val representation: String? = null,
     val attributes: List<String>? = null,
 ) {
-    fun toRequestOptionsCredential() = resolveCredentialType().let { scheme ->
-        (CredentialRepresentation.entries.firstOrNull { it.name == representation }
-            ?: CredentialRepresentation.SD_JWT).let { representation ->
-            RequestOptionsCredential(
-                credentialScheme = scheme,
-                representation = representation,
-                optionalAttributePaths = null,
-                attributePaths = scheme.requestedAttributePaths(representation),
-            )
-        }
+    val format
+        get() = CredentialRepresentation.entries.firstOrNull { it.name == representation }
+            ?: CredentialRepresentation.SD_JWT
+
+    suspend fun toRequestOptionsCredential() = resolveCredentialType().let { scheme ->
+        RequestOptionsCredential(
+            credentialScheme = scheme,
+            representation = format,
+            optionalAttributePaths = null,
+            attributePaths = scheme.requestedAttributePaths(format),
+        )
     }
 
-    private fun resolveCredentialType(): CredentialScheme = credentialType?.let {
-        AttributeIndex.resolveAttributeType(it)
-            ?: AttributeIndex.resolveSdJwtAttributeType(it)
-            ?: AttributeIndex.resolveIsoDoctype(it)
-    } ?: EuPidScheme
+    private suspend fun resolveCredentialType(): at.asitplus.wallet.lib.data.CredentialScheme =
+        AttributeIndex.resolveIdentifier(credentialType ?: EU_PID_DOCTYPE, format)
 
     // if the credential is not selectively disclosable, request all attributes
-    private fun CredentialScheme.requestedAttributePaths(
+    private fun at.asitplus.wallet.lib.data.CredentialScheme.requestedAttributePaths(
         representation: CredentialRepresentation,
     ): Set<DCQLClaimsPathPointer>? =
         (if (!isSd() && representation == CredentialRepresentation.SD_JWT) mandatoryAttributes()
@@ -71,7 +67,7 @@ data class TransactionRequestCredential(
             else -> split(".").let { DCQLClaimsPathPointer(it.first(), *it.drop(1).toTypedArray()) }
         }
 
-    private fun CredentialScheme.mandatoryAttributes(): Set<String>? = when (this) {
+    private fun at.asitplus.wallet.lib.data.CredentialScheme.mandatoryAttributes(): Set<String>? = when (this) {
         is EhicScheme -> with(EhicScheme.Attributes) {
             setOf(
                 ISSUING_COUNTRY,
@@ -91,7 +87,7 @@ data class TransactionRequestCredential(
         else -> setOf()
     }
 
-    private fun CredentialScheme.isSd(): Boolean = when (this) {
+    private fun at.asitplus.wallet.lib.data.CredentialScheme.isSd(): Boolean = when (this) {
         is EhicScheme -> false
         is TaxIdScheme -> false
         is PowerOfRepresentationScheme -> false
