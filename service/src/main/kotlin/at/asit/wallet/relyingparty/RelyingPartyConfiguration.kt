@@ -4,10 +4,17 @@ import at.asitplus.signum.indispensable.asn1.*
 import at.asitplus.signum.indispensable.asn1.encoding.Asn1
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
+import at.asitplus.wallet.eupid.EuPidItemValueSerializerMap
+import at.asitplus.wallet.eupid.EuPidJsonValueEncoder
+import at.asitplus.wallet.lib.LibraryInitializer
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.KeyStoreMaterial
+import at.asitplus.wallet.lib.ktor.openid.RemoteCredentialMetadataRegistry
+import at.asitplus.wallet.mdl.MobileDrivingLicenceItemValueSerializerMap
+import at.asitplus.wallet.mdl.MobileDrivingLicenceJsonValueEncoder
 import io.github.aakira.napier.Napier
+import io.ktor.client.HttpClient
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
 import org.bouncycastle.cert.X509CertificateHolder
@@ -27,6 +34,7 @@ import java.nio.charset.Charset
 import java.security.KeyStore
 import java.security.PublicKey
 import java.security.Security
+import kotlin.time.Clock
 
 
 @Configuration
@@ -43,14 +51,29 @@ class RelyingPartyConfiguration {
         Napier.takeLogarithm()
         Napier.base(AntilogSlf4jAdapter)
         Security.addProvider(BouncyCastleProvider())
-        at.asitplus.wallet.taxid.Initializer.initWithVCK()
-        at.asitplus.wallet.eupid.Initializer.initWithVCK()
-        at.asitplus.wallet.eupidsdjwt.Initializer.initWithVCK()
-        at.asitplus.wallet.mdl.Initializer.initWithVCK()
-        at.asitplus.wallet.cor.Initializer.initWithVCK()
-        at.asitplus.wallet.por.Initializer.initWithVCK()
-        at.asitplus.wallet.ehic.Initializer.initWithVCK()
-        at.asitplus.wallet.ageverification.Initializer.initWithVCK()   
+    }
+
+    /**
+     * Credential schemes are derived from remote SD-JWT Type Metadata documents (see [CredentialCatalog]); register
+     * the registry once at startup. ISO mdoc credentials with non-primitive values still need their value serializers
+     * registered from code — only mDL and EU PID (ISO) require these.
+     */
+    @Bean
+    fun credentialMetadataRegistry(): RemoteCredentialMetadataRegistry {
+        LibraryInitializer.registerCredentialSerializers(
+            jsonValueEncoder = MobileDrivingLicenceJsonValueEncoder,
+            itemValueSerializerMap = MobileDrivingLicenceItemValueSerializerMap,
+        )
+        LibraryInitializer.registerCredentialSerializers(
+            jsonValueEncoder = EuPidJsonValueEncoder,
+            itemValueSerializerMap = EuPidItemValueSerializerMap,
+        )
+        return RemoteCredentialMetadataRegistry(
+            httpClient = HttpClient(),
+            clock = Clock.System,
+            documentUrls = CredentialCatalog.documentUrls(),
+            aliases = CredentialCatalog.aliases(),
+        ).also { LibraryInitializer.registerCredentialMetadataRegistry(it) }
     }
 
     @Bean("verifierKeyMaterial")
