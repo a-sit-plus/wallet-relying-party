@@ -50,15 +50,16 @@ libraries:
 - `CredentialPresentationRequestBuilder` converts selected credentials and attributes into Presentation Exchange, DCQL, and ISO mDoc device requests.
 - `VerifierAgent`, `ValidatorSdJwt`, and `ValidatorMdoc` validate credential presentations and their cryptographic material.
 - `ClientIdScheme.CertificateHash`, `ClientIdScheme.CertificateSanDns`, and `ClientIdScheme.RedirectUri` model the different verifier identification profiles.
-- Credential scheme modules register EUDI data models with VC-K via `Initializer.initWithVCK()`.
+- Credential schemes are no longer compiled in per credential. Instead a `RemoteCredentialMetadataRegistry` (from `vck-openid-ktor`) resolves [SD-JWT Type Metadata](https://github.com/a-sit-plus/credentials-collection) documents over HTTP at runtime; no `Initializer.initWithVCK()` calls are needed. The `eupid` and `mobiledrivinglicence` libraries are still on the classpath, but only to register the ISO mdoc value serializers for non-primitive claims (dates, portrait, driving privileges).
 
 The main integration points are:
 
-- [`RelyingPartyApplication.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/RelyingPartyApplication.kt) registers the credential schemes with VC-K.
+- [`CredentialCatalog.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/CredentialCatalog.kt) lists the known credentials and their hosted type-metadata URLs (the single source for both registration and the UI).
+- [`RelyingPartyConfiguration.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/RelyingPartyConfiguration.kt) loads verifier signing keys and registers the remote metadata registry and ISO value serializers with VC-K.
 - [`VerifierProfiles.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/VerifierProfiles.kt) defines the supported verifier profiles and builds OpenID4VP, DC API, and ISO mDoc requests.
 - [`ApiController.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/ApiController.kt) creates transactions, returns request objects, receives wallet responses, and invokes VC-K validation.
 - [`TransactionRequest.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/TransactionRequest.kt) maps UI selections to VC-K credential request options.
-- [`RelyingPartyConfiguration.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/RelyingPartyConfiguration.kt) loads verifier signing keys.
+- [`LoginConfigController.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/LoginConfigController.kt) serves the UI's credential/attribute picker (`/js/login-config.js`), generated from the type-metadata documents instead of a hand-maintained static file.
 
 ## Supported Presentation Profiles
 
@@ -84,6 +85,10 @@ Supported credential examples include:
 - Tax ID
 - Certificate of Residence
 - Power of Representation
+- Health ID
+- Company Registration
+
+The list is driven entirely by the type-metadata documents in [`CredentialCatalog.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/CredentialCatalog.kt); add an entry there to surface a new credential, no code changes required.
 
 ## Architecture
 
@@ -349,6 +354,7 @@ not a drop-in production service. Keep these points in mind when using it:
 - **The static UI is a demo client**: the frontend is intentionally simple and mirrors some backend constants. Treat it as an example, not as a finished application UI.
 - **Browser DC API support depends on the runtime environment**: Digital Credentials API behavior is browser, platform, flag, and wallet dependent.
 - **Remote issuer metadata and status list resolution are used during validation**: make sure the service can reach issuer metadata and status list endpoints required by the presented credentials.
+- **Credential type metadata is fetched at runtime**: credential schemes and the UI picker are resolved from the documents at the `CredentialCatalog.BASE_URL` branch of [`credentials-collection`](https://github.com/a-sit-plus/credentials-collection). The service must be able to reach those raw URLs; a credential whose document is unreachable on cold start is omitted until the next request (successful documents are cached). The default branch is `main` — point it at a branch that actually hosts the documents.
 
 ## Contributing
 
