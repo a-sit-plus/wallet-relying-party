@@ -24,6 +24,10 @@ result to a simple web UI. It is intended as a practical integration example for
 OpenID4VP, ISO mDoc, SD-JWT VC, DCQL, Presentation Exchange, and the browser
 Digital Credentials API.
 
+| ⚠️ Warning                                             |
+|:-------------------------------------------------------|
+| This service is intended as a Technology Demonstrator! |
+
 ## What This Demonstrates
 
 - **OpenID4VP relying party flows** using VC-K's verifier APIs.
