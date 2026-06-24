@@ -2,7 +2,7 @@ name: Assemble
 on: [push]
 jobs:
   build:
-    runs-on: [self-hosted, linux]
+    runs-on: ubuntu-latest
     env:
       GITHUB_ACTOR: ${{ github.actor }}
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
