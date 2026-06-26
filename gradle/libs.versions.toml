@@ -8,7 +8,7 @@ cor = "2.3.0"
 ehic = "1.3.0"
 av = "1.1.0"
 qrcode = "4.5.0"
-vck = "6.0.0-SNAPSHOT"
+vck = "6.0.0-RC2"
 
 spring-boot = "4.0.6"
 spring-cloud = "2025.1.1"

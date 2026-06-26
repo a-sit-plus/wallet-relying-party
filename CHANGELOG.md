@@ -1,6 +1,6 @@
 # Changelog
 
-Version 6.0.0 (unreleased):
+Version 6.0.0:
 - Update to VC-K 6.0.0
 - Update to EU PID 3.5.0
 - Remove `jvm` suffix from `vck` in `lib.versions` to restore composite build functionality

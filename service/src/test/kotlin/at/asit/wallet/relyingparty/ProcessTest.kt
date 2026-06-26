@@ -157,7 +157,7 @@ class ProcessTest {
         val holderKey = EphemeralKeyWithoutCert()
         val holder = HolderAgent(keyMaterial = holderKey)
         val issuer = IssuerAgent(
-            statusListBaseUrl = "https://wallet.a-sit.at/m7/credentials/status",
+            statusListBaseUrl = "https://wallet-issuer.a-sit.plus/credentials/status",
             identifier = UniformResourceIdentifier("https://example.com"),
         )
         holder.storeCredential(
