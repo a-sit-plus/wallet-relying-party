@@ -45,6 +45,9 @@ class ProcessTest {
     @Autowired
     private lateinit var transactionStore: TransactionStore
 
+    @Autowired
+    private lateinit var configuration: AppConfigurationProperties
+
     companion object {
         @BeforeAll
         @JvmStatic
@@ -102,8 +105,9 @@ class ProcessTest {
         assertTrue(decodedQrUrl.contains("response_mode=direct_post"))
         assertTrue(decodedQrUrl.contains("nonce="))
         assertTrue(decodedQrUrl.contains("state=${avProfile.id}"))
-        assertTrue(decodedQrUrl.contains("response_uri=http://localhost:8080/transaction/result/${avProfile.id}"))
-        assertTrue(decodedQrUrl.contains("client_id=redirect_uri:http://localhost:8080/transaction/result/${avProfile.id}"))
+        val resultUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${avProfile.id}")
+        assertTrue(decodedQrUrl.contains("response_uri=$resultUrl"))
+        assertTrue(decodedQrUrl.contains("client_id=redirect_uri:$resultUrl"))
         assertTrue(decodedQrUrl.contains("/transaction/result/${avProfile.id}"))
         assertTrue(!decodedQrUrl.contains("client_metadata="))
         assertTrue(!decodedQrUrl.contains("request_uri="))
