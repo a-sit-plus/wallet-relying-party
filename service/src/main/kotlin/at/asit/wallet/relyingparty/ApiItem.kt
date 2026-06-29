@@ -10,8 +10,8 @@ import kotlinx.serialization.json.JsonObject
 @Serializable
 data class ApiItem(
     val id: String,
-    val firstname: String,
-    val lastname: String,
+    val firstname: String?,
+    val lastname: String?,
     val imageDataBase64: String?,
     val timestamp: Long,
     val idToken: IdToken?,

@@ -23,7 +23,7 @@ export default {
         }
 
         function isSet(value) {
-            return value && value != "N/A" && value != "data:image;base64,null"
+            return value && value != "data:image;base64,null"
         }
 
         return {

@@ -50,8 +50,8 @@ data class User(
     val apiItem = ApiItem(
         // TODO: replace with more robust id as Json does not mandate an ordering of keys
         id = Json.encodeToString(this).sha256(),
-        firstname = credentials?.firstNotNullOfOrNull { it.getGivenName() } ?: "N/A",
-        lastname = credentials?.firstNotNullOfOrNull { it.getFamilyName() } ?: "N/A",
+        firstname = credentials?.firstNotNullOfOrNull { it.getGivenName() },
+        lastname = credentials?.firstNotNullOfOrNull { it.getFamilyName() },
         imageDataBase64 = credentials?.firstNotNullOfOrNull { it.getPortrait() }?.toImage(),
         timestamp = Instant.now().toEpochMilli(),
         idToken = idToken,
@@ -60,7 +60,8 @@ data class User(
         credentials = credentials ?: listOf(),
     )
 
-    override fun getName(): String = "${apiItem.firstname} ${apiItem.lastname} (${apiItem.id})"
+    override fun getName(): String =
+        listOfNotNull(apiItem.firstname, apiItem.lastname).joinToString(" ").let { "$it (${apiItem.id})" }
 
     override fun toString(): String = "User(apiItem=$apiItem)"
 }
