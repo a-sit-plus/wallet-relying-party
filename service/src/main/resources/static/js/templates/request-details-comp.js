@@ -42,7 +42,7 @@ export default {
                            :checked="request.presentationMechanismIdentifier && request.presentationMechanismIdentifier == presentationMechanism.value"
                            @click="$emit('updatePresentationMechanismIdentifier', presentationMechanism.value)">
                     <label class="form-check-label">
-                        {{ presentationMechanism.label }} - <span class="text-primary">{{ presentationMechanism.value }}</span>
+                        {{ presentationMechanism.label }} - <span class="text-primary font-monospace">{{ presentationMechanism.value }}</span>
                     </label>
                 </div>
             </div>
@@ -76,7 +76,7 @@ export default {
                            :checked="credential.schemeType && credential.schemeType.value == item.value"
                            @click="$emit('updateSchemeType', credential, item)">
                     <label class="form-check-label">
-                        {{ item.label }} - <span class="text-primary">{{ item.value }}</span>
+                        {{ item.label }} - <span class="text-primary font-monospace">{{ item.value }}</span>
                     </label>
                 </div>
             </div>
@@ -95,7 +95,7 @@ export default {
                            :checked="credential.representation && credential.representation.value == item.value"
                            @click="$emit('updateRepresentation', credential, item)">
                     <label class="form-check-label">
-                        {{ item.label }} - <span class="text-primary">{{ item.value }}</span>
+                        {{ item.label }} - <span class="text-primary font-monospace">{{ item.value }}</span>
                         <span v-if="credential.validRepresentations && credential.validRepresentations.includes(item.value) == false"> (Not supported)</span>
                     </label>
                 </div>

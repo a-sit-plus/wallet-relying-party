@@ -58,7 +58,7 @@ export default {
                    :checked="node.item.isSelected"
                    @click="$emit('updateAttribute', node.item)">
             <label class="form-check-label">
-                {{ node.item.label }}
+                {{ node.item.label }} <span class="text-primary font-monospace">{{ node.item.value }}</span>
             </label>
         </div>
         <div v-else class="form-check ps-0 fst-italic">
@@ -75,7 +75,7 @@ export default {
                        :checked="child.item.isSelected"
                        @click="$emit('updateAttribute', child.item)">
                 <label class="form-check-label">
-                    {{ child.label }}
+                    {{ child.label }} <span class="text-primary font-monospace">{{ child.item.value }}</span>
                 </label>
             </div>
         </div>
@@ -85,9 +85,9 @@ export default {
     <p>For this credential, attributes can not be selectively disclosed.</p>
     <ul class="list-group list-group-flush">
         <li class="list-group-item" v-for="node in attributeTree">
-            {{ node.label }}
+            {{ node.label }} <span v-if="node.item" class="text-primary font-monospace">{{ node.item.value }}</span>
             <ul v-if="node.children.length > 0" class="list-unstyled ms-4 mb-0">
-                <li v-for="child in node.children">{{ child.label }}</li>
+                <li v-for="child in node.children">{{ child.label }} <span class="text-primary font-monospace">{{ child.item.value }}</span></li>
             </ul>
         </li>
     </ul>
