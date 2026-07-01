@@ -48,9 +48,6 @@ dependencies {
     implementation(libs.wallet.vck)
     implementation(libs.wallet.vck.openid)
     implementation(libs.wallet.vck.openid.ktor)
-    // eupid + mdl kept only for their ISO mdoc value serializers; all schemes come from remote metadata
-    implementation(libs.wallet.eupid)
-    implementation(libs.wallet.mdl)
 
     // Temporary dependency for Hpke decryption
     implementation("org.multipaz:multipaz:0.96.0")

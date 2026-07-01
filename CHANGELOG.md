@@ -9,7 +9,7 @@ Version 6.0.0:
 - Update to EU PID 3.5.0
 - Remove `jvm` suffix from `vck` in `lib.versions` to restore composite build functionality
 - Use `JwsCompactTyped` instead of `JwsSigned`
-- Register credential schemes from remote SD-JWT Type Metadata documents (`RemoteCredentialMetadataRegistry`) instead of compiling in a library per credential; drop the `ageverification`, `eupidcredential-sdjwt`, `powerofrepresentation`, `certificateofresidence`, `taxid`, and `ehic` dependencies (`eupidcredential` and `mobiledrivinglicence` are kept only for their ISO mdoc value serializers)
+- Register credential schemes from remote SD-JWT Type Metadata documents (`RemoteCredentialMetadataRegistry`) instead of compiling in a library per credential; drop the `ageverification`, `eupidcredential`, `eupidcredential-sdjwt`, `mobiledrivinglicence`, `powerofrepresentation`, `certificateofresidence`, `taxid`, and `ehic` dependencies
 - Generate the UI credential/attribute picker (`/js/login-config.js`) from those type-metadata documents instead of a hand-maintained static file
 
 Version 5.13.0:

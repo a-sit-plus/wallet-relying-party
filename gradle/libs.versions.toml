@@ -1,7 +1,4 @@
 [versions]
-# eupid + mdl kept only for their ISO mdoc value serializers; schemes come from remote metadata
-eupid = "3.5.0"
-mdl = "1.4.0"
 qrcode = "4.5.0"
 vck = "7.0.0-SNAPSHOT"
 
@@ -14,8 +11,6 @@ kotlin = "2.3.0"
 [libraries]
 spring-boot-admin-starter-client = { module = "de.codecentric:spring-boot-admin-starter-client", version.ref = "spring-admin-starter-client" }
 qrcode-kotlin = { module = "io.github.g0dkar:qrcode-kotlin", version.ref = "qrcode" }
-wallet-eupid = { module = "at.asitplus.wallet:eupidcredential", version.ref = "eupid" }
-wallet-mdl = { module = "at.asitplus.wallet:mobiledrivinglicence", version.ref = "mdl" }
 wallet-vck = { module = "at.asitplus.wallet:vck", version.ref = "vck" }
 wallet-vck-openid = { module = "at.asitplus.wallet:vck-openid", version.ref = "vck" }
 wallet-vck-openid-ktor = { module = "at.asitplus.wallet:vck-openid-ktor", version.ref = "vck" }
