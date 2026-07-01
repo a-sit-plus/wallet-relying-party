@@ -344,7 +344,7 @@ class VerifierProfiles(
         encryption: Boolean,
     ): DigitalCredentialGetRequest = if (dcApiSignedOid4vp) {
         DigitalCredentialGetRequest.OpenId4VpSigned(
-            DigitalCredentialGetRequest.OpenId4Vp.SignedDataElement(dcApiSigned(
+            DigitalCredentialGetRequest.OpenId4Vp.SignedDataElement(dcApiOpenIdSigned(
                 responseUrl = responseUrl,
                 presentationRequest = presentationRequest,
                 verifier = verifier,
@@ -354,7 +354,7 @@ class VerifierProfiles(
         )
     } else {
         DigitalCredentialGetRequest.OpenId4VpUnsigned(
-            dcApi(
+            dcApiOpenIdUnsigned(
                 responseUrl = responseUrl,
                 presentationRequest = presentationRequest,
                 verifier = verifier,
@@ -416,7 +416,7 @@ class VerifierProfiles(
         ),
     ).getOrThrow().jws
 
-    private suspend fun dcApi(
+    private suspend fun dcApiOpenIdUnsigned(
         responseUrl: String,
         presentationRequest: CredentialPresentationRequest.DCQLRequest?,
         verifier: OpenId4VpVerifier,
@@ -433,7 +433,7 @@ class VerifierProfiles(
         ),
     )
 
-    private suspend fun dcApiSigned(
+    private suspend fun dcApiOpenIdSigned(
         responseUrl: String,
         presentationRequest: CredentialPresentationRequest.DCQLRequest?,
         verifier: OpenId4VpVerifier,
