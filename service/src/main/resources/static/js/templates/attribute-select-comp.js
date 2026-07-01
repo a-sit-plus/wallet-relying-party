@@ -6,13 +6,10 @@ export default {
         'updateAttribute'
     ],
     computed: {
+        // ISO mdoc elements are always individually disclosable; SD-JWT claims only when the scheme marks them
+        // as selectively disclosable (sd). Everything else is presented all-or-nothing (the v-else branch).
         selectable() {
-            return this.credential.sd == true
-                || (this.credential.representation && this.credential.representation.value != 'SD_JWT')
-        },
-        readOnly() {
-            return this.credential.sd == false
-                && (this.credential.representation && this.credential.representation.value == 'SD_JWT')
+            return this.credential.representation?.value === 'ISO_MDOC' || this.credential.sd === true
         },
         // Groups flat, dot-notated attributes (e.g. "address.street_address") into a tree:
         // the attribute named like the prefix (e.g. "address") becomes the parent node,
@@ -50,7 +47,7 @@ export default {
     },
     template: `
 <p v-if="credential.attributes.length == 0">Please select a Credential Type.</p>
-<template v-if="selectable">
+<template v-else-if="selectable">
     <div v-for="node in attributeTree"
          :key="credential.schemeType + '-' + node.label">
         <div v-if="node.item" class="form-check">
@@ -84,7 +81,7 @@ export default {
         </div>
     </div>
 </template>
-<div v-if="readOnly">
+<div v-else>
     <p>For this credential, attributes can not be selectively disclosed.</p>
     <ul class="list-group list-group-flush">
         <li class="list-group-item" v-for="node in attributeTree">

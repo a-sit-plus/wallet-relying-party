@@ -210,7 +210,10 @@ const createBasicSetup = function (config) {
             credentials.push({
                 schemeType: schemeType,
                 representation: representation,
-                sd: credential.sd,
+                // sd/validRepresentations come from the resolved scheme (as in updateSchemeType), not the
+                // profile entry — inline page profiles omit them, which left Attributes blank until reselect.
+                validRepresentations: schemeType ? schemeType.validRepresentations : undefined,
+                sd: schemeType ? schemeType.sd : credential.sd,
                 attributes: attrs
             })
         }
