@@ -7,7 +7,6 @@ const createBasicSetup = function() {
     singleUrl: 'api/single/',
     logUrl: 'logs/',
     itemsUrl: 'api/items',
-    removeUrl: 'api/remove',
     timeUpdateRate: 1000,
     itemsUpdateRate: 5000,
   }
@@ -111,26 +110,6 @@ const createBasicSetup = function() {
 
   // --- ACTIONS -------------------------------------------------------
 
-  async function seen(item) {
-    try {
-      console.log('remove: ', item.id)
-
-      // notify server that record can be removed
-      const response = await fetch(config.removeUrl, {
-        method: 'POST',
-        body: item.id
-      });
-      // on OK, remove item from list
-      if (response.ok) {
-        const data = await response.json()
-        console.log('response: ', data)
-        loginList.value.splice(loginList.value.indexOf(item), 1)
-      }
-    } catch (error) {
-      console.log('error: ', error)
-    }
-  }
-
   function toggleDetails(item) {
     // show details of item
     item.showDetails = !(item.showDetails == true)
@@ -140,7 +119,6 @@ const createBasicSetup = function() {
 
   return {
     loginList,
-    seen,
     toggleDetails,
     startPeriodicUpdate,
     updateItemById,

@@ -8,7 +8,6 @@ object Paths {
     object Api {
         const val ItemsUrl = "/api/items"
         const val SingleUrl = "/api/single"
-        const val RemoveUrl = "/api/remove"
     }
 
     object Transaction {

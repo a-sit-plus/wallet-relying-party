@@ -25,15 +25,6 @@ class TransactionStore(
         entries.firstOrNull { it.id == id }?.apiItem
     }
 
-    suspend fun removeApiItem(id: String): ApiItem? = mutex.withLock {
-        removeExpiredEntries()
-        val entry = entries.firstOrNull { it.id == id }
-        if (entry != null) {
-            entries.remove(entry)
-        }
-        entry?.apiItem
-    }
-
     suspend fun put(id: String, user: User): Boolean? = mutex.withLock {
         removeExpiredEntries()
         user.toApiItem()?.let { entries.add(ResultEntry(id, it, Instant.now().plus(lifetime))) }

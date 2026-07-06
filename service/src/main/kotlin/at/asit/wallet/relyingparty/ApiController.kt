@@ -86,14 +86,6 @@ class ApiController(
             .body(it)
     } ?: ResponseEntity.noContent().build()
 
-    @PostMapping(Paths.Api.RemoveUrl)
-    @ResponseBody
-    suspend fun removeApiItem(
-        @RequestBody id: String,
-    ): ResponseEntity<ApiItem> = transactionStore.removeApiItem(id).let {
-        ResponseEntity.ok(it)
-    }
-
     @PostMapping(Paths.Utilities.BuildCredentialQueriesUrl)
     @ResponseBody
     suspend fun buildCredentialQueries(

@@ -2,12 +2,10 @@ export default {
     props: {
         loginList: {},
         config: { default: () => ({ schemeTypes: [] }) },
-        expandable: { default: false },
-        removable: { default: false }
+        expandable: { default: false }
     },
     emits: [
-        'toggleDetails',
-        'seen'
+        'toggleDetails'
     ],
     setup: function (props) {
         function isSet(value) {
@@ -115,12 +113,6 @@ export default {
                       <div class="foldout-fade"></div>
                   </div>
                   <div class="text-body-tertiary mb-1">Authenticated {{ item.expiredTime }} ago</div>
-                  <div v-if="removable" class="mt-auto ms-auto d-md-flex gap-2">
-                      <button @click="seen(item)" type="button" class="btn btn-outline-danger">
-                          <i class="bi-x-lg"></i>
-                          Remove
-                      </button>
-                  </div>
               </div>
           </div>
       </div>
