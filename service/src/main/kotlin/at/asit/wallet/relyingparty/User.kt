@@ -2,7 +2,6 @@ package at.asit.wallet.relyingparty
 
 import at.asitplus.KmmResult
 import at.asitplus.openid.IdToken
-import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.wallet.eupid.EuPidDataElements
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtDataElements
 import at.asitplus.wallet.lib.agent.Verifier
@@ -23,7 +22,6 @@ import at.asitplus.wallet.lib.openid.VpTokenValidationResult
 import at.asitplus.wallet.lib.openid.VpTokenValidationResultDCQL
 import at.asitplus.wallet.lib.openid.VpTokenValidationResultPresentationExchange
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
-import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
 import kotlinx.datetime.LocalTime
@@ -33,11 +31,9 @@ import kotlinx.datetime.format.char
 import kotlinx.datetime.toLocalDateTime
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
-import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import org.springframework.security.core.AuthenticatedPrincipal
-import java.security.MessageDigest
 import java.time.Instant
 
 @Serializable
@@ -49,10 +45,6 @@ data class User(
 ) : AuthenticatedPrincipal {
     @Transient
     val apiItem = ApiItem(
-        // TODO: replace with more robust id as Json does not mandate an ordering of keys
-        id = Json.encodeToString(this).sha256(),
-        firstname = credentials?.firstNotNullOfOrNull { it.getGivenName() },
-        lastname = credentials?.firstNotNullOfOrNull { it.getFamilyName() },
         imageDataBase64 = credentials?.firstNotNullOfOrNull { it.getPortrait() }?.toImage(),
         timestamp = Instant.now().toEpochMilli(),
         idToken = idToken,
@@ -62,7 +54,10 @@ data class User(
     )
 
     override fun getName(): String =
-        listOfNotNull(apiItem.firstname, apiItem.lastname).joinToString(" ").let { "$it (${apiItem.id})" }
+        listOfNotNull(
+            credentials?.firstNotNullOfOrNull { it.getGivenName() },
+            credentials?.firstNotNullOfOrNull { it.getFamilyName() },
+        ).joinToString(" ")
 
     override fun toString(): String = "User(apiItem=$apiItem)"
 }
@@ -240,8 +235,4 @@ private fun TokenStatusValidationResult.errorMessage(): String? = when (this) {
     is TokenStatusValidationResult.Rejected -> "Rejected: Error is ${this.throwable.toString()}"
     is TokenStatusValidationResult.Valid -> null
 }
-
-private fun String.sha256() = runCatching {
-    MessageDigest.getInstance("SHA-256").digest(this.encodeToByteArray()).encodeToString(Base64UrlStrict)
-}.getOrElse { this.hashCode().toString() }
 

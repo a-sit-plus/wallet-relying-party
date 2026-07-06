@@ -9,9 +9,6 @@ import kotlinx.serialization.json.JsonObject
 /** This is the response to the website, displayed there as "successful authentication", see `result.js`. */
 @Serializable
 data class ApiItem(
-    val id: String,
-    val firstname: String?,
-    val lastname: String?,
     val imageDataBase64: String?,
     val timestamp: Long,
     val idToken: IdToken?,

@@ -191,7 +191,7 @@ class ProcessTest {
 
         val user = transactionStore.getApiItem(selectedProfile.id)
         assertNotNull(user)
-        assertEquals(givenName, user!!.firstname)
+        assertEquals(givenName, user!!.credentials.firstNotNullOfOrNull { it.getClaim(AtomicAttribute2023.CLAIM_GIVEN_NAME) })
     }
 
     private fun MvcResult.awaitAsync(): MvcResult =

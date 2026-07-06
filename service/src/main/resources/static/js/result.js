@@ -50,7 +50,7 @@ const createBasicSetup = function() {
 
   function updateItems(data) {
     loginList.value = data.reduce((newList, newItem) => {
-      const currentItem = loginList.value.find(x => x.id == newItem.id)
+      const currentItem = loginList.value.find(x => x.timestamp == newItem.timestamp)
       if (currentItem) {
         return newList.concat([currentItem]) // re-use existing item
       } else {

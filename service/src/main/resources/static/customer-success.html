@@ -15,7 +15,8 @@
             "result": "./js/result.js",
             "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js",
             "header-comp": "./js/templates/header-comp.js",
-            "login-results-comp": "./js/templates/login-results-comp.js"
+            "login-results-comp": "./js/templates/login-results-comp.js",
+            "main-config": "./js/login-config.js"
           }
         }
     </script>
@@ -25,9 +26,12 @@
         import {createApp} from 'vue'
         import HeaderComp from 'header-comp'
         import LoginResultsComp from 'login-results-comp'
+        import config from 'main-config'
 
         const app = createApp({
-            setup: createBasicSetup,
+            setup() {
+                return { ...createBasicSetup(), config }
+            },
             components: {
                 HeaderComp,
                 LoginResultsComp
@@ -53,6 +57,7 @@
         <div class="container">
             <login-results-comp
                     :login-list="loginList"
+                    :config="config"
                     @toggle-details="toggleDetails"
                     @seen="seen"
             ></login-results-comp>
