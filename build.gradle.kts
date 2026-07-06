@@ -1,6 +1,6 @@
 plugins {
     val kotlinVer = libs.versions.kotlin.get()
-    id("at.asitplus.gradle.conventions") version "20260122"
+    id("at.asitplus.gradle.conventions") version "20260701"
     kotlin("jvm") version kotlinVer apply false
     kotlin("plugin.serialization") version kotlinVer apply false
     kotlin("plugin.spring") version kotlinVer apply false
