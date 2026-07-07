@@ -1,0 +1,214 @@
+{
+  "vct": "org.iso.18013.5.1.mDL",
+  "name": "Mobile Driving Licence (mDL)",
+  "description": "ISO/IEC 18013-5 mobile driving licence.",
+  "vck": {
+    "format": "mso_mdoc",
+    "isoDocType": "org.iso.18013.5.1.mDL",
+    "isoNamespace": "org.iso.18013.5.1"
+  },
+  "display": [
+    {
+      "locale": "en-US",
+      "name": "Mobile Driving Licence",
+      "description": "Driving licence attributes per ISO/IEC 18013-5."
+    }
+  ],
+  "claims": [
+    {
+      "path": ["org.iso.18013.5.1", "family_name"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "Family name" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "given_name"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "Given name" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "birth_date"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "Date of birth" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "issue_date"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "Issue date" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "expiry_date"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "Expiry date" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "issuing_country"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "Issuing country" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "issuing_authority"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "Issuing authority" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "document_number"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "Document number" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "portrait"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "Portrait" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "driving_privileges"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "Driving privileges" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "un_distinguishing_sign"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "UN distinguishing sign" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "administrative_number"],
+      "display": [{ "locale": "en-US", "label": "Administrative number" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "sex"],
+      "display": [{ "locale": "en-US", "label": "Sex" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "height"],
+      "display": [{ "locale": "en-US", "label": "Height" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "weight"],
+      "display": [{ "locale": "en-US", "label": "Weight" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "eye_colour"],
+      "display": [{ "locale": "en-US", "label": "Eye colour" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "hair_colour"],
+      "display": [{ "locale": "en-US", "label": "Hair colour" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "birth_place"],
+      "display": [{ "locale": "en-US", "label": "Place of birth" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "resident_address"],
+      "display": [{ "locale": "en-US", "label": "Resident address" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "portrait_capture_date"],
+      "display": [{ "locale": "en-US", "label": "Portrait capture date" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "age_in_years"],
+      "display": [{ "locale": "en-US", "label": "Age in years" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "age_birth_year"],
+      "display": [{ "locale": "en-US", "label": "Age birth year" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "age_over_12"],
+      "display": [{ "locale": "en-US", "label": "Age over 12" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "age_over_13"],
+      "display": [{ "locale": "en-US", "label": "Age over 13" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "age_over_14"],
+      "display": [{ "locale": "en-US", "label": "Age over 14" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "age_over_16"],
+      "display": [{ "locale": "en-US", "label": "Age over 16" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "age_over_18"],
+      "display": [{ "locale": "en-US", "label": "Age over 18" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "age_over_21"],
+      "display": [{ "locale": "en-US", "label": "Age over 21" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "age_over_25"],
+      "display": [{ "locale": "en-US", "label": "Age over 25" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "age_over_60"],
+      "display": [{ "locale": "en-US", "label": "Age over 60" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "age_over_62"],
+      "display": [{ "locale": "en-US", "label": "Age over 62" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "age_over_65"],
+      "display": [{ "locale": "en-US", "label": "Age over 65" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "age_over_68"],
+      "display": [{ "locale": "en-US", "label": "Age over 68" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "issuing_jurisdiction"],
+      "display": [{ "locale": "en-US", "label": "Issuing jurisdiction" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "nationality"],
+      "display": [{ "locale": "en-US", "label": "Nationality" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "resident_city"],
+      "display": [{ "locale": "en-US", "label": "Resident city" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "resident_state"],
+      "display": [{ "locale": "en-US", "label": "Resident state" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "resident_postal_code"],
+      "display": [{ "locale": "en-US", "label": "Resident postal code" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "resident_country"],
+      "display": [{ "locale": "en-US", "label": "Resident country" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "family_name_national_character"],
+      "display": [{ "locale": "en-US", "label": "Family name (national characters)" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "given_name_national_character"],
+      "display": [{ "locale": "en-US", "label": "Given name (national characters)" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "signature_usual_mark"],
+      "display": [{ "locale": "en-US", "label": "Signature / usual mark" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "biometric_template_face"],
+      "display": [{ "locale": "en-US", "label": "Biometric template (face)" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "biometric_template_finger"],
+      "display": [{ "locale": "en-US", "label": "Biometric template (finger)" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "biometric_template_signature_sign"],
+      "display": [{ "locale": "en-US", "label": "Biometric template (signature/sign)" }]
+    },
+    {
+      "path": ["org.iso.18013.5.1", "biometric_template_iris"],
+      "display": [{ "locale": "en-US", "label": "Biometric template (iris)" }]
+    }
+  ]
+}

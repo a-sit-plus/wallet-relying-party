@@ -1,0 +1,64 @@
+{
+  "vct": "eu.europa.ec.av.1",
+  "name": "Age Verification",
+  "description": "Age verification attestation per the EUDI age verification profile, issued as an ISO/IEC 18013-5 mdoc.",
+  "vck": {
+    "format": "mso_mdoc",
+    "isoDocType": "eu.europa.ec.av.1",
+    "isoNamespace": "eu.europa.ec.av.1"
+  },
+  "display": [
+    {
+      "locale": "en-US",
+      "name": "Age Verification",
+      "description": "Boolean age-over attestations of a natural person."
+    }
+  ],
+  "claims": [
+    {
+      "path": ["eu.europa.ec.av.1", "age_over_18"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "Age over 18" }]
+    },
+    {
+      "path": ["eu.europa.ec.av.1", "age_over_12"],
+      "display": [{ "locale": "en-US", "label": "Age over 12" }]
+    },
+    {
+      "path": ["eu.europa.ec.av.1", "age_over_13"],
+      "display": [{ "locale": "en-US", "label": "Age over 13" }]
+    },
+    {
+      "path": ["eu.europa.ec.av.1", "age_over_14"],
+      "display": [{ "locale": "en-US", "label": "Age over 14" }]
+    },
+    {
+      "path": ["eu.europa.ec.av.1", "age_over_16"],
+      "display": [{ "locale": "en-US", "label": "Age over 16" }]
+    },
+    {
+      "path": ["eu.europa.ec.av.1", "age_over_21"],
+      "display": [{ "locale": "en-US", "label": "Age over 21" }]
+    },
+    {
+      "path": ["eu.europa.ec.av.1", "age_over_25"],
+      "display": [{ "locale": "en-US", "label": "Age over 25" }]
+    },
+    {
+      "path": ["eu.europa.ec.av.1", "age_over_60"],
+      "display": [{ "locale": "en-US", "label": "Age over 60" }]
+    },
+    {
+      "path": ["eu.europa.ec.av.1", "age_over_62"],
+      "display": [{ "locale": "en-US", "label": "Age over 62" }]
+    },
+    {
+      "path": ["eu.europa.ec.av.1", "age_over_65"],
+      "display": [{ "locale": "en-US", "label": "Age over 65" }]
+    },
+    {
+      "path": ["eu.europa.ec.av.1", "age_over_68"],
+      "display": [{ "locale": "en-US", "label": "Age over 68" }]
+    }
+  ]
+}

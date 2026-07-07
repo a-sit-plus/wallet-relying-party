@@ -1,0 +1,134 @@
+{
+  "vct": "EuPid2023",
+  "name": "Person Identification Data (PID)",
+  "description": "EU Digital Identity Wallet Person Identification Data, per the EUDI PID Rulebook, issued as an ISO/IEC 18013-5 mdoc.",
+  "vck": {
+    "format": "mso_mdoc",
+    "isoDocType": "eu.europa.ec.eudi.pid.1",
+    "isoNamespace": "eu.europa.ec.eudi.pid.1"
+  },
+  "display": [
+    {
+      "locale": "en-US",
+      "name": "Person Identification Data",
+      "description": "Core identity attributes of a natural person."
+    }
+  ],
+  "claims": [
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "family_name"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "Family name" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "given_name"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "Given name" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "birth_date"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "Date of birth" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "nationality"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "Nationality" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "expiry_date"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "Date of expiry" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "issuing_authority"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "Issuing authority" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "issuing_country"],
+      "mandatory": true,
+      "display": [{ "locale": "en-US", "label": "Issuing country" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "family_name_birth"],
+      "display": [{ "locale": "en-US", "label": "Family name at birth" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "given_name_birth"],
+      "display": [{ "locale": "en-US", "label": "Given name at birth" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "place_of_birth"],
+      "display": [{ "locale": "en-US", "label": "Place of birth" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "resident_address"],
+      "display": [{ "locale": "en-US", "label": "Resident address" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "resident_country"],
+      "display": [{ "locale": "en-US", "label": "Resident country" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "resident_state"],
+      "display": [{ "locale": "en-US", "label": "Resident state" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "resident_city"],
+      "display": [{ "locale": "en-US", "label": "Resident city" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "resident_postal_code"],
+      "display": [{ "locale": "en-US", "label": "Resident postal code" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "resident_street"],
+      "display": [{ "locale": "en-US", "label": "Resident street" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "resident_house_number"],
+      "display": [{ "locale": "en-US", "label": "Resident house number" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "sex"],
+      "display": [{ "locale": "en-US", "label": "Sex" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "issuance_date"],
+      "display": [{ "locale": "en-US", "label": "Date of issuance" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "document_number"],
+      "display": [{ "locale": "en-US", "label": "Document number" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "issuing_jurisdiction"],
+      "display": [{ "locale": "en-US", "label": "Issuing jurisdiction" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "personal_administrative_number"],
+      "display": [{ "locale": "en-US", "label": "Personal administrative number" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "portrait"],
+      "display": [{ "locale": "en-US", "label": "Portrait" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "email_address"],
+      "display": [{ "locale": "en-US", "label": "Email address" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "mobile_phone_number"],
+      "display": [{ "locale": "en-US", "label": "Mobile phone number" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "trust_anchor"],
+      "display": [{ "locale": "en-US", "label": "Trust anchor" }]
+    },
+    {
+      "path": ["eu.europa.ec.eudi.pid.1", "location_status"],
+      "display": [{ "locale": "en-US", "label": "Location status" }]
+    }
+  ]
+}

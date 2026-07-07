@@ -1,0 +1,41 @@
+{
+  "vct": "eu.europa.ec.eudi.cor.1",
+  "name": "Certificate of Residence",
+  "description": "Certificate of Residence attestation, issued as an SD-JWT VC.",
+  "vck": {
+    "format": "dc+sd-jwt"
+  },
+  "display": [
+    {
+      "locale": "en-US",
+      "name": "Certificate of Residence",
+      "description": "Attestation of a natural person's residence."
+    }
+  ],
+  "claims": [
+    { "path": ["family_name"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Family name" }] },
+    { "path": ["given_name"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Given name" }] },
+    { "path": ["birth_date"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Date of birth" }] },
+    { "path": ["residence_address"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Residence address" }] },
+    { "path": ["residence_address", "po_box"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "PO box" }] },
+    { "path": ["residence_address", "thoroughfare"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Thoroughfare" }] },
+    { "path": ["residence_address", "locator_designator"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Locator designator" }] },
+    { "path": ["residence_address", "locator_name"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Locator name" }] },
+    { "path": ["residence_address", "post_code"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Post code" }] },
+    { "path": ["residence_address", "post_name"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Post name" }] },
+    { "path": ["residence_address", "admin_unit_L1"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Admin unit level 1" }] },
+    { "path": ["residence_address", "admin_unit_L2"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Admin unit level 2" }] },
+    { "path": ["residence_address", "full_address"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Full address" }] },
+    { "path": ["issuance_date"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Date of issuance" }] },
+    { "path": ["expiry_date"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Date of expiry" }] },
+    { "path": ["issuing_authority"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Issuing authority" }] },
+    { "path": ["issuing_country"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Issuing country" }] },
+    { "path": ["gender"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Gender" }] },
+    { "path": ["birth_place"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Place of birth" }] },
+    { "path": ["arrival_date"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Arrival date" }] },
+    { "path": ["nationality"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Nationality" }] },
+    { "path": ["document_number"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Document number" }] },
+    { "path": ["administrative_number"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Administrative number" }] },
+    { "path": ["issuing_jurisdiction"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Issuing jurisdiction" }] }
+  ]
+}

@@ -1,0 +1,95 @@
+{
+  "vct": "urn:eudi:ehic:1",
+  "name": "European Health Insurance Card (EHIC)",
+  "description": "European Health Insurance Card, issued as an SD-JWT VC.",
+  "vck": {
+    "format": "dc+sd-jwt"
+  },
+  "display": [
+    {
+      "locale": "en-US",
+      "name": "European Health Insurance Card",
+      "description": "Proof of entitlement to health care during a stay in another member state."
+    }
+  ],
+  "claims": [
+    {
+      "path": ["issuing_country"],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [{ "locale": "en-US", "label": "Issuing country", "description": "ISO 3166-1 alpha-2 code of the issuing country." }]
+    },
+    {
+      "path": ["personal_administrative_number"],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [{ "locale": "en-US", "label": "Personal administrative number", "description": "Unique personal identifier used by social security services." }]
+    },
+    {
+      "path": ["issuing_authority"],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [{ "locale": "en-US", "label": "Issuing authority" }]
+    },
+    {
+      "path": ["issuing_authority", "id"],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [{ "locale": "en-US", "label": "Issuing authority ID", "description": "EESSI-registered identifier of the issuing authority." }]
+    },
+    {
+      "path": ["issuing_authority", "name"],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [{ "locale": "en-US", "label": "Issuing authority name" }]
+    },
+    {
+      "path": ["authentic_source"],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [{ "locale": "en-US", "label": "Authentic source" }]
+    },
+    {
+      "path": ["authentic_source", "id"],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [{ "locale": "en-US", "label": "Authentic source ID", "description": "Identifier from the EESSI Institution Repository." }]
+    },
+    {
+      "path": ["authentic_source", "name"],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [{ "locale": "en-US", "label": "Authentic source name", "description": "Name of the competent institution." }]
+    },
+    {
+      "path": ["document_number"],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [{ "locale": "en-US", "label": "Document number", "description": "Unique EHIC document identifier." }]
+    },
+    {
+      "path": ["date_of_issuance"],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [{ "locale": "en-US", "label": "Date of issuance", "description": "EHIC validity start date (ISO 8601 YYYY-MM-DD)." }]
+    },
+    {
+      "path": ["date_of_expiry"],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [{ "locale": "en-US", "label": "Date of expiry", "description": "EHIC expiration date (ISO 8601 YYYY-MM-DD)." }]
+    },
+    {
+      "path": ["starting_date"],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [{ "locale": "en-US", "label": "Starting date", "description": "Insurance coverage start date." }]
+    },
+    {
+      "path": ["ending_date"],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [{ "locale": "en-US", "label": "Ending date", "description": "Insurance coverage end date." }]
+    }
+  ]
+}

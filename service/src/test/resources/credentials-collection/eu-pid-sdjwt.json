@@ -1,0 +1,408 @@
+{
+  "vct": "urn:eudi:pid:1",
+  "name": "Person Identification Data (PID)",
+  "description": "EU Digital Identity Wallet Person Identification Data, per the EUDI PID Rulebook, issued as an SD-JWT VC.",
+  "vck": {
+    "format": "dc+sd-jwt"
+  },
+  "display": [
+    {
+      "locale": "en-US",
+      "name": "Person Identification Data",
+      "description": "Core identity attributes of a natural person."
+    }
+  ],
+  "claims": [
+    {
+      "path": [
+        "family_name"
+      ],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Family name",
+          "description": "Current last name(s) or surname(s) of the user."
+        }
+      ]
+    },
+    {
+      "path": [
+        "given_name"
+      ],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Given name",
+          "description": "Current first name(s), including middle name(s), of the user."
+        }
+      ]
+    },
+    {
+      "path": [
+        "birthdate"
+      ],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Date of birth",
+          "description": "Day, month, and year on which the user was born (ISO 8601 YYYY-MM-DD)."
+        }
+      ]
+    },
+    {
+      "path": [
+        "place_of_birth"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Place of birth",
+          "description": "The location where the user was born."
+        }
+      ]
+    },
+    {
+      "path": [
+        "place_of_birth",
+        "country"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Country of birth"
+        }
+      ]
+    },
+    {
+      "path": [
+        "place_of_birth",
+        "region"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Region of birth"
+        }
+      ]
+    },
+    {
+      "path": [
+        "place_of_birth",
+        "locality"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Locality of birth"
+        }
+      ]
+    },
+    {
+      "path": [
+        "nationalities"
+      ],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Nationalities",
+          "description": "One or more nationalities of the user (array of ISO 3166-1 alpha-2 codes)."
+        }
+      ]
+    },
+    {
+      "path": [
+        "address"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Resident address",
+          "description": "The full address of the place where the user currently resides."
+        }
+      ]
+    },
+    {
+      "path": [
+        "address",
+        "formatted"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Resident address (formatted)"
+        }
+      ]
+    },
+    {
+      "path": [
+        "address",
+        "country"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Resident country"
+        }
+      ]
+    },
+    {
+      "path": [
+        "address",
+        "region"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Resident region"
+        }
+      ]
+    },
+    {
+      "path": [
+        "address",
+        "locality"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Resident locality"
+        }
+      ]
+    },
+    {
+      "path": [
+        "address",
+        "postal_code"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Resident postal code"
+        }
+      ]
+    },
+    {
+      "path": [
+        "address",
+        "street_address"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Resident street address"
+        }
+      ]
+    },
+    {
+      "path": [
+        "address",
+        "house_number"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Resident house number"
+        }
+      ]
+    },
+    {
+      "path": [
+        "birth_family_name"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Family name at birth",
+          "description": "Last name(s) or surname(s) of the user at the time of birth."
+        }
+      ]
+    },
+    {
+      "path": [
+        "birth_given_name"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Given name at birth",
+          "description": "First name(s) of the user at the time of birth."
+        }
+      ]
+    },
+    {
+      "path": [
+        "sex"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Sex",
+          "description": "Sex of the user, as a number per ISO/IEC 5218."
+        }
+      ]
+    },
+    {
+      "path": [
+        "email"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Email address"
+        }
+      ]
+    },
+    {
+      "path": [
+        "phone_number"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Phone number"
+        }
+      ]
+    },
+    {
+      "path": [
+        "picture"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Portrait",
+          "description": "Facial image of the user (base64-encoded data URL)."
+        }
+      ]
+    },
+    {
+      "path": [
+        "personal_administrative_number"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Personal administrative number"
+        }
+      ]
+    },
+    {
+      "path": [
+        "date_of_issuance"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Date of issuance",
+          "description": "Date when the PID was issued (ISO 8601 YYYY-MM-DD)."
+        }
+      ]
+    },
+    {
+      "path": [
+        "date_of_expiry"
+      ],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Date of expiry",
+          "description": "Date when the PID expires (ISO 8601 YYYY-MM-DD)."
+        }
+      ]
+    },
+    {
+      "path": [
+        "issuing_authority"
+      ],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Issuing authority",
+          "description": "Name of the administrative authority that issued the PID."
+        }
+      ]
+    },
+    {
+      "path": [
+        "issuing_country"
+      ],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Issuing country",
+          "description": "ISO 3166-1 alpha-2 code of the country that issued the PID."
+        }
+      ]
+    },
+    {
+      "path": [
+        "document_number"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Document number"
+        }
+      ]
+    },
+    {
+      "path": [
+        "issuing_jurisdiction"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Issuing jurisdiction"
+        }
+      ]
+    },
+    {
+      "path": [
+        "trust_anchor"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Trust anchor"
+        }
+      ]
+    }
+  ]
+}

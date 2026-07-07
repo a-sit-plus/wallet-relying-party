@@ -56,6 +56,7 @@ dependencies {
     testImplementation("org.springframework.boot:spring-boot-webmvc-test")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")
     testImplementation(ktor("client-java"))
+    testImplementation(ktor("client-mock"))
 }
 
 tasks.test {

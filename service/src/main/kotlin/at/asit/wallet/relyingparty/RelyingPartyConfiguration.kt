@@ -15,6 +15,7 @@ import at.asitplus.wallet.mdl.MobileDrivingLicenceItemValueSerializerMap
 import at.asitplus.wallet.mdl.MobileDrivingLicenceJsonValueEncoder
 import io.github.aakira.napier.Napier
 import io.ktor.client.HttpClient
+import kotlinx.coroutines.runBlocking
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
 import org.bouncycastle.asn1.x509.SubjectPublicKeyInfo
 import org.bouncycastle.cert.X509CertificateHolder
@@ -23,6 +24,7 @@ import org.bouncycastle.jce.provider.BouncyCastleProvider
 import org.bouncycastle.openssl.PEMParser
 import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import org.springframework.beans.factory.annotation.Autowired
+import org.springframework.boot.ApplicationRunner
 import org.springframework.boot.context.properties.EnableConfigurationProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -54,12 +56,20 @@ class RelyingPartyConfiguration {
     }
 
     /**
+     * Fetches the SD-JWT Type Metadata documents live from the hosted collection. Tests override this with a
+     * [io.ktor.client.engine.mock.MockEngine] serving the cached documents from test resources
+     * (see `CachedTypeMetadataConfiguration` in the test sources), so no test ever talks to GitHub.
+     */
+    @Bean
+    fun metadataHttpClient(): HttpClient = HttpClient()
+
+    /**
      * Credential schemes are derived from remote SD-JWT Type Metadata documents (see [CredentialCatalog]); register
      * the registry once at startup. ISO mdoc credentials with non-primitive values still need their value serializers
      * registered from code — only mDL and EU PID (ISO) require these.
      */
     @Bean
-    fun credentialMetadataRegistry(): RemoteCredentialMetadataRegistry {
+    fun credentialMetadataRegistry(metadataHttpClient: HttpClient): RemoteCredentialMetadataRegistry {
         LibraryInitializer.registerCredentialSerializers(
             jsonValueEncoder = MobileDrivingLicenceJsonValueEncoder,
             itemValueSerializerMap = MobileDrivingLicenceItemValueSerializerMap,
@@ -69,11 +79,28 @@ class RelyingPartyConfiguration {
             itemValueSerializerMap = EuPidItemValueSerializerMap,
         )
         return RemoteCredentialMetadataRegistry(
-            httpClient = HttpClient(),
+            httpClient = metadataHttpClient,
             clock = Clock.System,
             documentUrls = CredentialCatalog.documentUrls(),
             aliases = CredentialCatalog.aliases(),
         ).also { LibraryInitializer.registerCredentialMetadataRegistry(it) }
+    }
+
+    /**
+     * Resolve all catalog documents once at startup, so an unreachable or broken document surfaces in the log
+     * immediately instead of on the first transaction; failures are logged, not fatal, since the registry retries on
+     * every lookup anyway.
+     */
+    @Bean
+    fun credentialMetadataStartupResolver(registry: RemoteCredentialMetadataRegistry) = ApplicationRunner {
+        runBlocking {
+            CredentialCatalog.entries.forEach { entry ->
+                if (registry.findEntry(entry.identifier, entry.representation) == null)
+                    Napier.w("Type metadata for ${entry.identifier} not resolvable from ${entry.url}")
+                else
+                    Napier.i("Type metadata for ${entry.identifier} resolved from ${entry.url}")
+            }
+        }
     }
 
     @Bean("verifierKeyMaterial")

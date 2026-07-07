@@ -1,0 +1,30 @@
+{
+  "vct": "urn:eu.europa.ec.eudi:por:1",
+  "name": "Power of Representation",
+  "description": "Power of Representation attestation, issued as an SD-JWT VC.",
+  "vck": {
+    "format": "dc+sd-jwt"
+  },
+  "display": [
+    {
+      "locale": "en-US",
+      "name": "Power of Representation",
+      "description": "Powers granted to a natural person to represent a legal person."
+    }
+  ],
+  "claims": [
+    { "path": ["legal_person_identifier"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Legal person identifier" }] },
+    { "path": ["legal_name"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Legal name" }] },
+    { "path": ["full_powers"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Full powers" }] },
+    { "path": ["effective_from_date"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Effective from date" }] },
+    { "path": ["issuance_date"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Date of issuance" }] },
+    { "path": ["expiry_date"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Date of expiry" }] },
+    { "path": ["issuing_authority"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Issuing authority" }] },
+    { "path": ["issuing_country"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Issuing country" }] },
+    { "path": ["eService"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "eService" }] },
+    { "path": ["effective_until_date"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Effective until date" }] },
+    { "path": ["document_number"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Document number" }] },
+    { "path": ["administrative_number"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Administrative number" }] },
+    { "path": ["issuing_jurisdiction"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Issuing jurisdiction" }] }
+  ]
+}
