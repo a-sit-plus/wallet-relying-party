@@ -3,6 +3,7 @@ package at.asit.wallet.relyingparty
 import at.asitplus.catching
 import at.asitplus.dcapi.DigitalCredentialInterface
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
@@ -42,6 +43,7 @@ class ApiController(
     private val configuration: AppConfigurationProperties,
     private val transactionStore: TransactionStore,
     private val profiles: VerifierProfiles,
+    private val trustListService: TrustListService
 ) {
     private val statisticLogger = LoggerFactory.getLogger("statistic")
     private val transactionMutex = Mutex()
@@ -228,6 +230,7 @@ class ApiController(
     ): ResponseEntity<OpenId4VpSuccess> {
         MDC.put(MDC_REQUEST_ID, id)
         Napier.i("${Paths.Transaction.ResultUrl}/$id called with $requestBody")
+        var leafCertificate: X509Certificate? = null
         val transaction = removeTransaction(id)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
                 .also { Napier.w("${Paths.Transaction.ResultUrl}/$id returns NOT_FOUND") }
@@ -236,17 +239,20 @@ class ApiController(
                 joseCompliantSerializer.decodeFromString<DigitalCredentialInterface>(requestBody)
             }.getOrNull() != null
             if (isDcApiResponse && transaction.profile.supportedOptions.any { it.isDcApi }) {
-                checkNotNull(transaction.profile.dcApiVerifier) { "Missing verifier" }
+                val dcApiRes = checkNotNull(transaction.profile.dcApiVerifier) { "Missing verifier" }
                     .validateAuthnResponse(
                         input = requestBody,
                         externalId = id,
                         expectedOrigin = transaction.dcApiOrigin,
-                    ).getOrThrow().convertToUser()
+                    ).getOrThrow()
+                dcApiRes.convertToUser()
             } else if (transaction.profile.supportedOptions.any { it.isUrlOrQrCode }) {
-                checkNotNull(transaction.profile.oid4vpVerifier) { "Missing verifier" }
+                val authRes = checkNotNull(transaction.profile.oid4vpVerifier) { "Missing verifier" }
                     .validateAuthnResponse(
                         input = requestBody,
-                    ).convertToUser()
+                    )
+                leafCertificate = authRes.getOrThrow().extractIssuerCertificate()
+                authRes.convertToUser()
             } else {
                 error("Unsupported response for transaction $id")
             }
@@ -257,6 +263,7 @@ class ApiController(
         }
         Napier.i("${Paths.Transaction.ResultUrl}/$id extracted result $user")
         statisticLogger.info("$id success $user (${request.getHeader(HttpHeaders.USER_AGENT)})")
+        val computedTrustState = trustListService.evaluateTransactionTrust(leafCertificate, transaction)
         transactionStore.put(id, user)
         val redirectUrlWithId = ServletUriComponentsBuilder
             .fromUriString(customerSuccessUrl)
