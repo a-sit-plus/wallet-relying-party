@@ -13,18 +13,165 @@
     }
   ],
   "claims": [
-    { "path": ["issue_date"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Issue date" }] },
-    { "path": ["expiry_date"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Date of expiry" }] },
-    { "path": ["issuing_authority"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Issuing authority" }] },
-    { "path": ["issuing_country"], "mandatory": true, "sd": "allowed", "display": [{ "locale": "en-US", "label": "Issuing country" }] },
-    { "path": ["health_insurance_id"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Health insurance ID" }] },
-    { "path": ["patient_id"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Patient ID" }] },
-    { "path": ["tax_number"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Tax number" }] },
-    { "path": ["one_time_token"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "One-time token" }] },
-    { "path": ["wallet_e_prescription_code"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Wallet e-prescription code" }] },
-    { "path": ["affiliation_country"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Affiliation country" }] },
-    { "path": ["document_number"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Document number" }] },
-    { "path": ["administrative_number"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Administrative number" }] },
-    { "path": ["issuing_jurisdiction"], "sd": "allowed", "display": [{ "locale": "en-US", "label": "Issuing jurisdiction" }] }
+    {
+      "path": [
+        "issue_date"
+      ],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Issue date"
+        }
+      ]
+    },
+    {
+      "path": [
+        "expiry_date"
+      ],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Date of expiry"
+        }
+      ]
+    },
+    {
+      "path": [
+        "issuing_authority"
+      ],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Issuing authority"
+        }
+      ]
+    },
+    {
+      "path": [
+        "issuing_country"
+      ],
+      "mandatory": true,
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Issuing country"
+        }
+      ]
+    },
+    {
+      "path": [
+        "health_insurance_id"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Health insurance ID"
+        }
+      ]
+    },
+    {
+      "path": [
+        "patient_id"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Patient ID"
+        }
+      ]
+    },
+    {
+      "path": [
+        "tax_number"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Tax number"
+        }
+      ]
+    },
+    {
+      "path": [
+        "one_time_token"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "One-time token"
+        }
+      ]
+    },
+    {
+      "path": [
+        "wallet_e_prescription_code"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Wallet e-prescription code"
+        }
+      ]
+    },
+    {
+      "path": [
+        "affiliation_country"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Affiliation country"
+        }
+      ]
+    },
+    {
+      "path": [
+        "document_number"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Document number"
+        }
+      ]
+    },
+    {
+      "path": [
+        "administrative_number"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Administrative number"
+        }
+      ]
+    },
+    {
+      "path": [
+        "issuing_jurisdiction"
+      ],
+      "sd": "allowed",
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Issuing jurisdiction"
+        }
+      ]
+    }
   ]
 }

@@ -14,82 +14,187 @@
   ],
   "claims": [
     {
-      "path": ["issuing_country"],
+      "path": [
+        "issuing_country"
+      ],
       "mandatory": true,
       "sd": "allowed",
-      "display": [{ "locale": "en-US", "label": "Issuing country", "description": "ISO 3166-1 alpha-2 code of the issuing country." }]
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Issuing country",
+          "description": "ISO 3166-1 alpha-2 code of the issuing country."
+        }
+      ]
     },
     {
-      "path": ["personal_administrative_number"],
+      "path": [
+        "personal_administrative_number"
+      ],
       "mandatory": true,
       "sd": "allowed",
-      "display": [{ "locale": "en-US", "label": "Personal administrative number", "description": "Unique personal identifier used by social security services." }]
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Personal administrative number",
+          "description": "Unique personal identifier used by social security services."
+        }
+      ]
     },
     {
-      "path": ["issuing_authority"],
+      "path": [
+        "issuing_authority"
+      ],
       "mandatory": true,
       "sd": "allowed",
-      "display": [{ "locale": "en-US", "label": "Issuing authority" }]
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Issuing authority"
+        }
+      ]
     },
     {
-      "path": ["issuing_authority", "id"],
+      "path": [
+        "issuing_authority",
+        "id"
+      ],
       "mandatory": true,
       "sd": "allowed",
-      "display": [{ "locale": "en-US", "label": "Issuing authority ID", "description": "EESSI-registered identifier of the issuing authority." }]
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Issuing authority ID",
+          "description": "EESSI-registered identifier of the issuing authority."
+        }
+      ]
     },
     {
-      "path": ["issuing_authority", "name"],
+      "path": [
+        "issuing_authority",
+        "name"
+      ],
       "mandatory": true,
       "sd": "allowed",
-      "display": [{ "locale": "en-US", "label": "Issuing authority name" }]
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Issuing authority name"
+        }
+      ]
     },
     {
-      "path": ["authentic_source"],
+      "path": [
+        "authentic_source"
+      ],
       "mandatory": true,
       "sd": "allowed",
-      "display": [{ "locale": "en-US", "label": "Authentic source" }]
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Authentic source"
+        }
+      ]
     },
     {
-      "path": ["authentic_source", "id"],
+      "path": [
+        "authentic_source",
+        "id"
+      ],
       "mandatory": true,
       "sd": "allowed",
-      "display": [{ "locale": "en-US", "label": "Authentic source ID", "description": "Identifier from the EESSI Institution Repository." }]
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Authentic source ID",
+          "description": "Identifier from the EESSI Institution Repository."
+        }
+      ]
     },
     {
-      "path": ["authentic_source", "name"],
+      "path": [
+        "authentic_source",
+        "name"
+      ],
       "mandatory": true,
       "sd": "allowed",
-      "display": [{ "locale": "en-US", "label": "Authentic source name", "description": "Name of the competent institution." }]
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Authentic source name",
+          "description": "Name of the competent institution."
+        }
+      ]
     },
     {
-      "path": ["document_number"],
+      "path": [
+        "document_number"
+      ],
       "mandatory": true,
       "sd": "allowed",
-      "display": [{ "locale": "en-US", "label": "Document number", "description": "Unique EHIC document identifier." }]
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Document number",
+          "description": "Unique EHIC document identifier."
+        }
+      ]
     },
     {
-      "path": ["date_of_issuance"],
+      "path": [
+        "date_of_issuance"
+      ],
       "mandatory": true,
       "sd": "allowed",
-      "display": [{ "locale": "en-US", "label": "Date of issuance", "description": "EHIC validity start date (ISO 8601 YYYY-MM-DD)." }]
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Date of issuance",
+          "description": "EHIC validity start date (ISO 8601 YYYY-MM-DD)."
+        }
+      ]
     },
     {
-      "path": ["date_of_expiry"],
+      "path": [
+        "date_of_expiry"
+      ],
       "mandatory": true,
       "sd": "allowed",
-      "display": [{ "locale": "en-US", "label": "Date of expiry", "description": "EHIC expiration date (ISO 8601 YYYY-MM-DD)." }]
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Date of expiry",
+          "description": "EHIC expiration date (ISO 8601 YYYY-MM-DD)."
+        }
+      ]
     },
     {
-      "path": ["starting_date"],
+      "path": [
+        "starting_date"
+      ],
       "mandatory": true,
       "sd": "allowed",
-      "display": [{ "locale": "en-US", "label": "Starting date", "description": "Insurance coverage start date." }]
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Starting date",
+          "description": "Insurance coverage start date."
+        }
+      ]
     },
     {
-      "path": ["ending_date"],
+      "path": [
+        "ending_date"
+      ],
       "mandatory": true,
       "sd": "allowed",
-      "display": [{ "locale": "en-US", "label": "Ending date", "description": "Insurance coverage end date." }]
+      "display": [
+        {
+          "locale": "en-US",
+          "label": "Ending date",
+          "description": "Insurance coverage end date."
+        }
+      ]
     }
   ]
 }
