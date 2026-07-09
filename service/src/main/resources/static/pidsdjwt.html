@@ -97,6 +97,7 @@
     <login-options-comp
             :result="reqResult"
             :changed="reqChanged"
+            :iso-mdoc-request="isMdocRequest"
             :error="error"
             :dcapi-selection="selections[activeProfileName] || {}"
             @update:dcapi-selection="selections[activeProfileName] = $event"

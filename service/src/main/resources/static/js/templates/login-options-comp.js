@@ -3,11 +3,14 @@ export default {
         'result',
         'changed',
         'error',
-        'dcapiSelection'
+        'dcapiSelection',
+        'isoMdocRequest'
     ],
     data() {
         return {
-            activeProfileName: null
+            activeProfileName: null,
+            // Digital Credentials API availability in this browser (the DigitalCredential response interface).
+            dcApiSupported: typeof window.DigitalCredential !== 'undefined'
         }
     },
     emits: [
@@ -122,6 +125,10 @@ export default {
                 
                 <div v-if="profile.supportedOptions.includes('DC_API')" class="option-card border rounded p-2 bg-white">
                     <h2>Option C: Digital Credentials API</h2>
+                    <div v-if="!dcApiSupported" class="alert alert-info mb-0" role="alert">
+                        This browser does not support the Digital Credentials API. Use Option A or B, or try a browser that supports <code>navigator.credentials.get({ digital })</code>.
+                    </div>
+                    <template v-else>
                     <p>Select the request types to offer in a single browser call:</p>
                     <fieldset class="text-start mb-2">
                         <legend class="fs-6 fw-bold">OpenID4VP</legend>
@@ -147,7 +154,7 @@ export default {
                             <label class="form-check-label" :for="'dcapi-oid4vp-unsigned-' + profile.name">Unsigned OpenID4VP</label>
                         </div>
                     </fieldset>
-                    <div class="form-check text-start">
+                    <div v-if="isoMdocRequest" class="form-check text-start">
                         <input class="form-check-input" type="checkbox" :id="'dcapi-iso-' + profile.name"
                                :checked="dcapiSelection.isoMdoc === true"
                                @change="$emit('update:dcapiSelection', { ...dcapiSelection, isoMdoc: $event.target.checked })">
@@ -161,9 +168,10 @@ export default {
                     </div>
                     <div class="text-center mt-3">
                         <button @click="$emit('invokeDCAPI', profile.dcApiUrl || profile.url, dcapiSelection)"
-                                :disabled="dcapiSelection.oid4vpMode === 'NONE' && !dcapiSelection.isoMdoc"
+                                :disabled="dcapiSelection.oid4vpMode === 'NONE' && !(isoMdocRequest && dcapiSelection.isoMdoc)"
                                 class="btn btn-primary">Start Request</button>
                     </div>
+                    </template>
                 </div>
                 
                 </div>
