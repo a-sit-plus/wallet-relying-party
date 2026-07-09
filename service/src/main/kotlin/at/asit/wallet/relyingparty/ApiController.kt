@@ -170,20 +170,25 @@ class ApiController(
     @ResponseBody
     suspend fun transactionGetDcApi(
         @PathVariable id: String,
-        @RequestParam(name = "dcApiSignedOid4vp", required = false, defaultValue = "true") dcApiSignedOid4vp: Boolean,
+        @RequestParam(name = "oid4vpMode", required = false, defaultValue = "SIGNED") oid4vpMode: Oid4vpDcApiMode,
+        @RequestParam(name = "isoMdoc", required = false, defaultValue = "false") isoMdoc: Boolean,
+        @RequestParam(name = "encrypt", required = false, defaultValue = "true") encrypt: Boolean,
         request: HttpServletRequest,
     ): ResponseEntity<String> {
         MDC.put(MDC_REQUEST_ID, id)
-        Napier.i("/transaction/get/dcapi/$id called (dcApiSignedOid4vp=$dcApiSignedOid4vp)")
+        Napier.i("/transaction/get/dcapi/$id called (oid4vpMode=$oid4vpMode, isoMdoc=$isoMdoc, encrypt=$encrypt)")
         statisticLogger.info("$id get-dcapi (${request.getHeader(HttpHeaders.USER_AGENT)})")
         val transaction = getTransaction(id)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
                 .also { Napier.w("/transaction/get/dcapi/$id returns NOT_FOUND") }
 
+        if (oid4vpMode == Oid4vpDcApiMode.NONE && !isoMdoc)
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Select at least one DC API request type")
+
         return catching {
             check(transaction.profile.supportedOptions.any { it.isDcApi }) { "Profile does not support DC API flow" }
             val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
-            val body = transaction.transactionGetDcApi(responseUrl, dcApiSignedOid4vp)
+            val body = transaction.transactionGetDcApi(responseUrl, oid4vpMode, isoMdoc, encrypt)
                 .also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
             ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)

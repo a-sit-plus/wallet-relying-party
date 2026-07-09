@@ -49,9 +49,6 @@ dependencies {
     implementation(libs.wallet.vck.openid)
     implementation(libs.wallet.vck.openid.ktor)
 
-    // Temporary dependency for Hpke decryption
-    implementation("org.multipaz:multipaz:0.96.0")
-
     testImplementation("org.springframework.boot:spring-boot-starter-test")
     testImplementation("org.springframework.boot:spring-boot-webmvc-test")
     testImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-test")

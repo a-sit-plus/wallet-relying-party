@@ -10,14 +10,6 @@ export default {
             activeProfileName: null
         }
     },
-    computed: {
-        regularProfiles() {
-            return (this.result?.profiles || []).filter(profile => !this.isDcApiProfile(profile))
-        },
-        dcApiProfiles() {
-            return (this.result?.profiles || []).filter(profile => this.isDcApiProfile(profile))
-        }
-    },
     emits: [
         'generateQrCode',
         'invokeDCAPI',
@@ -25,9 +17,6 @@ export default {
         'update:dcapiSelection'
     ],
     methods: {
-        isDcApiProfile(profile) {
-            return typeof profile?.label === 'string' && profile.label.startsWith('DCAPI: ')
-        },
         activateProfile(profileName) {
             this.activeProfileName = profileName
             this.$emit('profileTabChanged', profileName)
@@ -82,19 +71,8 @@ export default {
      :class="{ 'blur' : changed.changed || error.type === 'GENERIC'}">
 
     <div class="card-header">
-        <ul v-if="regularProfiles.length > 0" class="nav nav-tabs card-header-tabs" role="tablist">
-            <li class="nav-item" v-for="profile in regularProfiles">
-                <button class="nav-link" data-bs-toggle="tab"
-                        :data-bs-target="'#tab-' + profile.name"
-                        :class="{ 'active' : activeProfileName === profile.name}"
-                        @click="activateProfile(profile.name)"
-                        type="button">
-                    {{ profile.label }}
-                </button>
-            </li>
-        </ul>
-        <ul v-if="dcApiProfiles.length > 0" class="nav nav-tabs card-header-tabs mt-2" role="tablist">
-            <li class="nav-item" v-for="profile in dcApiProfiles">
+        <ul class="nav nav-tabs card-header-tabs" role="tablist">
+            <li class="nav-item" v-for="profile in result.profiles">
                 <button class="nav-link" data-bs-toggle="tab"
                         :data-bs-target="'#tab-' + profile.name"
                         :class="{ 'active' : activeProfileName === profile.name}"
@@ -142,28 +120,49 @@ export default {
                     <p>The whole link is: <a target="_blank" :href="profile.url">{{ profile.url }}</a></p>
                 </div>
                 
-                <div v-if="profile.supportedOptions.includes('OID4VP_DC_API') || profile.supportedOptions.includes('ISO_MDOC_DC_API')" class="option-card border rounded p-2 bg-white">
-                    <h2>Digital Credentials API</h2>
-                    <p v-if="profile.supportedOptions.includes('OID4VP_DC_API')">Select the OpenID4VP mode and start the request:</p>
-                    <p v-else>This profile uses ISO 18013-7 via the Digital Credentials API.</p>
-                    <div v-if="profile.supportedOptions.includes('OID4VP_DC_API')">
-                        <div class="form-check text-start">
-                            <input class="form-check-input" type="radio" :id="'dcapi-unsigned-' + profile.name"
+                <div v-if="profile.supportedOptions.includes('DC_API')" class="option-card border rounded p-2 bg-white">
+                    <h2>Option C: Digital Credentials API</h2>
+                    <p>Select the request types to offer in a single browser call:</p>
+                    <fieldset class="text-start mb-2">
+                        <legend class="fs-6 fw-bold">OpenID4VP</legend>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" :id="'dcapi-oid4vp-none-' + profile.name"
                                    :name="'dcapi-oid4vp-' + profile.name"
-                                   :checked="dcapiSelection.signedOid4vp === false"
-                                   @change="$emit('update:dcapiSelection', { ...dcapiSelection, signedOid4vp: false })">
-                            <label class="form-check-label" :for="'dcapi-unsigned-' + profile.name">Unsigned OpenID4VP</label>
+                                   :checked="dcapiSelection.oid4vpMode === 'NONE'"
+                                   @change="$emit('update:dcapiSelection', { ...dcapiSelection, oid4vpMode: 'NONE' })">
+                            <label class="form-check-label" :for="'dcapi-oid4vp-none-' + profile.name">None</label>
                         </div>
-                        <div class="form-check text-start">
-                            <input class="form-check-input" type="radio" :id="'dcapi-signed-' + profile.name"
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" :id="'dcapi-oid4vp-signed-' + profile.name"
                                    :name="'dcapi-oid4vp-' + profile.name"
-                                   :checked="dcapiSelection.signedOid4vp === true"
-                                   @change="$emit('update:dcapiSelection', { ...dcapiSelection, signedOid4vp: true })">
-                            <label class="form-check-label" :for="'dcapi-signed-' + profile.name">Signed OpenID4VP</label>
+                                   :checked="dcapiSelection.oid4vpMode === 'SIGNED'"
+                                   @change="$emit('update:dcapiSelection', { ...dcapiSelection, oid4vpMode: 'SIGNED' })">
+                            <label class="form-check-label" :for="'dcapi-oid4vp-signed-' + profile.name">Signed OpenID4VP</label>
                         </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" :id="'dcapi-oid4vp-unsigned-' + profile.name"
+                                   :name="'dcapi-oid4vp-' + profile.name"
+                                   :checked="dcapiSelection.oid4vpMode === 'UNSIGNED'"
+                                   @change="$emit('update:dcapiSelection', { ...dcapiSelection, oid4vpMode: 'UNSIGNED' })">
+                            <label class="form-check-label" :for="'dcapi-oid4vp-unsigned-' + profile.name">Unsigned OpenID4VP</label>
+                        </div>
+                    </fieldset>
+                    <div class="form-check text-start">
+                        <input class="form-check-input" type="checkbox" :id="'dcapi-iso-' + profile.name"
+                               :checked="dcapiSelection.isoMdoc === true"
+                               @change="$emit('update:dcapiSelection', { ...dcapiSelection, isoMdoc: $event.target.checked })">
+                        <label class="form-check-label" :for="'dcapi-iso-' + profile.name">ISO 18013-7 Annex C</label>
+                    </div>
+                    <div class="form-check text-start">
+                        <input class="form-check-input" type="checkbox" :id="'dcapi-encrypt-' + profile.name"
+                               :checked="dcapiSelection.encrypt !== false"
+                               @change="$emit('update:dcapiSelection', { ...dcapiSelection, encrypt: $event.target.checked })">
+                        <label class="form-check-label" :for="'dcapi-encrypt-' + profile.name">Encrypt response (OpenID4VP)</label>
                     </div>
                     <div class="text-center mt-3">
-                        <button @click="$emit('invokeDCAPI', profile.dcApiUrl || profile.url, dcapiSelection)" class="btn btn-primary">Start Request</button>
+                        <button @click="$emit('invokeDCAPI', profile.dcApiUrl || profile.url, dcapiSelection)"
+                                :disabled="dcapiSelection.oid4vpMode === 'NONE' && !dcapiSelection.isoMdoc"
+                                class="btn btn-primary">Start Request</button>
                     </div>
                 </div>
                 

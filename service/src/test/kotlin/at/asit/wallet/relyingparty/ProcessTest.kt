@@ -118,6 +118,102 @@ class ProcessTest {
         assertTrue(decodedAuthnRequest.contains("/transaction/result/${avProfile.id}"))
     }
 
+    @Test
+    fun `DC API is offered for every profile with a dcApiUrl`() = runTest {
+        val response = createTransaction(ConstantIndex.CredentialRepresentation.SD_JWT)
+        assertEquals(
+            setOf("HAIPd05", "AV", "MDOCd23", "EUDIW"),
+            response.profiles.map { it.name }.toSet(),
+        )
+        response.profiles.forEach {
+            assertTrue(it.supportedOptions.contains(SupportedOptions.DC_API), "profile ${it.name} missing DC_API")
+            assertNotNull(it.dcApiUrl, "profile ${it.name} missing dcApiUrl")
+        }
+    }
+
+    @Test
+    fun `DC API signed OpenID4VP works for a formerly device-only profile`() = runTest {
+        // EUDIW previously had no DC API at all; universal DC API must now produce a signed request for it.
+        val eudiw = createTransaction(ConstantIndex.CredentialRepresentation.SD_JWT).profiles.first { it.name == "EUDIW" }
+        val body = dcApiBody(eudiw.id, "?oid4vpMode=SIGNED&isoMdoc=false&encrypt=true")
+        assertTrue(body.contains("openid4vp-v1-signed"), body)
+    }
+
+    @Test
+    fun `DC API unsigned OpenID4VP is plaintext when encrypt is off, encrypted when on`() = runTest {
+        // Unsigned exercises the x509_san_dns scheme (EUDIW), where the request body is inspectable (not a JWS).
+        val eudiw = createTransaction(ConstantIndex.CredentialRepresentation.SD_JWT).profiles.first { it.name == "EUDIW" }
+
+        val plaintext = dcApiBody(eudiw.id, "?oid4vpMode=UNSIGNED&isoMdoc=false&encrypt=false")
+        assertTrue(plaintext.contains("openid4vp-v1-unsigned"), plaintext)
+        assertTrue(plaintext.contains("dcql_query"), plaintext)
+        assertTrue(plaintext.contains("expected_origins"), plaintext)
+        assertTrue(plaintext.contains("\"dc_api\""), plaintext)
+        assertFalse(plaintext.contains("dc_api.jwt"), plaintext)
+
+        val encrypted = dcApiBody(eudiw.id, "?oid4vpMode=UNSIGNED&isoMdoc=false&encrypt=true")
+        assertTrue(encrypted.contains("dc_api.jwt"), encrypted)
+    }
+
+    @Test
+    fun `DC API offers ISO Annex C, with and without OpenID4VP encryption`() = runTest {
+        val mdoc = createTransaction(ConstantIndex.CredentialRepresentation.ISO_MDOC).profiles.first { it.name == "MDOCd23" }
+
+        // ISO alone, encrypt off (R1: ISO is HPKE-encrypted internally regardless of responseMode).
+        assertTrue(dcApiBody(mdoc.id, "?oid4vpMode=NONE&isoMdoc=true&encrypt=false").contains("org-iso-mdoc"))
+
+        // Signed OpenID4VP + ISO in one call (the safe multi-protocol combination).
+        val combined = dcApiBody(mdoc.id, "?oid4vpMode=SIGNED&isoMdoc=true&encrypt=true")
+        assertTrue(combined.contains("openid4vp-v1-signed"), combined)
+        assertTrue(combined.contains("org-iso-mdoc"), combined)
+    }
+
+    @Test
+    fun `DC API rejects an empty selection`() = runTest {
+        val p = createTransaction(ConstantIndex.CredentialRepresentation.SD_JWT).profiles.first()
+        assertEquals(400, dcApiResult(p.id, "?oid4vpMode=NONE&isoMdoc=false").response.status)
+    }
+
+    @Test
+    fun `DC API rejects an unknown OpenID4VP mode`() = runTest {
+        val p = createTransaction(ConstantIndex.CredentialRepresentation.SD_JWT).profiles.first()
+        assertEquals(400, dcApiResult(p.id, "?oid4vpMode=BOGUS").response.status)
+    }
+
+    private suspend fun createTransaction(
+        representation: ConstantIndex.CredentialRepresentation,
+    ): TransactionResponse {
+        val requestBuilder = CredentialPresentationRequestBuilder(
+            listOf(
+                TransactionRequestCredential(
+                    credentialType = if (representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
+                        AtomicAttribute2023.isoDocType else AtomicAttribute2023.sdJwtType,
+                    representation = representation.name,
+                    attributes = listOf(AtomicAttribute2023.CLAIM_GIVEN_NAME),
+                )
+            ).map { it.toRequestOptionsCredential() }
+        )
+        val result = mockMvc.post("/transaction/create") {
+            content = Json.encodeToString(
+                TransactionRequest(
+                    presentationMechanism = PresentationMechanismEnum.DCQL,
+                    dcqlQuery = requestBuilder.toDCQLRequest()?.dcqlQuery,
+                )
+            )
+            contentType = MediaType.APPLICATION_JSON
+            accept = MediaType.APPLICATION_JSON
+        }.andReturn().awaitAsync()
+        return Json.decodeFromString(result.response.contentAsString)
+    }
+
+    private fun dcApiResult(id: String, query: String): MvcResult =
+        mockMvc.get("/transaction/get/dcapi/$id$query") { accept = MediaType.ALL }.andReturn().awaitAsync()
+
+    private fun dcApiBody(id: String, query: String): String = dcApiResult(id, query).let {
+        assertEquals(200, it.response.status, it.response.contentAsString)
+        it.response.contentAsString
+    }
+
     private suspend fun runProcess(
         presentationMechanism: PresentationMechanismEnum,
         profileName: String? = null,

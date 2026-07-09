@@ -51,15 +51,18 @@ import kotlin.time.Clock
 enum class SupportedOptions {
     CROSS_DEVICE,
     SAME_DEVICE,
-    OID4VP_DC_API,
-    ISO_MDOC_DC_API
+    DC_API
     ;
 
     val isUrlOrQrCode: Boolean
         get() = this == CROSS_DEVICE || this == SAME_DEVICE
     val isDcApi: Boolean
-        get() = this == OID4VP_DC_API || this == ISO_MDOC_DC_API
+        get() = this == DC_API
 }
+
+// Which OpenID4VP DC API request to offer in a single navigator.credentials.get call.
+// Signed and Unsigned are mutually exclusive (they'd overwrite each other's stored request).
+enum class Oid4vpDcApiMode { NONE, SIGNED, UNSIGNED }
 
 // --- Declarative profile configuration types ---
 
@@ -82,11 +85,6 @@ data class DeviceFlowConfig(
     val walletUrlStyle: WalletUrlStyle = WalletUrlStyle.ByReference,
 )
 
-data class DcApiConfig(
-    val oid4vpEncrypted: Boolean? = null,  // null = no OID4VP DC API; false/true = unencrypted/encrypted
-    val isoMdoc: Boolean = false,
-)
-
 data class VerifierProfile(
     val name: String,
     val label: String,
@@ -94,15 +92,14 @@ data class VerifierProfile(
     val urlPrefix: String,
     val clientIdSchemeType: ClientIdSchemeType? = null,
     val deviceFlowConfig: DeviceFlowConfig? = null,
-    val dcApiConfig: DcApiConfig? = null,
 ) {
+    // DC API is offered for every profile; the request contents are chosen per-request in the UI.
     val supportedOptions: Set<SupportedOptions> = buildSet {
         if (deviceFlowConfig != null) {
             add(SupportedOptions.CROSS_DEVICE)
             add(SupportedOptions.SAME_DEVICE)
         }
-        if (dcApiConfig?.oid4vpEncrypted != null) add(SupportedOptions.OID4VP_DC_API)
-        if (dcApiConfig?.isoMdoc == true) add(SupportedOptions.ISO_MDOC_DC_API)
+        add(SupportedOptions.DC_API)
     }
 }
 
@@ -143,7 +140,6 @@ class VerifierProfiles(
             urlPrefix = Paths.Schemes.HaipVp,
             clientIdSchemeType = ClientIdSchemeType.X509Hash,
             deviceFlowConfig = DeviceFlowConfig(DeviceResponseMode.DirectPostJwt),
-            dcApiConfig = DcApiConfig(oid4vpEncrypted = true),
         ),
         VerifierProfile(
             name = "AV",
@@ -156,15 +152,6 @@ class VerifierProfiles(
                 verifierMetadataMode = VerifierMetadataMode.OMIT_IF_OUT_OF_BAND,
                 walletUrlStyle = WalletUrlStyle.Inline,
             ),
-            dcApiConfig = DcApiConfig(isoMdoc = true),
-        ),
-        VerifierProfile(
-            name = "UOID4VP",
-            label = "DCAPI: Unencrypted OpenID4VP",
-            description = "DCAPI, OpenID4VP 1.0, direct_post",
-            urlPrefix = "",
-            clientIdSchemeType = ClientIdSchemeType.X509Hash,
-            dcApiConfig = DcApiConfig(oid4vpEncrypted = false),
         ),
         VerifierProfile(
             name = "MDOCd23",
@@ -175,35 +162,12 @@ class VerifierProfiles(
             deviceFlowConfig = DeviceFlowConfig(DeviceResponseMode.DirectPostJwt),
         ),
         VerifierProfile(
-            name = "MDOCISO",
-            label = "DCAPI: ISO 18013-7 (Annex C)",
-            description = "ISO 18013-7 Annex C",
-            urlPrefix = "",
-            dcApiConfig = DcApiConfig(isoMdoc = true),
-        ),
-        VerifierProfile(
             name = "EUDIW",
             label = "OpenID4VP: EUDIW Ref.",
             description = "x509_san_dns, OpenID4VP d23, direct_post.jwt",
             urlPrefix = Paths.Schemes.OpenId4Vp,
             clientIdSchemeType = ClientIdSchemeType.X509SanDns,
             deviceFlowConfig = DeviceFlowConfig(DeviceResponseMode.DirectPostJwt),
-        ),
-        VerifierProfile(
-            name = "DC_API_COMBINED",
-            label = "DCAPI: Unencrypted OpenID4VP + ISO 18013-7",
-            description = "Unencrypted OpenID4VP (signed/unsigned) and ISO 18013-7 Annex-C via DC API",
-            urlPrefix = "",
-            clientIdSchemeType = ClientIdSchemeType.X509SanDns,
-            dcApiConfig = DcApiConfig(oid4vpEncrypted = false, isoMdoc = true),
-        ),
-        VerifierProfile(
-            name = "DC_API_COMBINED_ENCRYPTED",
-            label = "DCAPI: Encrypted OpenID4VP + ISO 18013-7",
-            description = "Encrypted OpenID4VP (signed/unsigned) and ISO 18013-7 Annex-C via DC API",
-            urlPrefix = "",
-            clientIdSchemeType = ClientIdSchemeType.X509SanDns,
-            dcApiConfig = DcApiConfig(oid4vpEncrypted = true, isoMdoc = true),
         ),
     )
 
@@ -219,12 +183,11 @@ class VerifierProfiles(
 
         val clientIdScheme = clientIdSchemeType?.build()
         val oid4vpVerifier = clientIdScheme?.let { openId4VpVerifier(it) }
-        // TODO: For DCAPI we don't need a clientIdScheme
-        val dcApiVerifier = if (dcApiConfig?.isoMdoc == true || dcApiConfig?.oid4vpEncrypted != null)
-            dcApiVerifier(clientIdScheme ?: ClientIdScheme.PreRegistered("dcapi", "dcapi://unknown"))
-        else null
+        // DC API is offered for every profile, using the profile's client_id scheme.
+        val dcApiVerifier = dcApiVerifier(
+            requireNotNull(clientIdScheme) { "DC API needs a client_id scheme for profile $name" }
+        )
         val deviceFlow = deviceFlowConfig
-        val dcApi = dcApiConfig
 
         return PreparedVerifierProfile(
             name = name,
@@ -259,14 +222,15 @@ class VerifierProfiles(
                         directPostJwt(txId, responseUrl, request, oid4vpVerifier!!, urlPrefix)
                 }
             },
-            transactionGetDcApiFn = { txId, responseUrl, dcqlRequest, signed ->
+            transactionGetDcApiFn = { txId, responseUrl, dcqlRequest, oid4vpMode, isoMdoc, encrypt ->
                 buildDcApiResponse(
                     txId,
                     responseUrl,
                     dcqlRequest,
-                    signed,
+                    oid4vpMode,
+                    isoMdoc,
+                    encrypt,
                     dcApiVerifier,
-                    dcApi!!
                 )
             },
         )
@@ -284,7 +248,7 @@ class VerifierProfiles(
         private val buildQrCodeUrlFn: (String) -> String,
         private val buildWalletUrlFn: suspend (Transaction, TransactionContext) -> String,
         private val transactionGetFn: suspend (String, String, CredentialPresentationRequest?) -> String,
-        private val transactionGetDcApiFn: suspend (String, String, CredentialPresentationRequest.DCQLRequest?, Boolean) -> String,
+        private val transactionGetDcApiFn: suspend (String, String, CredentialPresentationRequest.DCQLRequest?, Oid4vpDcApiMode, Boolean, Boolean) -> String,
     ) : PreparedProfile {
         override fun buildQrCodeUrl(requestUrl: String) = buildQrCodeUrlFn(requestUrl)
         override suspend fun buildWalletUrl(transaction: Transaction, context: TransactionContext) =
@@ -301,31 +265,38 @@ class VerifierProfiles(
             transactionId: String,
             responseUrl: String,
             dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
-            dcApiSignedOid4vp: Boolean,
+            oid4vpMode: Oid4vpDcApiMode,
+            isoMdoc: Boolean,
+            encrypt: Boolean,
         ) =
-            transactionGetDcApiFn(transactionId, responseUrl, dcqlRequest, dcApiSignedOid4vp)
+            transactionGetDcApiFn(transactionId, responseUrl, dcqlRequest, oid4vpMode, isoMdoc, encrypt)
     }
 
     private suspend fun buildDcApiResponse(
         transactionId: String,
         responseUrl: String,
         dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
-        dcApiSignedOid4vp: Boolean,
+        oid4vpMode: Oid4vpDcApiMode,
+        isoMdoc: Boolean,
+        encrypt: Boolean,
         dcApiVerifier: DcApiVerifier?,
-        config: DcApiConfig,
     ): String = joseCompliantSerializer.encodeToString(
         dcApiVerifier!!.createAuthnRequest(
             requestOptions = OpenId4VpRequestOptions(
                 state = transactionId,
-                responseMode = if (config.oid4vpEncrypted == true || config.isoMdoc) ResponseMode.DcApiJwt else ResponseMode.DcApi,
+                // Encryption toggle governs the OpenID4VP part; ISO Annex C is HPKE-encrypted internally regardless.
+                responseMode = if (encrypt) ResponseMode.DcApiJwt else ResponseMode.DcApi,
                 responseUrl = responseUrl,
-                presentationRequest = dcqlRequest!!,
+                presentationRequest = checkNotNull(dcqlRequest) { "No DCQL query available for this request" },
                 expectedOrigins = listOf(configuration.publicContext.toString()),
             ),
             creationOptions = listOfNotNull(
-                if (config.isoMdoc) DcApiCreationOptions.Iso180137AnnexC else null,
-                if (dcApiSignedOid4vp && config.oid4vpEncrypted != null) DcApiCreationOptions.OpenId4VpSigned else null,
-                if (!dcApiSignedOid4vp && config.oid4vpEncrypted != null) DcApiCreationOptions.OpenId4VpUnsigned else null
+                when (oid4vpMode) {
+                    Oid4vpDcApiMode.SIGNED -> DcApiCreationOptions.OpenId4VpSigned
+                    Oid4vpDcApiMode.UNSIGNED -> DcApiCreationOptions.OpenId4VpUnsigned
+                    Oid4vpDcApiMode.NONE -> null
+                },
+                if (isoMdoc) DcApiCreationOptions.Iso180137AnnexC else null,
             ).toTypedArray()
         ).getOrThrow()
     )
@@ -476,12 +447,16 @@ suspend fun Transaction.transactionGet(responseUrl: String): String = when (pres
 
 suspend fun Transaction.transactionGetDcApi(
     responseUrl: String,
-    dcApiSignedOid4vp: Boolean,
+    oid4vpMode: Oid4vpDcApiMode,
+    isoMdoc: Boolean,
+    encrypt: Boolean,
 ): String = profile.transactionGetDcApi(
     transactionId = id,
     responseUrl = responseUrl,
     dcqlRequest = dcqlRequest,
-    dcApiSignedOid4vp = dcApiSignedOid4vp,
+    oid4vpMode = oid4vpMode,
+    isoMdoc = isoMdoc,
+    encrypt = encrypt,
 )
 
 data class TransactionContext(
@@ -518,6 +493,8 @@ interface PreparedProfile {
         transactionId: String,
         responseUrl: String,
         dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
-        dcApiSignedOid4vp: Boolean,
+        oid4vpMode: Oid4vpDcApiMode,
+        isoMdoc: Boolean,
+        encrypt: Boolean,
     ): String = throw IllegalStateException("DC API not supported for this profile")
 }

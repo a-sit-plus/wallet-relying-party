@@ -124,8 +124,10 @@ const createBasicSetup = function (config) {
 
     function validateDcApiSelection(selection) {
         const errors = [];
-        if (!selection || typeof selection.signedOid4vp !== 'boolean') {
-            errors.push("Please select an OpenID4VP mode for the Digital Credentials API request.");
+        if (!selection || !['NONE', 'SIGNED', 'UNSIGNED'].includes(selection.oid4vpMode)) {
+            errors.push("Please choose an OpenID4VP mode for the Digital Credentials API request.");
+        } else if (selection.oid4vpMode === 'NONE' && !selection.isoMdoc) {
+            errors.push("Please select at least one Digital Credentials API request type.");
         }
         return errors;
     }
@@ -142,19 +144,16 @@ const createBasicSetup = function (config) {
             clearError()
             const requestUrl = new URL(profile.dcApiUrl || profile.url)
 
-            if (!selection || typeof selection.signedOid4vp !== 'boolean') {
-                credentialRequestOptions.value[profile.name] = null
-                return
-            }
-
             const validationErrors = validateDcApiSelection(selection);
             if (validationErrors.length > 0) {
                 credentialRequestOptions.value[profile.name] = null;
-                setError("GENERIC", validationErrors.join(" "));
+                // Nothing selected yet is a normal idle state, not an error to surface.
                 return;
             }
 
-            requestUrl.searchParams.set('dcApiSignedOid4vp', String(selection.signedOid4vp))
+            requestUrl.searchParams.set('oid4vpMode', selection.oid4vpMode)
+            requestUrl.searchParams.set('isoMdoc', String(selection.isoMdoc === true))
+            requestUrl.searchParams.set('encrypt', String(selection.encrypt !== false))
             console.log("Going to pre-fetch from requestUri", requestUrl.toString())
 
             const response = await fetch(requestUrl);
@@ -437,7 +436,9 @@ const createBasicSetup = function (config) {
                 const newCredentialRequestOptions = {}
                 for (const profile of data.profiles) {
                     newSelections[profile.name] = {
-                        signedOid4vp: true, // Default to signed for initial pre-fetch
+                        oid4vpMode: 'SIGNED', // Default: signed OpenID4VP, encrypted, no ISO
+                        isoMdoc: false,
+                        encrypt: true,
                     }
                     newCredentialRequestOptions[profile.name] = null
                 }
@@ -570,7 +571,7 @@ const createBasicSetup = function (config) {
         const profile = activeProfile.value
         if (!profile) return
         if (!selections.value[profile.name]) return
-        if (!(profile.supportedOptions?.includes('OID4VP_DC_API') || profile.supportedOptions?.includes('ISO_MDOC_DC_API'))) {
+        if (!profile.supportedOptions?.includes('DC_API')) {
             return
         }
         await prefetchCredentialRequestOptions(profile, selections.value[profile.name])
@@ -578,14 +579,16 @@ const createBasicSetup = function (config) {
 
     watch(activeProfile, (profile) => {
         clearError()
-        if (!(profile?.supportedOptions?.includes('OID4VP_DC_API') || profile?.supportedOptions?.includes('ISO_MDOC_DC_API'))) {
+        if (!profile?.supportedOptions?.includes('DC_API')) {
             return
         }
         const currentSelection = selections.value[profile.name] || {}
-        if (typeof currentSelection.signedOid4vp !== 'boolean') {
+        if (!['NONE', 'SIGNED', 'UNSIGNED'].includes(currentSelection.oid4vpMode)) {
             selections.value[profile.name] = {
                 ...currentSelection,
-                signedOid4vp: true,
+                oid4vpMode: 'SIGNED',
+                isoMdoc: currentSelection.isoMdoc === true,
+                encrypt: currentSelection.encrypt !== false,
             }
         }
     })
