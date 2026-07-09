@@ -2,7 +2,6 @@ package at.asit.wallet.relyingparty
 
 import at.asitplus.catching
 import at.asitplus.dcapi.DigitalCredentialInterface
-import at.asitplus.iso.DeviceRequest
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -55,7 +54,6 @@ class ApiController(
         val presentationMechanism: PresentationMechanismEnum,
         val presentationExchangeRequest: CredentialPresentationRequest.PresentationExchangeRequest? = null,
         val dcqlRequest: CredentialPresentationRequest.DCQLRequest? = null,
-        val deviceRequest: DeviceRequest? = null,
     )
 
     @GetMapping(Paths.Api.ItemsUrl)
@@ -86,17 +84,12 @@ class ApiController(
         val dcqlQuery = catching {
             it.toDCQLRequest()?.dcqlQuery
         }
-        val deviceRequest = catching {
-            TODO()
-        }
         ResponseEntity.ok(
             TransactionRequestQueries(
                 presentationDefinition = presentationDefinition.getOrNull(),
                 presentationDefinitionError = presentationDefinition.exceptionOrNull()?.message,
                 dcqlQuery = dcqlQuery.getOrNull(),
                 dcqlQueryError = dcqlQuery.exceptionOrNull()?.message,
-                deviceRequest = deviceRequest.getOrNull(),
-                deviceRequestError = deviceRequest.exceptionOrNull()?.message,
             )
         )
     }
@@ -122,7 +115,6 @@ class ApiController(
                 dcqlRequest = request.dcqlQuery?.let {
                     CredentialPresentationRequest.DCQLRequest(it)
                 },
-                deviceRequest = request.deviceRequest,
             )
             putTransaction(transaction)
             val qrCodeUrl = preparedProfile.buildWalletUrl(transaction, transactionContext)

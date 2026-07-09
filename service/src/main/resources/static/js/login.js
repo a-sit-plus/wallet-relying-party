@@ -24,8 +24,6 @@ const createBasicSetup = function (config) {
         presentationDefinitionError: null,
         dcqlQuery: null,
         dcqlQueryError: null,
-        deviceRequest: null,
-        deviceRequestError: null,
     })
     const selections = ref({})
     const credentialRequestOptions = ref({})
@@ -88,8 +86,6 @@ const createBasicSetup = function (config) {
             presentationDefinitionError: queries["presentationDefinitionError"],
             dcqlQuery: JSON.stringify(queries["dcqlQuery"], null, 4),
             dcqlQueryError: queries["dcqlQueryError"],
-            deviceRequest: queries["deviceRequest"],
-            deviceRequestError: queries["deviceRequestError"],
         }
     }
 
@@ -291,12 +287,6 @@ const createBasicSetup = function (config) {
         compareRequestChanged()
     }
 
-    async function updateDeviceRequest(deviceRequest) {
-        console.log('updateDeviceRequest', deviceRequest)
-        reqSelection.value.deviceRequest = deviceRequest
-        compareRequestChanged()
-    }
-
     function validate() {
         const errors = [];
 
@@ -331,7 +321,6 @@ const createBasicSetup = function (config) {
     function createRequestJSON() {
         var presentationDefinition = reqSelection.value.presentationDefinition === "" ? null : reqSelection.value.presentationDefinition
         var dcqlQuery = reqSelection.value.dcqlQuery === "" ? null : reqSelection.value.dcqlQuery
-        var deviceRequest = reqSelection.value.deviceRequest === "" ? null : reqSelection.value.deviceRequest
 
         if(presentationDefinition != null) {
             presentationDefinition = JSON.parse(presentationDefinition)
@@ -343,7 +332,6 @@ const createBasicSetup = function (config) {
             presentationMechanismIdentifier: reqSelection.value.presentationMechanismIdentifier,
             presentationDefinition: presentationDefinition,
             dcqlQuery: dcqlQuery,
-            deviceRequest: deviceRequest,
         }
 
         return JSON.stringify(request)
@@ -569,8 +557,6 @@ const createBasicSetup = function (config) {
             reqSelection.value.presentationDefinitionError = newQueries["presentationDefinitionError"]
             reqSelection.value.dcqlQuery = newQueries["dcqlQuery"]
             reqSelection.value.dcqlQueryError = newQueries["dcqlQueryError"]
-            reqSelection.value.deviceRequest = newQueries["deviceRequest"]
-            reqSelection.value.deviceRequestError = newQueries["deviceRequestError"]
         })()
 
         try {
@@ -631,7 +617,6 @@ const createBasicSetup = function (config) {
         removeCredential,
         updatePresentationDefinition,
         updateDcqlQuery,
-        updateDeviceRequest,
         updateAttribute,
         generateQrCode,
         startPeriodicUpdate,

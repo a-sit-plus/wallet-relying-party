@@ -1,8 +1,6 @@
 package at.asit.wallet.relyingparty
 
 import at.asitplus.dif.PresentationDefinition
-import at.asitplus.iso.DeviceRequest
-import at.asitplus.iso.DeviceRequestBase64UrlSerializer
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.wallet.lib.RequestOptionsCredential
@@ -19,8 +17,6 @@ data class TransactionRequest(
     val presentationMechanism: PresentationMechanismEnum = PresentationMechanismEnum.PresentationExchange,
     val presentationDefinition: PresentationDefinition? = null,
     val dcqlQuery: DCQLQuery? = null,
-    @Serializable(with = DeviceRequestBase64UrlSerializer::class)
-    val deviceRequest: DeviceRequest? = null,
 )
 
 @Serializable

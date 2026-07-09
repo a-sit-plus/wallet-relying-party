@@ -327,7 +327,7 @@ class VerifierProfiles(
                 if (dcApiSignedOid4vp && config.oid4vpEncrypted != null) DcApiCreationOptions.OpenId4VpSigned else null,
                 if (!dcApiSignedOid4vp && config.oid4vpEncrypted != null) DcApiCreationOptions.OpenId4VpUnsigned else null
             ).toTypedArray()
-        )
+        ).getOrThrow()
     )
 
     private suspend fun openId4VpVerifier(clientIdScheme: ClientIdScheme) = OpenId4VpVerifier(

@@ -1,6 +1,5 @@
 package at.asit.wallet.relyingparty
 
-import at.asitplus.catching
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.wallet.lib.agent.ClaimToBeIssued
 import at.asitplus.wallet.lib.agent.CredentialToBeIssued
@@ -88,9 +87,6 @@ class ProcessTest {
                     presentationMechanism = PresentationMechanismEnum.DCQL,
                     presentationDefinition = requestBuilder.toPresentationExchangeRequest().presentationDefinition,
                     dcqlQuery = requestBuilder.toDCQLRequest()?.dcqlQuery,
-                    deviceRequest = catching {
-                        TODO()
-                    }.getOrNull(),
                 )
             )
             contentType = MediaType.APPLICATION_JSON
@@ -144,9 +140,6 @@ class ProcessTest {
                     presentationMechanism = presentationMechanism,
                     presentationDefinition = requestBuilder.toPresentationExchangeRequest().presentationDefinition,
                     dcqlQuery = requestBuilder.toDCQLRequest()?.dcqlQuery,
-                    deviceRequest = catching {
-                        TODO()
-                    }.getOrNull(),
                 )
             )
             contentType = MediaType.APPLICATION_JSON

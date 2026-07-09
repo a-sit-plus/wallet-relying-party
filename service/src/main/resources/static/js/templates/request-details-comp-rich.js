@@ -24,7 +24,6 @@ export default {
         'removeCredential',
         'updatePresentationDefinition',
         'updateDcqlQuery',
-        'updateDeviceRequest',
         'generateQrCode'
     ],
     template: `
@@ -143,15 +142,6 @@ export default {
        :placeholder="request.dcqlQueryError ? request.dcqlQueryError : 'Enter your DCQL Query (JSON)'"
        rows="10"
        @input="$emit('updateDcqlQuery', $event.target.value)"
-       style="resize:both;width:100%"
-     ></textarea>
-</accordion-comp>
-<accordion-comp title="Device Request (Base64Url)">
-    <textarea
-       :value="request.deviceRequest"
-       :placeholder="request.deviceRequestError ? request.deviceRequestError : 'Enter your ISO device request (Base64Url)'"
-       rows="10"
-       @input="$emit('updateDeviceRequest', $event.target.value)"
        style="resize:both;width:100%"
      ></textarea>
 </accordion-comp>

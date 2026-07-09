@@ -153,7 +153,6 @@ class TransactionRequestTest {
         }"""
         val request = Json.decodeFromString<TransactionRequest>(tmp)
         request.presentationDefinition.shouldBeNull()
-        request.deviceRequest.shouldBeNull()
         request.presentationMechanism shouldBe PresentationMechanismEnum.DCQL
         request.dcqlQuery.shouldNotBeNull()
         request.dcqlQuery.credentials shouldHaveSize 2
