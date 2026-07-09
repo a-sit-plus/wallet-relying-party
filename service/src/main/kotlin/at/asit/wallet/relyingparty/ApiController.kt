@@ -7,9 +7,6 @@ import at.asitplus.dcapi.OpenId4VpResponse
 import at.asitplus.dcapi.OpenId4VpResponseSigned
 import at.asitplus.dcapi.OpenId4VpResponseUnsigned
 import at.asitplus.iso.DeviceRequest
-import at.asitplus.signum.indispensable.CryptoPrivateKey
-import at.asitplus.signum.indispensable.ECCurve
-import at.asitplus.signum.indispensable.asn1.encodeToPEM
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
@@ -22,11 +19,6 @@ import jakarta.servlet.http.HttpServletRequest
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import org.multipaz.crypto.AsymmetricKey
-import org.multipaz.crypto.EcCurve
-import org.multipaz.crypto.EcPrivateKey
-import org.multipaz.crypto.EcPublicKey
-import org.multipaz.crypto.Hpke
 import org.slf4j.LoggerFactory
 import org.slf4j.MDC
 import org.springframework.http.HttpHeaders
@@ -343,40 +335,6 @@ class ApiController(
         transactions.entries.removeAll { it.value.notAfter < now }
     }
 
-    // TODO replace with signum implementation when available
-    private suspend fun decryptHpke(
-        enc: ByteArray,
-        ciphertext: ByteArray,
-        responseEncryptionKeySignum: CryptoPrivateKey.EC.WithPublicKey,
-        cborEncodedSessionTranscript: ByteArray,
-    ): ByteArray {
-        val ecCurve = when (responseEncryptionKeySignum.curve) {
-            ECCurve.SECP_256_R_1 -> EcCurve.P256
-            ECCurve.SECP_384_R_1 -> EcCurve.P384
-            ECCurve.SECP_521_R_1 -> EcCurve.P521
-        }
-
-        val privateKeyPem = responseEncryptionKeySignum.encodeToPEM().getOrThrow()
-        val publicKeyPem = responseEncryptionKeySignum.publicKey.encodeToPEM().getOrThrow()
-        val ecPublicKey = EcPublicKey.fromPem(publicKeyPem, ecCurve)
-        val ecPrivateKey = EcPrivateKey.fromPem(privateKeyPem, ecPublicKey)
-
-        val responseEncryptionKey = AsymmetricKey.anonymous(
-            privateKey = ecPrivateKey,
-            algorithm = ecCurve.defaultKeyAgreementAlgorithm
-        )
-
-        val decrypter = Hpke.getDecrypter(
-            cipherSuite = Hpke.CipherSuite.DHKEM_P256_HKDF_SHA256_HKDF_SHA256_AES_128_GCM,
-            receiverPrivateKey = responseEncryptionKey,
-            encapsulatedKey = enc,
-            info = cborEncodedSessionTranscript,
-        )
-        return decrypter.decrypt(
-            ciphertext = ciphertext,
-            aad = ByteArray(0),
-        )
-    }
 }
 
 private data class StoredTransaction(
