@@ -152,7 +152,7 @@ class ApiController(
                 .also { Napier.w("${Paths.Transaction.GetUrl}/$id returns NOT_FOUND") }
 
         return catching {
-            check(transaction.profile.supportedOptions.any { it.isDevice }) { "Profile does not device flow" }
+            check(transaction.profile.supportedOptions.any { it.isUrlOrQrCode }) { "Profile does not device flow" }
 
             val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
             val body = transaction.transactionGet(responseUrl)
@@ -225,17 +225,16 @@ class ApiController(
                 joseCompliantSerializer.decodeFromString<DigitalCredentialInterface>(requestBody)
             }.getOrNull() != null
             if (isDcApiResponse && transaction.profile.supportedOptions.any { it.isDcApi }) {
-                checkNotNull(transaction.profile.dcapiVerifier) { "Missing verifier" }
+                checkNotNull(transaction.profile.dcApiVerifier) { "Missing verifier" }
                     .validateAuthnResponse(
                         input = requestBody,
                         externalId = id,
                         //TODO expectedOrigin = configuration.publicContext.toString()
                     ).getOrThrow().convertToUser()
-            } else if (transaction.profile.supportedOptions.any { it.isDevice }) {
+            } else if (transaction.profile.supportedOptions.any { it.isUrlOrQrCode }) {
                 checkNotNull(transaction.profile.oid4vpVerifier) { "Missing verifier" }
                     .validateAuthnResponse(
                         input = requestBody,
-                        externalId = id
                     ).convertToUser()
             } else {
                 error("Unsupported response for transaction $id")

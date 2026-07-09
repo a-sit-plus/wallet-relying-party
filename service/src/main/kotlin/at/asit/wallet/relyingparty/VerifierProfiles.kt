@@ -55,7 +55,7 @@ enum class SupportedOptions {
     ISO_MDOC_DC_API
     ;
 
-    val isDevice: Boolean
+    val isUrlOrQrCode: Boolean
         get() = this == CROSS_DEVICE || this == SAME_DEVICE
     val isDcApi: Boolean
         get() = this == OID4VP_DC_API || this == ISO_MDOC_DC_API
@@ -234,7 +234,7 @@ class VerifierProfiles(
             supportedOptions = supportedOptions,
             clientIdScheme = clientIdScheme,
             oid4vpVerifier = oid4vpVerifier,
-            dcapiVerifier = dcApiVerifier,
+            dcApiVerifier = dcApiVerifier,
             buildQrCodeUrlFn = { requestUrl ->
                 if (deviceFlow != null) buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme!!)
                 else requestUrl
@@ -280,7 +280,7 @@ class VerifierProfiles(
         override val supportedOptions: Set<SupportedOptions>,
         override val clientIdScheme: ClientIdScheme?,
         override val oid4vpVerifier: OpenId4VpVerifier?,
-        override val dcapiVerifier: DcApiVerifier?,
+        override val dcApiVerifier: DcApiVerifier?,
         private val buildQrCodeUrlFn: (String) -> String,
         private val buildWalletUrlFn: suspend (Transaction, TransactionContext) -> String,
         private val transactionGetFn: suspend (String, String, CredentialPresentationRequest?) -> String,
@@ -498,7 +498,7 @@ interface PreparedProfile {
     val urlPrefix: String
     val clientIdScheme: ClientIdScheme?
     val oid4vpVerifier: OpenId4VpVerifier?
-    val dcapiVerifier: DcApiVerifier?
+    val dcApiVerifier: DcApiVerifier?
     val supportedOptions: Set<SupportedOptions>
 
     fun buildQrCodeUrl(requestUrl: String): String
