@@ -32,6 +32,7 @@ import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils
 import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.ClientIdScheme
+import at.asitplus.wallet.lib.openid.CreationOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
@@ -253,7 +254,7 @@ class VerifierProfiles(
                     DeviceResponseMode.DirectPost ->
                         directPost(txId, responseUrl, request, oid4vpVerifier!!, deviceFlow.verifierMetadataMode)
                     DeviceResponseMode.DirectPostJwt ->
-                        directPostJwt(txId, responseUrl, request, oid4vpVerifier!!).toString()
+                        directPostJwt(txId, responseUrl, request, oid4vpVerifier!!, urlPrefix)
                 }
             },
             transactionGetDcApiFn = { txId, responseUrl, dcqlRequest, deviceRequest, signed ->
@@ -399,7 +400,7 @@ class VerifierProfiles(
             presentationRequest = presentationRequest,
             verifierMetadataMode = verifierMetadataMode,
         ),
-        creationOptions = OpenId4VpVerifier.CreationOptions.Query("av://"),
+        creationOptions = CreationOptions.Query("av://"),
     ).getOrThrow().url.normalizeAvWalletUrl()
 
     private suspend fun directPostJwt(
@@ -407,14 +408,20 @@ class VerifierProfiles(
         responseUrl: String,
         presentationRequest: CredentialPresentationRequest?,
         verifier: OpenId4VpVerifier,
-    ) = verifier.createAuthnRequestAsSignedRequestObject(
-        OpenId4VpRequestOptions(
+        urlPrefix: String,
+    ): String = verifier.createAuthnRequest(
+        requestOptions = OpenId4VpRequestOptions(
             state = transactionId,
             responseMode = ResponseMode.DirectPostJwt,
             responseUrl = responseUrl,
             presentationRequest = presentationRequest,
         ),
-    ).getOrThrow().jws
+        creationOptions = CreationOptions.SignedRequestByReference(
+            walletUrl = urlPrefix,
+            requestUrl = configuration.publicContext.appendPath("${Paths.Transaction.GetUrl}/$transactionId"),
+        ),
+        // wallet URL was already delivered as QR code, only the request object content is needed here
+    ).getOrThrow().loadRequestObject!!.invoke(null).getOrThrow()
 
     private suspend fun dcApiOpenIdUnsigned(
         responseUrl: String,
@@ -536,16 +543,6 @@ data class TransactionContext(
     val responseUrl: String,
     val dcApiUrl: String?,
 )
-
-interface ProfileDefinition {
-    val name: String
-    val label: String
-    val description: String
-    val urlPrefix: String
-    val supportedOptions: Set<SupportedOptions>
-
-    suspend fun prepare(context: TransactionContext): PreparedProfile
-}
 
 interface PreparedProfile {
     val name: String

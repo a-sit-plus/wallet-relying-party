@@ -2,10 +2,14 @@ package at.asit.wallet.relyingparty
 
 import at.asitplus.catching
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.ClaimToBeIssued
+import at.asitplus.wallet.lib.agent.CredentialToBeIssued
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
@@ -17,14 +21,12 @@ import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
-import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertNotNull
-import org.junit.jupiter.api.Assertions.assertTrue
+import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
 import org.springframework.beans.factory.annotation.Autowired
-import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.boot.test.context.SpringBootTest
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.MediaType
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MvcResult
@@ -87,7 +89,7 @@ class ProcessTest {
                     presentationDefinition = requestBuilder.toPresentationExchangeRequest().presentationDefinition,
                     dcqlQuery = requestBuilder.toDCQLRequest()?.dcqlQuery,
                     deviceRequest = catching {
-                        requestBuilder.toIso180137AnnexCDeviceRequest()
+                        TODO()
                     }.getOrNull(),
                 )
             )
@@ -143,7 +145,7 @@ class ProcessTest {
                     presentationDefinition = requestBuilder.toPresentationExchangeRequest().presentationDefinition,
                     dcqlQuery = requestBuilder.toDCQLRequest()?.dcqlQuery,
                     deviceRequest = catching {
-                        requestBuilder.toIso180137AnnexCDeviceRequest()
+                        TODO()
                     }.getOrNull(),
                 )
             )

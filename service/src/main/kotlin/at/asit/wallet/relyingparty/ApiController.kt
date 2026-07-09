@@ -100,7 +100,7 @@ class ApiController(
             it.toDCQLRequest()?.dcqlQuery
         }
         val deviceRequest = catching {
-            it.toIso180137AnnexCDeviceRequest()
+            TODO()
         }
         ResponseEntity.ok(
             TransactionRequestQueries(
