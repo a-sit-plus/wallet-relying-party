@@ -16,8 +16,9 @@ import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VcJwsVerificationResultWrapper
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
-import at.asitplus.wallet.lib.iso.Iso180137AnnexCVerifiedPresentationResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
+import at.asitplus.wallet.lib.openid.DcApiResponseResult
+import at.asitplus.wallet.lib.openid.Iso180137AnnexCWrapper
 import at.asitplus.wallet.lib.openid.VpTokenValidationResult
 import at.asitplus.wallet.lib.openid.VpTokenValidationResultDCQL
 import at.asitplus.wallet.lib.openid.VpTokenValidationResultPresentationExchange
@@ -84,7 +85,10 @@ fun ApiItemCredential.getClaim(claim: String) = allFields?.entries
             else -> it.toString()
         }
     }
-
+fun DcApiResponseResult.convertToUser() = when(this) {
+    is AuthnResponseResult -> this.toUser()
+    is Iso180137AnnexCWrapper -> this.toUser()
+}
 fun AuthnResponseResult.toUser() = User(
     idToken = idTokenValidationResult?.getOrNull(),
     idTokenError = idTokenValidationResult?.exceptionOrNull()?.message,
@@ -116,7 +120,7 @@ fun KmmResult<Verifier.VerifyPresentationResult>.toApiItemCredentials() = except
 fun Verifier.VerifyPresentationResult.Success.toApiItemCredentials(): Collection<ApiItemCredential> =
     vp.toApiItemCredentials()
 
-fun Iso180137AnnexCVerifiedPresentationResult.toUser() = User(
+fun Iso180137AnnexCWrapper.toUser() = User(
     idToken = null,
     idTokenError = null,
     presentationError = null,

@@ -246,13 +246,12 @@ class ApiController(
                 joseCompliantSerializer.decodeFromString<DigitalCredentialInterface>(requestBody)
             }.getOrNull()
             if (parsedResponse.isMdocResponse(transaction)) {
-                val verifier = checkNotNull(transaction.profile.iso180137Verifier) { "Missing verifier" }
-                verifier.validateResponse(
-                    receivedData = (parsedResponse as IsoMdocResponse).data,
+                val verifier = checkNotNull(transaction.profile.dcapiVerifier) { "Missing verifier" }
+                verifier.validateAuthnResponse(
+                    input = requestBody,
                     externalId = id,
-                    decryptHpke = ::decryptHpke,
-                    expectedOrigin = configuration.publicContext.toString()
-                ).getOrThrow().toUser()
+                    //TODO expectedOrigin = configuration.publicContext.toString()
+                ).getOrThrow().convertToUser()
             } else if (parsedResponse.isOpenId4VpResponse(transaction)) {
                 val dcApiSignedOid4vpRequired = transaction.dcApiSignedOid4vpRequired
                 require(dcApiSignedOid4vpRequired != null)
