@@ -2,10 +2,6 @@ package at.asit.wallet.relyingparty
 
 import at.asitplus.catching
 import at.asitplus.dcapi.DigitalCredentialInterface
-import at.asitplus.dcapi.IsoMdocResponse
-import at.asitplus.dcapi.OpenId4VpResponse
-import at.asitplus.dcapi.OpenId4VpResponseSigned
-import at.asitplus.dcapi.OpenId4VpResponseUnsigned
 import at.asitplus.iso.DeviceRequest
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
@@ -60,7 +56,6 @@ class ApiController(
         val presentationExchangeRequest: CredentialPresentationRequest.PresentationExchangeRequest? = null,
         val dcqlRequest: CredentialPresentationRequest.DCQLRequest? = null,
         val deviceRequest: DeviceRequest? = null,
-        var dcApiSignedOid4vpRequired: Boolean? = null,
     )
 
     @GetMapping(Paths.Api.ItemsUrl)
@@ -234,29 +229,16 @@ class ApiController(
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
                 .also { Napier.w("${Paths.Transaction.ResultUrl}/$id returns NOT_FOUND") }
         val user = catching {
-            val parsedResponse = catching {
+            val isDcApiResponse = catching {
                 joseCompliantSerializer.decodeFromString<DigitalCredentialInterface>(requestBody)
-            }.getOrNull()
-            if (parsedResponse.isMdocResponse(transaction)) {
-                val verifier = checkNotNull(transaction.profile.dcapiVerifier) { "Missing verifier" }
-                verifier.validateAuthnResponse(
-                    input = requestBody,
-                    externalId = id,
-                    //TODO expectedOrigin = configuration.publicContext.toString()
-                ).getOrThrow().convertToUser()
-            } else if (parsedResponse.isOpenId4VpResponse(transaction)) {
-                val dcApiSignedOid4vpRequired = transaction.dcApiSignedOid4vpRequired
-                require(dcApiSignedOid4vpRequired != null)
-                if (dcApiSignedOid4vpRequired) {
-                    check(parsedResponse is OpenId4VpResponseSigned) { "Expected signed response" }
-                } else {
-                    check(parsedResponse is OpenId4VpResponseUnsigned) { "Expected unsigned response" }
-                }
-                checkNotNull(transaction.profile.oid4vpVerifier) { "Missing verifier" }
+            }.getOrNull() != null
+            if (isDcApiResponse && transaction.profile.supportedOptions.any { it.isDcApi }) {
+                checkNotNull(transaction.profile.dcapiVerifier) { "Missing verifier" }
                     .validateAuthnResponse(
-                        input = parsedResponse as OpenId4VpResponse,
-                        externalId = id
-                    ).convertToUser()
+                        input = requestBody,
+                        externalId = id,
+                        //TODO expectedOrigin = configuration.publicContext.toString()
+                    ).getOrThrow().convertToUser()
             } else if (transaction.profile.supportedOptions.any { it.isDevice }) {
                 checkNotNull(transaction.profile.oid4vpVerifier) { "Missing verifier" }
                     .validateAuthnResponse(
@@ -264,7 +246,7 @@ class ApiController(
                         externalId = id
                     ).convertToUser()
             } else {
-                error("Unsupported response: $parsedResponse")
+                error("Unsupported response for transaction $id")
             }
         }.getOrElse {
             Napier.w("${Paths.Transaction.ResultUrl}/$id extracted got error", it)
@@ -282,16 +264,6 @@ class ApiController(
             .contentType(MediaType.APPLICATION_JSON)
             .body(OpenId4VpSuccess(redirectUrlWithId))
     }
-
-    private fun DigitalCredentialInterface?.isMdocResponse(
-        transaction: Transaction,
-    ): Boolean =
-        transaction.profile.supportedOptions.contains(SupportedOptions.ISO_MDOC_DC_API) && this is IsoMdocResponse
-
-    private fun DigitalCredentialInterface?.isOpenId4VpResponse(
-        transaction: Transaction,
-    ): Boolean = transaction.profile.supportedOptions.contains(SupportedOptions.OID4VP_DC_API) &&
-            (this is OpenId4VpResponseSigned || this is OpenId4VpResponseUnsigned)
 
     private fun buildTransactionContext(
         transactionId: String,

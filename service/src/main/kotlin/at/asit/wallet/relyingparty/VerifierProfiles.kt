@@ -2,7 +2,6 @@ package at.asit.wallet.relyingparty
 
 
 import at.asit.wallet.relyingparty.ApiController.Transaction
-import at.asitplus.iso.DeviceRequest
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
@@ -260,7 +259,7 @@ class VerifierProfiles(
                         directPostJwt(txId, responseUrl, request, oid4vpVerifier!!, urlPrefix)
                 }
             },
-            transactionGetDcApiFn = { txId, responseUrl, dcqlRequest, deviceRequest, signed ->
+            transactionGetDcApiFn = { txId, responseUrl, dcqlRequest, signed ->
                 buildDcApiResponse(
                     txId,
                     responseUrl,
@@ -285,7 +284,7 @@ class VerifierProfiles(
         private val buildQrCodeUrlFn: (String) -> String,
         private val buildWalletUrlFn: suspend (Transaction, TransactionContext) -> String,
         private val transactionGetFn: suspend (String, String, CredentialPresentationRequest?) -> String,
-        private val transactionGetDcApiFn: suspend (String, String, CredentialPresentationRequest.DCQLRequest?, DeviceRequest?, Boolean) -> String,
+        private val transactionGetDcApiFn: suspend (String, String, CredentialPresentationRequest.DCQLRequest?, Boolean) -> String,
     ) : PreparedProfile {
         override fun buildQrCodeUrl(requestUrl: String) = buildQrCodeUrlFn(requestUrl)
         override suspend fun buildWalletUrl(transaction: Transaction, context: TransactionContext) =
@@ -302,10 +301,9 @@ class VerifierProfiles(
             transactionId: String,
             responseUrl: String,
             dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
-            deviceRequest: DeviceRequest?,
             dcApiSignedOid4vp: Boolean,
         ) =
-            transactionGetDcApiFn(transactionId, responseUrl, dcqlRequest, deviceRequest, dcApiSignedOid4vp)
+            transactionGetDcApiFn(transactionId, responseUrl, dcqlRequest, dcApiSignedOid4vp)
     }
 
     private suspend fun buildDcApiResponse(
@@ -479,16 +477,12 @@ suspend fun Transaction.transactionGet(responseUrl: String): String = when (pres
 suspend fun Transaction.transactionGetDcApi(
     responseUrl: String,
     dcApiSignedOid4vp: Boolean,
-): String {
-    dcApiSignedOid4vpRequired = dcApiSignedOid4vp
-    return profile.transactionGetDcApi(
-        transactionId = id,
-        responseUrl = responseUrl,
-        deviceRequest = deviceRequest,
-        dcqlRequest = dcqlRequest,
-        dcApiSignedOid4vp = dcApiSignedOid4vp,
-    )
-}
+): String = profile.transactionGetDcApi(
+    transactionId = id,
+    responseUrl = responseUrl,
+    dcqlRequest = dcqlRequest,
+    dcApiSignedOid4vp = dcApiSignedOid4vp,
+)
 
 data class TransactionContext(
     val id: String,
@@ -524,7 +518,6 @@ interface PreparedProfile {
         transactionId: String,
         responseUrl: String,
         dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
-        deviceRequest: DeviceRequest?,
         dcApiSignedOid4vp: Boolean,
     ): String = throw IllegalStateException("DC API not supported for this profile")
 }
