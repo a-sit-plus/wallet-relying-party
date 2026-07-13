@@ -43,6 +43,7 @@ data class User(
     val idTokenError: String?,
     val credentials: Collection<ApiItemCredential>?,
     val presentationError: String?,
+    val trustState: TrustState? = null,
 ) : AuthenticatedPrincipal {
     @Transient
     val apiItem = ApiItem(
@@ -52,6 +53,7 @@ data class User(
         idTokenError = idTokenError,
         presentationError = presentationError,
         credentials = credentials ?: listOf(),
+        trustState = trustState,
     )
 
     override fun getName(): String =

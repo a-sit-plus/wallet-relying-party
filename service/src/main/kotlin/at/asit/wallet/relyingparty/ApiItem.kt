@@ -15,6 +15,7 @@ data class ApiItem(
     val idTokenError: String?,
     val presentationError: String?,
     val credentials: Collection<ApiItemCredential>,
+    val trustState: TrustState?
 )
 
 @Serializable

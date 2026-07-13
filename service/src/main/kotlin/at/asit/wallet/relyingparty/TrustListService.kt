@@ -26,6 +26,7 @@ import io.ktor.client.statement.bodyAsText
 import io.ktor.http.*
 import jakarta.annotation.PostConstruct
 import kotlinx.coroutines.runBlocking
+import kotlinx.serialization.Serializable
 import org.springframework.scheduling.annotation.Scheduled
 
 @Service
@@ -147,13 +148,18 @@ class TrustListService(
             ?: transaction.dcqlRequest?.dcqlQuery?.credentials?.firstOrNull()?.id?.string
             ?: "unknown_service"
 
+        Napier.i("TYPEEEEEEEEEEEEE:   $serviceType \n\n\n")
+        Napier.i("TYPEEEEEEEEEEEEE:   $transaction \n\n\n")
+
+
         return evaluateIssuer(leafCertificate, serviceType)
     }
 
 }
 
+@Serializable
 enum class TrustState {
-    TRUSTED, UNTRUSTED, UNKNOWN, EVALUATING
+    TRUSTED, UNTRUSTED, UNKNOWN
 }
 
 

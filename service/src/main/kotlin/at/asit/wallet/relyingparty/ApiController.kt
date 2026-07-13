@@ -264,7 +264,8 @@ class ApiController(
         Napier.i("${Paths.Transaction.ResultUrl}/$id extracted result $user")
         statisticLogger.info("$id success $user (${request.getHeader(HttpHeaders.USER_AGENT)})")
         val computedTrustState = trustListService.evaluateTransactionTrust(leafCertificate, transaction)
-        transactionStore.put(id, user)
+        val userWithTrust = user.copy(trustState = computedTrustState)
+        transactionStore.put(id, userWithTrust)
         val redirectUrlWithId = ServletUriComponentsBuilder
             .fromUriString(customerSuccessUrl)
             .queryParam("id", id)
