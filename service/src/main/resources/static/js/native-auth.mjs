@@ -4,7 +4,7 @@ export function nativeAuthConfiguration(search) {
     const parameters = new URLSearchParams(search)
     const state = parameters.get('state')
 
-    if (parameters.get('client') !== 'ios' || !UUID_PATTERN.test(state || '')) {
+    if (!['android', 'ios'].includes(parameters.get('client')) || !UUID_PATTERN.test(state || '')) {
         return null
     }
 
