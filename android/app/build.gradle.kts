@@ -20,4 +20,5 @@ dependencies {
     implementation("androidx.browser:browser:1.10.0")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20230618")
 }
