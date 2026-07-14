@@ -38,3 +38,8 @@ out/
 /local.properties
 .kotlin/
 metrics/
+
+### Xcode ###
+DerivedData/
+xcuserdata/
+*.xcuserstate
