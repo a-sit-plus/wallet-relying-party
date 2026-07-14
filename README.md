@@ -189,6 +189,38 @@ xcodebuild build-for-testing \
   CODE_SIGNING_ALLOWED=NO
 ```
 
+### Native Android demonstrator
+
+The native Android app in [`android`](android) uses an AndroidX Browser Auth Tab to open the same PID mdoc page, lets Valera handle the Digital Credentials API request, and displays the credential data returned by this service.
+
+Requirements:
+
+- Android 9 (API 28) or later
+- Chrome 141 or later selected as the default browser
+- Valera installed and registered as the credential provider for the PID mdoc
+- The web callback bridge from this repository deployed at `https://wallet-rp.a-sit.plus/`
+- Android SDK 36 for building the app
+
+The Auth Tab starts at:
+
+```text
+https://wallet-rp.a-sit.plus/pidmdoc.html?client=android&state=<uuid>
+```
+
+The page returns the transaction capability directly to the Auth Tab result callback through:
+
+```text
+wallet-rp://auth/callback?transaction_id=<id>&state=<uuid>
+```
+
+The app validates the callback and state, loads `/api/single/<id>`, and renders the portrait and credential claims. Open the `android` directory in Android Studio, or build and test it from the repository root with:
+
+```bash
+./gradlew -p android :app:testDebugUnitTest :app:assembleDebug
+```
+
+The debug APK is written to `android/app/build/outputs/apk/debug/app-debug.apk`.
+
 The runnable Spring Boot JAR is produced in:
 
 ```text
