@@ -4,13 +4,26 @@ export default {
         'changed',
         'error',
         'dcapiSelection',
-        'isoMdocRequest'
+        'isoMdocRequest',
+        'profileNames'
     ],
     data() {
         return {
             activeProfileName: null,
             // Digital Credentials API availability in this browser (the DigitalCredential response interface).
             dcApiSupported: typeof window.DigitalCredential !== 'undefined'
+        }
+    },
+    computed: {
+        regularProfiles() {
+            return this.displayProfiles.filter(profile => !this.isDcApiProfile(profile))
+        },
+        dcApiProfiles() {
+            return this.displayProfiles.filter(profile => this.isDcApiProfile(profile))
+        },
+        displayProfiles() {
+            const profiles = this.result?.profiles || []
+            return this.profileNames ? profiles.filter(profile => this.profileNames.includes(profile.name)) : profiles
         }
     },
     emits: [
@@ -25,7 +38,7 @@ export default {
             this.$emit('profileTabChanged', profileName)
         },
         ensureActiveProfile() {
-            const profiles = this.result?.profiles || []
+            const profiles = this.displayProfiles
             if (profiles.length === 0) {
                 this.activeProfileName = null
                 return
@@ -97,7 +110,7 @@ export default {
         </div>
         <div class="tab-content"
              :class="{ 'blur' : error.type === 'INCOMPATIBLE_PRESENTATION_TYPE' && !changed.changed }">
-            <div v-for="profile in result.profiles"
+            <div v-for="profile in displayProfiles"
                  class="tab-pane"
                  role="tabpanel"
                  :id="'tab-' + profile.name"

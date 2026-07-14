@@ -13,7 +13,7 @@ const URLs = {
     postUrl: 'transaction/result/'
 }
 
-const createBasicSetup = function (config) {
+const createBasicSetup = function (config, options = {}) {
 
     // --- STATE ---------------------------------------------------
 
@@ -404,6 +404,7 @@ const createBasicSetup = function (config) {
             }
 
             clearError()
+            options.onAuthenticationCompleted?.(id)
         } catch (err) {
             console.log('error: ', err)
             setError("GENERIC", "Error in DC API: " + err)

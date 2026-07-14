@@ -23,6 +23,7 @@
             "accordion-comp": "./js/templates/accordion-comp.js",
             "login-options-comp": "./js/templates/login-options-comp.js",
             "request-details-comp": "./js/templates/request-details-comp.js",
+            "native-auth": "./js/native-auth.mjs",
             "main-config": "./js/login-config.js"
           }
         }
@@ -37,6 +38,7 @@
         import AccordionComp from 'accordion-comp'
         import LoginOptionsComp from 'login-options-comp'
         import RequestDetailsComp from 'request-details-comp'
+        import {nativeAuthConfiguration} from 'native-auth'
         import config from "main-config"
 
         config.profiles = [
@@ -60,14 +62,22 @@
             }
         ];
 
+        const nativeAuth = nativeAuthConfiguration(window.location.search)
+
         createApp({
             setup: function () {
-                let app = createBasicSetup(config);
+                let app = createBasicSetup(config, {
+                    onAuthenticationCompleted(transactionId) {
+                        if (nativeAuth) {
+                            window.location.assign(nativeAuth.callbackForTransaction(transactionId))
+                        }
+                    },
+                });
                 app.updateProfile(config.profiles[0]);
                 app.generateQrCode();
                 app.resetRequestChanged();
                 app.startPeriodicUpdate();
-                return app
+                return {...app, nativeProfileNames: nativeAuth?.profileNames || null}
             },
             components: {
                 HeaderComp,
@@ -99,6 +109,7 @@
             :changed="reqChanged"
             :iso-mdoc-request="isMdocRequest"
             :error="error"
+            :profile-names="nativeProfileNames"
             :dcapi-selection="selections[activeProfileName] || {}"
             @update:dcapi-selection="selections[activeProfileName] = $event"
             @generate-qr-code="generateQrCode"
