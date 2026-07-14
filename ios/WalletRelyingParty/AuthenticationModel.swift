@@ -4,7 +4,7 @@ import SwiftUI
 @MainActor
 final class AuthenticationModel: NSObject, ObservableObject, ASWebAuthenticationPresentationContextProviding {
     @Published private(set) var isAuthenticating = false
-    @Published private(set) var transactionID: String?
+    @Published private(set) var result: AuthenticationResult?
     @Published private(set) var errorMessage: String?
 
     private var session: ASWebAuthenticationSession?
@@ -23,7 +23,7 @@ final class AuthenticationModel: NSObject, ObservableObject, ASWebAuthentication
         }
 
         errorMessage = nil
-        transactionID = nil
+        result = nil
         isAuthenticating = true
 
         let session = ASWebAuthenticationSession(url: loginURL, callback: .customScheme("wallet-rp")) {
@@ -62,7 +62,22 @@ final class AuthenticationModel: NSObject, ObservableObject, ASWebAuthentication
         }
 
         do {
-            transactionID = try AuthenticationCallback(url: callbackURL, expectedState: expectedState).transactionID
+            let transactionID = try AuthenticationCallback(url: callbackURL, expectedState: expectedState).transactionID
+            session = nil
+            Task { await loadResult(transactionID: transactionID) }
+        } catch {
+            finish(with: error)
+        }
+    }
+
+    private func loadResult(transactionID: String) async {
+        do {
+            let url = URL(string: "https://wallet-rp.a-sit.plus/api/single/")!.appending(path: transactionID)
+            let (data, response) = try await URLSession.shared.data(from: url)
+            guard (response as? HTTPURLResponse)?.statusCode == 200 else {
+                throw AuthenticationError.resultUnavailable
+            }
+            result = try JSONDecoder().decode(AuthenticationResult.self, from: data)
             finish()
         } catch {
             finish(with: error)
@@ -107,6 +122,7 @@ enum AuthenticationError: LocalizedError {
     case invalidCallback
     case invalidLoginURL
     case missingCallback
+    case resultUnavailable
 
     var errorDescription: String? {
         switch self {
@@ -114,6 +130,7 @@ enum AuthenticationError: LocalizedError {
         case .invalidCallback: "The authentication response was invalid."
         case .invalidLoginURL: "The authentication URL was invalid."
         case .missingCallback: "Authentication did not return a response."
+        case .resultUnavailable: "The authentication result is unavailable."
         }
     }
 }
