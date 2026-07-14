@@ -234,7 +234,7 @@ class ApiController(
                     .validateAuthnResponse(
                         input = requestBody,
                         externalId = id,
-                        //TODO expectedOrigin = configuration.publicContext.toString()
+                        expectedOrigin = configuration.publicContext.toString(),
                     ).getOrThrow().convertToUser()
             } else if (transaction.profile.supportedOptions.any { it.isUrlOrQrCode }) {
                 checkNotNull(transaction.profile.oid4vpVerifier) { "Missing verifier" }
