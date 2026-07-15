@@ -17,6 +17,7 @@ data class TransactionRequest(
     val presentationMechanism: PresentationMechanismEnum = PresentationMechanismEnum.PresentationExchange,
     val presentationDefinition: PresentationDefinition? = null,
     val dcqlQuery: DCQLQuery? = null,
+    val dcApiOrigin: String? = null,
 )
 
 @Serializable

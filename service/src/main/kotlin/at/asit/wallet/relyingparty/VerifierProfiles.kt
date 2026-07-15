@@ -231,6 +231,7 @@ class VerifierProfiles(
                     isoMdoc,
                     encrypt,
                     dcApiVerifier,
+                    context.dcApiOrigin,
                 )
             },
         )
@@ -280,6 +281,7 @@ class VerifierProfiles(
         isoMdoc: Boolean,
         encrypt: Boolean,
         dcApiVerifier: DcApiVerifier?,
+        expectedOrigin: String,
     ): String = joseCompliantSerializer.encodeToString(
         dcApiVerifier!!.createAuthnRequest(
             requestOptions = OpenId4VpRequestOptions(
@@ -288,7 +290,7 @@ class VerifierProfiles(
                 responseMode = if (encrypt) ResponseMode.DcApiJwt else ResponseMode.DcApi,
                 responseUrl = responseUrl,
                 presentationRequest = checkNotNull(dcqlRequest) { "No DCQL query available for this request" },
-                expectedOrigins = listOf(configuration.publicContext.toString()),
+                expectedOrigins = listOf(expectedOrigin),
             ),
             creationOptions = listOfNotNull(
                 when (oid4vpMode) {
@@ -463,6 +465,7 @@ data class TransactionContext(
     val id: String,
     val transactionGetUrl: String,
     val responseUrl: String,
+    val dcApiOrigin: String,
     val dcApiUrl: String?,
 )
 

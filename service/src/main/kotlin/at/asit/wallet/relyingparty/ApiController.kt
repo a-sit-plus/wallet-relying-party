@@ -51,6 +51,7 @@ class ApiController(
     data class Transaction(
         val id: String,
         val profile: PreparedProfile,
+        val dcApiOrigin: String,
         val presentationMechanism: PresentationMechanismEnum,
         val presentationExchangeRequest: CredentialPresentationRequest.PresentationExchangeRequest? = null,
         val dcqlRequest: CredentialPresentationRequest.DCQLRequest? = null,
@@ -101,13 +102,18 @@ class ApiController(
         @RequestBody request: TransactionRequest,
     ): ResponseEntity<TransactionResponse> {
         Napier.i("${Paths.Transaction.CreateUrl} called with $request")
+        val dcApiOrigin = request.dcApiOrigin ?: configuration.publicContext.toString()
+        if (request.dcApiOrigin != null && !ANDROID_APP_ORIGIN.matches(dcApiOrigin)) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Android app origin")
+        }
         val profiles = profiles.knownProfiles.map {
             val transactionId = Uuid.random().toString()
-            val transactionContext = buildTransactionContext(transactionId, it.supportedOptions)
+            val transactionContext = buildTransactionContext(transactionId, it.supportedOptions, dcApiOrigin)
             val preparedProfile = profiles.prepare(it, transactionContext)
             val transaction = Transaction(
                 id = transactionId,
                 profile = preparedProfile,
+                dcApiOrigin = dcApiOrigin,
                 presentationMechanism = request.presentationMechanism,
                 presentationExchangeRequest = request.presentationDefinition?.let {
                     CredentialPresentationRequest.PresentationExchangeRequest(it)
@@ -234,7 +240,7 @@ class ApiController(
                     .validateAuthnResponse(
                         input = requestBody,
                         externalId = id,
-                        expectedOrigin = configuration.publicContext.toString(),
+                        expectedOrigin = transaction.dcApiOrigin,
                     ).getOrThrow().convertToUser()
             } else if (transaction.profile.supportedOptions.any { it.isUrlOrQrCode }) {
                 checkNotNull(transaction.profile.oid4vpVerifier) { "Missing verifier" }
@@ -264,10 +270,12 @@ class ApiController(
     private fun buildTransactionContext(
         transactionId: String,
         supportedOptions: Set<SupportedOptions>,
+        dcApiOrigin: String,
     ) = TransactionContext(
         id = transactionId,
         transactionGetUrl = configuration.publicContext.appendPath("${Paths.Transaction.GetUrl}/$transactionId"),
         responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transactionId}"),
+        dcApiOrigin = dcApiOrigin,
         dcApiUrl = supportedOptions.any { it.isDcApi }
             .takeIf { it }
             ?.let { configuration.publicContext.appendPath("${Paths.Transaction.GetDcApiUrl}/$transactionId") }
@@ -301,6 +309,10 @@ class ApiController(
     private fun removeExpiredTransactions() {
         val now = Instant.now()
         transactions.entries.removeAll { it.value.notAfter < now }
+    }
+
+    private companion object {
+        val ANDROID_APP_ORIGIN = Regex("android:apk-key-hash:[A-Za-z0-9+/]{43}")
     }
 
 }

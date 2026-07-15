@@ -180,8 +180,31 @@ class ProcessTest {
         assertEquals(400, dcApiResult(p.id, "?oid4vpMode=BOGUS").response.status)
     }
 
+    @Test
+    fun `DC API request uses the Android app origin supplied at transaction creation`() = runTest {
+        val origin = "android:apk-key-hash:0123456789012345678901234567890123456789012"
+        val eudiw = createTransaction(
+            ConstantIndex.CredentialRepresentation.SD_JWT,
+            dcApiOrigin = origin,
+        ).profiles.first { it.name == "EUDIW" }
+
+        val body = dcApiBody(eudiw.id, "?oid4vpMode=UNSIGNED&isoMdoc=false&encrypt=false")
+        assertTrue(body.contains(origin), body)
+    }
+
+    @Test
+    fun `transaction creation rejects malformed Android app origin`() = runTest {
+        val result = mockMvc.post("/transaction/create") {
+            content = Json.encodeToString(TransactionRequest(dcApiOrigin = "https://attacker.example"))
+            contentType = MediaType.APPLICATION_JSON
+        }.andReturn().awaitAsync()
+
+        assertEquals(400, result.response.status)
+    }
+
     private suspend fun createTransaction(
         representation: ConstantIndex.CredentialRepresentation,
+        dcApiOrigin: String? = null,
     ): TransactionResponse {
         val requestBuilder = CredentialPresentationRequestBuilder(
             listOf(
@@ -198,6 +221,7 @@ class ProcessTest {
                 TransactionRequest(
                     presentationMechanism = PresentationMechanismEnum.DCQL,
                     dcqlQuery = requestBuilder.toDCQLRequest()?.dcqlQuery,
+                    dcApiOrigin = dcApiOrigin,
                 )
             )
             contentType = MediaType.APPLICATION_JSON
