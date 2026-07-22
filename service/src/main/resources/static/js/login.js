@@ -377,15 +377,11 @@ const createBasicSetup = function (config, options = {}) {
 
             const walletResponse = await navigator.credentials.get(credentialRequestOptionsToUse);
 
-            let backendRequest = {};
-            if (walletResponse.constructor.name === 'DigitalCredential') {
-                const data = walletResponse.data
-                const protocol = walletResponse.protocol
-                console.log("Response Data: " + data + " Protocol: " + protocol)
-                backendRequest = {protocol: protocol, data: data, origin: location.origin}
-            } else {
+            if (walletResponse.constructor.name !== 'DigitalCredential') {
                 throw new Error("Digital Credentials response not understood")
             }
+
+            console.log("Response Data: " + walletResponse.data + " Protocol: " + walletResponse.protocol)
 
             const serverResponse = await fetch(URLs.postUrl + id, {
                 method: 'POST',
@@ -393,7 +389,7 @@ const createBasicSetup = function (config, options = {}) {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(backendRequest)
+                body: JSON.stringify(walletResponse)
             });
 
             let serverResponseJson = await serverResponse.json();
