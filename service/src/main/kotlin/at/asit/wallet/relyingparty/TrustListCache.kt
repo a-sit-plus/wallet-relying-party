@@ -13,8 +13,5 @@ class TrustListCache {
     fun updatePayload(url: String, payload: TrustListPayload) {
         cache[url] = payload
     }
-
-    fun getAllPayloads(): List<TrustListPayload> = cache.values.toList()
-
-    fun getTrackedUrls(): Set<String> = cache.keys
+    fun getAll(): Map<String, TrustListPayload> = cache.toMap()
 }

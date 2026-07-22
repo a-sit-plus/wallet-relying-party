@@ -1,18 +1,24 @@
 package at.asit.wallet.relyingparty
 
 import at.asitplus.etsi.TrustListPayload
+import at.asitplus.iso.DeviceRequest
+import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLJwtVcCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.Verifier
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.etsi.LoTEFilterCriteria
 import at.asitplus.wallet.lib.etsi.LoTEFilterService
+import at.asitplus.wallet.lib.etsi.LoTEServiceType
 import at.asitplus.wallet.lib.etsi.isTrustedBy
 import at.asitplus.wallet.lib.iso.Iso180137AnnexCVerifiedPresentationResult
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectJades
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
-import at.asitplus.wallet.lib.openid.VpTokenValidationResult
+import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import io.github.aakira.napier.Napier
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -22,13 +28,26 @@ import org.springframework.stereotype.Service
 import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.accept
 import io.ktor.client.request.get
-import io.ktor.client.statement.bodyAsText
 import io.ktor.http.*
 import jakarta.annotation.PostConstruct
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import org.springframework.scheduling.annotation.Scheduled
 
+val asitRootPem = "-----BEGIN CERTIFICATE-----\n" +
+        "MIICNzCCAd6gAwIBAgIUVKbs5o5e1jnILQPrKrsBnZbJj5EwCgYIKoZIzj0EAwIw\n" +
+        "MTELMAkGA1UEBhMCQVQxDjAMBgNVBAoMBUEtU0lUMRIwEAYDVQQDDAlJQUNBIDIw\n" +
+        "MjYwHhcNMjYwNDE2MTQ1NDQ1WhcNMjcwNDE2MTQ1NDQ1WjAxMQswCQYDVQQGEwJB\n" +
+        "VDEOMAwGA1UECgwFQS1TSVQxEjAQBgNVBAMMCUlBQ0EgMjAyNjBZMBMGByqGSM49\n" +
+        "AgEGCCqGSM49AwEHA0IABA7215fpBuEqE0AmnwgUoKMGCIZjnXMPZohMJKKrO0f/\n" +
+        "84eg4bFLVUAM25Clukqbjr/Ol3Pa16LLhxQoSIupJx+jgdMwgdAwEgYDVR0TAQH/\n" +
+        "BAgwBgEB/wIBADAOBgNVHQ8BAf8EBAMCAQYwMQYDVR0fBCowKDAmoCSgIoYgaHR0\n" +
+        "cDovL3dhbGxldC5hLXNpdC5hdC9jcmwvMS5jcmwwIgYDVR0SBBswGYYXaHR0cHM6\n" +
+        "Ly93YWxsZXQuYS1zaXQuYXQwEwYDVR0gBAwwCjAIBgYEAI96AQEwHwYDVR0jBBgw\n" +
+        "FoAUTXNbbT6FjuThGuNsHM5KMNSead4wHQYDVR0OBBYEFE1zW20+hY7k4RrjbBzO\n" +
+        "SjDUnmneMAoGCCqGSM49BAMCA0cAMEQCIDMQ328z1NWGUK6wcLC8JmgTkKxt3Ycw\n" +
+        "BapSKA9Qxhd6AiANUlRcM5BT5JKZL3yNSvUlERYXqcEYs50sxwE60SVkEw==\n" +
+        "-----END CERTIFICATE-----\n"
 @Service
 class TrustListService(
     private val trustListCache: TrustListCache
@@ -47,33 +66,8 @@ class TrustListService(
         }
     }
 
-    private val asitRootPem = """
-        -----BEGIN CERTIFICATE-----
-        MIICNzCCAd6gAwIBAgIUVKbs5o5e1jnILQPrKrsBnZbJj5EwCgYIKoZIzj0EAwIw
-        MTELMAkGA1UEBhMCQVQxDjAMBgNVBAoMBUEtU0lUMRIwEAYDVQQDDAlJQUNBIDIw
-        MjYwHhcNMjYwNDE2MTQ1NDQ1WhcNMjcwNDE2MTQ1NDQ1WjAxMQswCQYDVQQGEwJB
-        VDEOMAwGA1UECgwFQS1TSVQxEjAQBgNVBAMMCUlBQ0EgMjAyNjBZMBMGByqGSM49
-        AgEGCCqGSM49AwEHA0IABA7215fpBuEqE0AmnwgUoKMGCIZjnXMPZohMJKKrO0f/
-        84eg4bFLVUAM25Clukqbjr/Ol3Pa16LLhxQoSIupJx+jgdMwgdAwEgYDVR0TAQH/
-        BAgwBgEB/wIBADAOBgNVHQ8BAf8EBAMCAQYwMQYDVR0fBCowKDAmoCSgIoYgaHR0
-        cDovL3dhbGxldC5hLXNpdC5hdC9jcmwvMS5jcmwwIgYDVR0SBBswGYYXaHR0cHM6
-        Ly93YWxsZXQuYS1zaXQuYXQwEwYDVR0gBAwwCjAIBgYEAI96AQEwHwYDVR0jBBgw
-        FoAUTXNbbT6FjuThGuNsHM5KMNSead4wHQYDVR0OBBYEFE1zW20+hY7k4RrjbBzO
-        SjDUnmneMAoGCCqGSM49BAMCA0cAMEQCIDMQ328z1NWGUK6wcLC8JmgTkKxt3Ycw
-        BapSKA9Qxhd6AiANUlRcM5BT5JKZL3yNSvUlERYXqcEYs50sxwE60SVkEw==
-        -----END CERTIFICATE-----
-    """.trimIndent()
-
     private val asitIssuerCert = X509Certificate.decodeFromPem(asitRootPem).getOrThrow()
     private val loTeFilterService = LoTEFilterService()
-
-    private val defaultUrls = listOf(
-        "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw/pid-providers.json",
-        "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw/wallet-providers.json",
-        "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw/wrpac-providers.json",
-        "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw/mdl-providers.json",
-        "https://acceptance.trust.tech.ec.europa.eu/lists/eudiw/pub-eaa-providers.json"
-    )
 
     @PostConstruct
     fun initCacheBootstrap() = runBlocking {
@@ -90,12 +84,8 @@ class TrustListService(
     }
 
     suspend fun refreshAll() {
-        defaultUrls.forEach { url ->
-            try {
-                syncSingleUrl(url)
-            } catch (e: Exception) {
-                Napier.e("Background sync failed for Trust List URL: $url", e)
-            }
+        LoTEServiceType.defaultUrls.forEach { url ->
+            syncSingleUrl(url)
         }
     }
 
@@ -111,50 +101,49 @@ class TrustListService(
         Napier.i("Successfully verified and cached Trust List for URL: $url")
     }
 
+    /**
+     * Evaluates if a given issuer is trusted based on the internal root cert and LoTEs.
+     */
     fun evaluateIssuer(
         issuer: X509Certificate,
-        serviceType: String
+        serviceType: LoTEServiceType
     ): TrustState = try {
         if (issuer.isTrustedBy(listOf(asitIssuerCert)).isSuccess) {
             return TrustState.TRUSTED
         }
 
         val criteria = LoTEFilterCriteria(expectedServiceType = serviceType)
-        val allLoTes = trustListCache.getAllPayloads().map { it.loTe }
+        val allLoTes = trustListCache.getAll()
 
         val certificateList: List<X509Certificate> = allLoTes
-            .flatMap { lote -> loTeFilterService.extractTrustedCertificates(lote, criteria) }
+            .flatMap { lote -> loTeFilterService.extractTrustedCertificates(lote.key, lote.value.loTe, criteria) }
             .mapNotNull { it.certificate }
 
         if (certificateList.isEmpty()) {
-            TrustState.UNTRUSTED
-        } else if (issuer.isTrustedBy(certificateList).isSuccess) {
-            TrustState.TRUSTED
-        } else {
-            TrustState.UNTRUSTED
+            return TrustState.UNTRUSTED
         }
+
+        val validationResult = issuer.isTrustedBy(certificateList)
+        if (validationResult.isSuccess) TrustState.TRUSTED else TrustState.UNTRUSTED
     } catch (e: Exception) {
         Napier.e("Failed to evaluate issuer trust status due to unexpected error", e)
         TrustState.UNKNOWN
     }
 
-    fun evaluateTransactionTrust(
+    fun evaluateCredentialIssuerTrust(
         leafCertificate: X509Certificate?,
         transaction: ApiController.Transaction
     ): TrustState {
         if (leafCertificate == null) return TrustState.UNKNOWN
-
-        val serviceType = transaction.presentationExchangeRequest?.presentationDefinition?.inputDescriptors?.firstOrNull()?.id
-            ?: transaction.dcqlRequest?.dcqlQuery?.credentials?.firstOrNull()?.id?.string
-            ?: "unknown_service"
-
-        Napier.i("TYPEEEEEEEEEEEEE:   $serviceType \n\n\n")
-        Napier.i("TYPEEEEEEEEEEEEE:   $transaction \n\n\n")
-
-
-        return evaluateIssuer(leafCertificate, serviceType)
+        return evaluateIssuer(leafCertificate, extractLoTEServiceType(transaction))
     }
 
+    private fun extractLoTEServiceType(transaction: ApiController.Transaction): LoTEServiceType =
+        when (transaction.presentationMechanism) {
+            PresentationMechanismEnum.DCQL -> LoTEServiceType.fromSchemeIdentifier(transaction.dcqlRequest?.extractSchemeIdentifier())
+            PresentationMechanismEnum.DeviceRequest -> LoTEServiceType.fromSchemeIdentifier(transaction.deviceRequest?.extractSchemeIdentifier())
+            PresentationMechanismEnum.PresentationExchange -> LoTEServiceType.fromSchemeIdentifier(transaction.presentationExchangeRequest?.extractSchemeIdentifier())
+        }
 }
 
 @Serializable
@@ -168,7 +157,6 @@ fun AuthnResponseResult.extractIssuerCertificate(): X509Certificate? {
 
     return vpResult.presentationResults.firstNotNullOfOrNull { presentationResultKmm ->
         val successResult = presentationResultKmm.getOrNull() ?: return@firstNotNullOfOrNull null
-
         when (successResult) {
             is Verifier.VerifyPresentationResult.SuccessSdJwt -> {
                 successResult.sdJwtSigned.jws.jwsHeader.certificateChain?.leaf
@@ -199,3 +187,17 @@ fun Iso180137AnnexCVerifiedPresentationResult.extractIssuerCertificate(): X509Ce
             ?: auth.protectedHeader.certificateChain?.firstOrNull())
             ?.let { X509Certificate.decodeFromDer(it) }
     }
+
+fun CredentialPresentationRequest.DCQLRequest.extractSchemeIdentifier() =
+    when (val meta = this.dcqlQuery.credentials.firstOrNull()?.meta) {
+        is DCQLIsoMdocCredentialMetadataAndValidityConstraints -> meta.doctypeValue
+        is DCQLSdJwtCredentialMetadataAndValidityConstraints -> meta.vctValues.firstOrNull()
+        is DCQLJwtVcCredentialMetadataAndValidityConstraints -> meta.typeValues.firstOrNull()?.firstOrNull()
+        else -> null
+    }
+
+fun CredentialPresentationRequest.PresentationExchangeRequest.extractSchemeIdentifier() =
+    presentationDefinition.inputDescriptors.firstOrNull()?.constraints?.fields?.firstNotNullOf { it.filter?.const.toString() }
+        ?: presentationDefinition.inputDescriptors.firstOrNull()?.id
+
+fun DeviceRequest.extractSchemeIdentifier() = this.docRequests.firstOrNull()?.itemsRequest?.value?.docType
