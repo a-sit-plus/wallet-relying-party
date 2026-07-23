@@ -1,11 +1,14 @@
 package at.asit.wallet.relyingparty
 
+import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dcapi.DigitalCredentialInterface
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.iso.Iso180137AnnexCVerifiedPresentationResult
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
+import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import io.github.aakira.napier.Napier

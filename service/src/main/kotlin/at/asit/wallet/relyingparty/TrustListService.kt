@@ -2,6 +2,7 @@ package at.asit.wallet.relyingparty
 
 import at.asitplus.etsi.TrustListPayload
 import at.asitplus.iso.DeviceRequest
+import at.asitplus.iso.IssuerSigned
 import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLJwtVcCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
@@ -71,8 +72,12 @@ class TrustListService(
 
     @PostConstruct
     fun initCacheBootstrap() = runBlocking {
-        Napier.i("Initializing baseline Trust List sync...")
-        refreshAll()
+        try {
+            Napier.i("Initializing baseline Trust List sync...")
+            refreshAll()
+        } catch (e: Exception) {
+            Napier.e("Failed to initialize baseline Trust List sync during startup. Continuing with empty/stale cache.", e)
+        }
     }
 
     /**
@@ -151,6 +156,12 @@ enum class TrustState {
     TRUSTED, UNTRUSTED, UNKNOWN
 }
 
+fun IssuerSigned.extractIssuerCertificate(): X509Certificate? =
+    issuerAuth.let { auth ->
+        (auth.unprotectedHeader?.certificateChain?.firstOrNull()
+            ?: auth.protectedHeader.certificateChain?.firstOrNull())
+            ?.let { X509Certificate.decodeFromDer(it) }
+    }
 
 fun AuthnResponseResult.extractIssuerCertificate(): X509Certificate? {
     val vpResult = this.vpTokenValidationResult?.getOrNull() ?: return null
@@ -161,32 +172,21 @@ fun AuthnResponseResult.extractIssuerCertificate(): X509Certificate? {
             is Verifier.VerifyPresentationResult.SuccessSdJwt -> {
                 successResult.sdJwtSigned.jws.jwsHeader.certificateChain?.leaf
             }
-
             is Verifier.VerifyPresentationResult.Success -> {
                 successResult.vp.jws.jws.jwsHeader.certificateChain?.leaf
             }
-
             is Verifier.VerifyPresentationResult.SuccessUnsigned -> {
                 null
             }
-
             is Verifier.VerifyPresentationResult.SuccessIso -> {
-                val issuerAuth = successResult.documents.firstOrNull()?.document?.issuerSigned?.issuerAuth
-                val certBytes = issuerAuth?.unprotectedHeader?.certificateChain?.firstOrNull()
-                    ?: issuerAuth?.protectedHeader?.certificateChain?.firstOrNull()
-
-                certBytes?.let { X509Certificate.decodeFromDer(it) }
+                successResult.documents.firstOrNull()?.document?.issuerSigned?.extractIssuerCertificate()
             }
         }
     }
 }
 
 fun Iso180137AnnexCVerifiedPresentationResult.extractIssuerCertificate(): X509Certificate? =
-    documents.firstOrNull()?.document?.issuerSigned?.issuerAuth?.let { auth ->
-        (auth.unprotectedHeader?.certificateChain?.firstOrNull()
-            ?: auth.protectedHeader.certificateChain?.firstOrNull())
-            ?.let { X509Certificate.decodeFromDer(it) }
-    }
+    documents.firstOrNull()?.document?.issuerSigned?.extractIssuerCertificate()
 
 fun CredentialPresentationRequest.DCQLRequest.extractSchemeIdentifier() =
     when (val meta = this.dcqlQuery.credentials.firstOrNull()?.meta) {
