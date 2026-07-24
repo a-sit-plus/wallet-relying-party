@@ -11,7 +11,7 @@ COPY service/build.gradle.kts service/build.gradle.kts
 COPY service/src service/src
 
 RUN chmod +x gradlew
-RUN ./gradlew --no-daemon :service:bootJar
+RUN ./gradlew --no-daemon --refresh-dependencies :service:bootJar
 
 RUN set -eux; \
     jar="$(find /workspace/service/build/libs -maxdepth 1 -name '*.jar' ! -name '*-plain.jar' | head -n 1)"; \

@@ -6,7 +6,7 @@ spring-boot = "4.1.0"
 spring-cloud = "2025.1.2"
 spring-admin-starter-client = "4.1.1"
 
-kotlin = "2.3.0"
+kotlin = "2.3.20"
 
 [libraries]
 spring-boot-admin-starter-client = { module = "de.codecentric:spring-boot-admin-starter-client", version.ref = "spring-admin-starter-client" }
