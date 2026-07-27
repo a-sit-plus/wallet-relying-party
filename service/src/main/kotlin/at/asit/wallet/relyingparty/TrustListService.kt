@@ -21,6 +21,8 @@ import at.asitplus.wallet.lib.etsi.isTrustedBy
 import at.asitplus.wallet.lib.iso.Iso180137AnnexCVerifiedPresentationResult
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectJades
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
+import at.asitplus.wallet.lib.openid.DcApiResponseResult
+import at.asitplus.wallet.lib.openid.Iso180137AnnexCWrapper
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import io.github.aakira.napier.Napier
 import io.ktor.client.HttpClient
@@ -149,8 +151,8 @@ class TrustListService(
         LoTEServiceType.fromSchemeIdentifier(
             when (transaction.presentationMechanism) {
                 PresentationMechanismEnum.DCQL -> transaction.dcqlRequest?.extractSchemeIdentifier()
-                PresentationMechanismEnum.DeviceRequest -> transaction.deviceRequest?.extractSchemeIdentifier()
                 PresentationMechanismEnum.PresentationExchange -> transaction.presentationExchangeRequest?.extractSchemeIdentifier()
+                else -> { throw IllegalStateException("Not supported for this type of response.") }
             }
         )
 }
@@ -192,9 +194,11 @@ fun AuthnResponseResult.extractIssuerCertificate(): X509Certificate? {
     }
 }
 
-fun Iso180137AnnexCVerifiedPresentationResult.extractIssuerCertificate(): X509Certificate? =
-    documents.firstOrNull()?.document?.issuerSigned?.extractIssuerCertificate()
-
+fun DcApiResponseResult.extractIssuerCertificate(): X509Certificate? =
+    when (this) {
+        is AuthnResponseResult -> extractIssuerCertificate()
+        is Iso180137AnnexCWrapper -> documents.firstOrNull()?.document?.issuerSigned?.extractIssuerCertificate()
+    }
 fun CredentialPresentationRequest.DCQLRequest.extractSchemeIdentifier() =
     when (val meta = this.dcqlQuery.credentials.firstOrNull()?.meta) {
         is DCQLIsoMdocCredentialMetadataAndValidityConstraints -> meta.doctypeValue
@@ -206,5 +210,3 @@ fun CredentialPresentationRequest.DCQLRequest.extractSchemeIdentifier() =
 fun CredentialPresentationRequest.PresentationExchangeRequest.extractSchemeIdentifier() =
     presentationDefinition.inputDescriptors.firstOrNull()?.constraints?.fields?.firstNotNullOf { it.filter?.const.toString() }
         ?: presentationDefinition.inputDescriptors.firstOrNull()?.id
-
-fun DeviceRequest.extractSchemeIdentifier() = this.docRequests.firstOrNull()?.itemsRequest?.value?.docType

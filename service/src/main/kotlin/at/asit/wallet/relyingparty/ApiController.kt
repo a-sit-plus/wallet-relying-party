@@ -10,6 +10,8 @@ import at.asitplus.wallet.lib.iso.Iso180137AnnexCVerifiedPresentationResult
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
+import at.asitplus.wallet.lib.openid.DcApiResponseResult
+import at.asitplus.wallet.lib.openid.Iso180137AnnexCWrapper
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base64.Base64
@@ -233,29 +235,25 @@ class ApiController(
     ): ResponseEntity<OpenId4VpSuccess> {
         MDC.put(MDC_REQUEST_ID, id)
         Napier.i("${Paths.Transaction.ResultUrl}/$id called with $requestBody")
-        var leafCertificate: X509Certificate? = null
         val transaction = removeTransaction(id)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
                 .also { Napier.w("${Paths.Transaction.ResultUrl}/$id returns NOT_FOUND") }
-        val user = catching {
+        val validationResult = catching {
             val isDcApiResponse = catching {
                 joseCompliantSerializer.decodeFromString<DigitalCredentialInterface>(requestBody)
             }.getOrNull() != null
             if (isDcApiResponse && transaction.profile.supportedOptions.any { it.isDcApi }) {
-                val dcApiRes = checkNotNull(transaction.profile.dcApiVerifier) { "Missing verifier" }
+                checkNotNull(transaction.profile.dcApiVerifier) { "Missing verifier" }
                     .validateAuthnResponse(
                         input = requestBody,
                         externalId = id,
                         expectedOrigin = transaction.dcApiOrigin,
                     ).getOrThrow()
-                dcApiRes.convertToUser()
             } else if (transaction.profile.supportedOptions.any { it.isUrlOrQrCode }) {
-                val authRes = checkNotNull(transaction.profile.oid4vpVerifier) { "Missing verifier" }
+                checkNotNull(transaction.profile.oid4vpVerifier) { "Missing verifier" }
                     .validateAuthnResponse(
                         input = requestBody,
-                    )
-                leafCertificate = authRes.getOrThrow().extractIssuerCertificate()
-                authRes.convertToUser()
+                    ).getOrThrow()
             } else {
                 error("Unsupported response for transaction $id")
             }
@@ -264,6 +262,8 @@ class ApiController(
             statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})", it)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.clientReason(HttpStatus.BAD_REQUEST), it)
         }
+        val leafCertificate = validationResult.extractIssuerCertificate()
+        val user =validationResult.convertToUser()
         Napier.i("${Paths.Transaction.ResultUrl}/$id extracted result $user")
         statisticLogger.info("$id success $user (${request.getHeader(HttpHeaders.USER_AGENT)})")
         val computedTrustState = trustListService.evaluateCredentialIssuerTrust(leafCertificate, transaction)
