@@ -7,11 +7,13 @@ import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstrain
 import at.asitplus.openid.dcql.DCQLJwtVcCredentialMetadataAndValidityConstraints
 import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.agent.Verifier
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.etsi.LoTEFilterCriteria
 import at.asitplus.wallet.lib.etsi.LoTEFilterService
 import at.asitplus.wallet.lib.etsi.LoTEServiceType
@@ -144,11 +146,13 @@ class TrustListService(
     }
 
     private fun extractLoTEServiceType(transaction: ApiController.Transaction): LoTEServiceType =
-        when (transaction.presentationMechanism) {
-            PresentationMechanismEnum.DCQL -> LoTEServiceType.fromSchemeIdentifier(transaction.dcqlRequest?.extractSchemeIdentifier())
-            PresentationMechanismEnum.DeviceRequest -> LoTEServiceType.fromSchemeIdentifier(transaction.deviceRequest?.extractSchemeIdentifier())
-            PresentationMechanismEnum.PresentationExchange -> LoTEServiceType.fromSchemeIdentifier(transaction.presentationExchangeRequest?.extractSchemeIdentifier())
-        }
+        LoTEServiceType.fromSchemeIdentifier(
+            when (transaction.presentationMechanism) {
+                PresentationMechanismEnum.DCQL -> transaction.dcqlRequest?.extractSchemeIdentifier()
+                PresentationMechanismEnum.DeviceRequest -> transaction.deviceRequest?.extractSchemeIdentifier()
+                PresentationMechanismEnum.PresentationExchange -> transaction.presentationExchangeRequest?.extractSchemeIdentifier()
+            }
+        )
 }
 
 @Serializable
@@ -173,10 +177,13 @@ fun AuthnResponseResult.extractIssuerCertificate(): X509Certificate? {
                 successResult.sdJwtSigned.jws.jwsHeader.certificateChain?.leaf
             }
             is Verifier.VerifyPresentationResult.Success -> {
-                successResult.vp.jws.jws.jwsHeader.certificateChain?.leaf
+                successResult.vp.freshVerifiableCredentials.firstOrNull()?.vcJws?.issuer?.let {
+                    X509Certificate.decodeFromPem(it)
+                        .getOrNull()
+                }
             }
             is Verifier.VerifyPresentationResult.SuccessUnsigned -> {
-                null
+                X509Certificate.decodeFromPem(successResult.vc.vcJws.issuer).getOrNull()
             }
             is Verifier.VerifyPresentationResult.SuccessIso -> {
                 successResult.documents.firstOrNull()?.document?.issuerSigned?.extractIssuerCertificate()
