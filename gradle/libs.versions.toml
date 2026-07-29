@@ -1,6 +1,6 @@
 [versions]
 qrcode = "4.5.0"
-vck = "7.0.0-SNAPSHOT"
+vck = "7.0.0-RC1"
 
 spring-boot = "4.1.0"
 spring-cloud = "2025.1.2"
