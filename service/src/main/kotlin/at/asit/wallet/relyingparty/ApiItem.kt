@@ -1,8 +1,10 @@
 package at.asit.wallet.relyingparty
 
 import at.asitplus.openid.IdToken
+import at.asitplus.signum.indispensable.pki.X509Certificate
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonObject
 
@@ -15,7 +17,6 @@ data class ApiItem(
     val idTokenError: String?,
     val presentationError: String?,
     val credentials: Collection<ApiItemCredential>,
-    val trustState: TrustState?
 )
 
 @Serializable
@@ -24,6 +25,9 @@ data class ApiItemCredential(
     val allFields: JsonObject? = null,
     val credentialType: String? = null,
     val error: String? = null,
+    val trustState: TrustState? = null,
+    @Transient
+    val issuerCertificate: X509Certificate? = null,
 )
 
 @Serializable
