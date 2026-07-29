@@ -50,32 +50,6 @@
         <h1>Authentication completed!</h1>
         <p>The authentication process has been completed. See below for details.</p>
     </div>
-    <div class="row" v-if="loginList && loginList.length > 0">
-        <div v-for="item in loginList" :key="item.timestamp">
-
-            <div v-if="item.trustState === 'TRUSTED'" class="alert alert-success d-flex align-items-center" role="alert">
-                <i class="bi bi-shield-check fs-3 me-3"></i>
-                <div>
-                    <strong>Trusted Issuer</strong>
-                </div>
-            </div>
-
-            <div v-else-if="item.trustState === 'UNTRUSTED'" class="alert alert-danger d-flex align-items-center" role="alert">
-                <i class="bi bi-shield-x fs-3 me-3"></i>
-                <div>
-                    <strong>Untrusted Issuer</strong>
-                </div>
-            </div>
-
-            <div v-else class="alert alert-warning d-flex align-items-center" role="alert">
-                <i class="bi bi-exclamation-triangle fs-3 me-3"></i>
-                <div>
-                    <strong>Trust Status Unknown</strong>
-                </div>
-            </div>
-
-        </div>
-    </div>
     <div class="row">
         <h1>Transmitted Data</h1>
         <p>The following data has been transmitted to the service provider:</p>
