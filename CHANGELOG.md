@@ -1,9 +1,12 @@
 # Changelog
 
 Version 7.0.0 (unreleased):
- - Update to VC-K 7.0.0-SNAPSHOT
+ - Update to VC-K 7.0.0-RC1
  - Rework resolving credential schemes
  - Update to Spring Boot 4.1.0
+ - Display trust evaluation of received credentials
+ - Show option to use DCAPI for every profile
+ - Add native apps to demonstrate DCAPI usage (see repository) 
 
 Version 6.0.0:
 - Update to VC-K 6.0.0
