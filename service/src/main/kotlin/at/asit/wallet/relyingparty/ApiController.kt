@@ -262,13 +262,10 @@ class ApiController(
             statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})", it)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.clientReason(HttpStatus.BAD_REQUEST), it)
         }
-        val leafCertificate = validationResult.extractIssuerCertificate()
-        val user =validationResult.convertToUser()
+        val user = validationResult.convertToUser(trustListService::evaluateCredentialIssuerTrust)
         Napier.i("${Paths.Transaction.ResultUrl}/$id extracted result $user")
         statisticLogger.info("$id success $user (${request.getHeader(HttpHeaders.USER_AGENT)})")
-        val computedTrustState = trustListService.evaluateCredentialIssuerTrust(leafCertificate, transaction)
-        val userWithTrust = user.copy(trustState = computedTrustState)
-        transactionStore.put(id, userWithTrust)
+        transactionStore.put(id, user)
         val redirectUrlWithId = ServletUriComponentsBuilder
             .fromUriString(customerSuccessUrl)
             .queryParam("id", id)

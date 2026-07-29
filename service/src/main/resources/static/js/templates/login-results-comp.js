@@ -93,12 +93,12 @@ export default {
                       <div v-for="(credential, key) in item.credentials" :key="key"
                            class="border rounded p-2 bg-light my-3">
                           <h4>{{ schemeLabel(credential) }}</h4>
-                          <div v-if="item.trustState === 'TRUSTED'"
+                          <div v-if="credential.trustState === 'TRUSTED'"
                                class="alert alert-success d-flex align-items-center" role="alert">
                               <i class="bi bi-shield-check fs-3 me-3"></i>
                               <strong>Trusted Issuer</strong>
                           </div>
-                          <div v-else-if="item.trustState === 'UNTRUSTED'"
+                          <div v-else-if="credential.trustState === 'UNTRUSTED'"
                                class="alert alert-danger d-flex align-items-center" role="alert">
                               <i class="bi bi-shield-x fs-3 me-3"></i>
                               <strong>Untrusted Issuer</strong>

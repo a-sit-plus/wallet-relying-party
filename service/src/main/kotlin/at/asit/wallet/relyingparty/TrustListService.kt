@@ -1,29 +1,14 @@
 package at.asit.wallet.relyingparty
 
 import at.asitplus.etsi.TrustListPayload
-import at.asitplus.iso.DeviceRequest
-import at.asitplus.iso.IssuerSigned
-import at.asitplus.openid.dcql.DCQLIsoMdocCredentialMetadataAndValidityConstraints
-import at.asitplus.openid.dcql.DCQLJwtVcCredentialMetadataAndValidityConstraints
-import at.asitplus.openid.dcql.DCQLSdJwtCredentialMetadataAndValidityConstraints
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.signum.indispensable.pki.leaf
-import at.asitplus.wallet.lib.agent.Verifier
-import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.etsi.LoTEFilterCriteria
 import at.asitplus.wallet.lib.etsi.LoTEFilterService
 import at.asitplus.wallet.lib.etsi.LoTEServiceType
 import at.asitplus.wallet.lib.etsi.isTrustedBy
-import at.asitplus.wallet.lib.iso.Iso180137AnnexCVerifiedPresentationResult
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectJades
-import at.asitplus.wallet.lib.openid.AuthnResponseResult
-import at.asitplus.wallet.lib.openid.DcApiResponseResult
-import at.asitplus.wallet.lib.openid.Iso180137AnnexCWrapper
-import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import io.github.aakira.napier.Napier
 import io.ktor.client.HttpClient
 import io.ktor.client.call.body
@@ -127,74 +112,13 @@ class TrustListService(
         TrustState.UNKNOWN
     }
 
-    fun evaluateCredentialIssuerTrust(
-        leafCertificate: X509Certificate?,
-        transaction: ApiController.Transaction
-    ): TrustState {
-        if (leafCertificate == null) return TrustState.UNKNOWN
-        return evaluateIssuer(leafCertificate, extractLoTEServiceType(transaction))
-    }
-
-    private fun extractLoTEServiceType(transaction: ApiController.Transaction): LoTEServiceType =
-        LoTEServiceType.fromSchemeIdentifier(
-            when (transaction.presentationMechanism) {
-                PresentationMechanismEnum.DCQL -> transaction.dcqlRequest?.extractSchemeIdentifier()
-                PresentationMechanismEnum.PresentationExchange -> transaction.presentationExchangeRequest?.extractSchemeIdentifier()
-                else -> { throw IllegalStateException("Not supported for this type of response.") }
-            }
-        )
+    fun evaluateCredentialIssuerTrust(credential: ApiItemCredential): TrustState =
+        credential.issuerCertificate?.let {
+            evaluateIssuer(it, LoTEServiceType.fromSchemeIdentifier(credential.credentialType))
+        } ?: TrustState.UNKNOWN
 }
 
 @Serializable
 enum class TrustState {
     TRUSTED, UNTRUSTED, UNKNOWN
 }
-
-fun IssuerSigned.extractIssuerCertificate(): X509Certificate? =
-    issuerAuth.let { auth ->
-        (auth.unprotectedHeader?.certificateChain?.firstOrNull()
-            ?: auth.protectedHeader.certificateChain?.firstOrNull())
-            ?.let { X509Certificate.decodeFromDer(it) }
-    }
-
-fun AuthnResponseResult.extractIssuerCertificate(): X509Certificate? {
-    val vpResult = this.vpTokenValidationResult?.getOrNull() ?: return null
-
-    return vpResult.presentationResults.firstNotNullOfOrNull { presentationResultKmm ->
-        val successResult = presentationResultKmm.getOrNull() ?: return@firstNotNullOfOrNull null
-        when (successResult) {
-            is Verifier.VerifyPresentationResult.SuccessSdJwt -> {
-                successResult.sdJwtSigned.jws.jwsHeader.certificateChain?.leaf
-            }
-            is Verifier.VerifyPresentationResult.Success -> {
-                successResult.vp.freshVerifiableCredentials.firstOrNull()?.vcJws?.issuer?.let {
-                    X509Certificate.decodeFromPem(it)
-                        .getOrNull()
-                }
-            }
-            is Verifier.VerifyPresentationResult.SuccessUnsigned -> {
-                X509Certificate.decodeFromPem(successResult.vc.vcJws.issuer).getOrNull()
-            }
-            is Verifier.VerifyPresentationResult.SuccessIso -> {
-                successResult.documents.firstOrNull()?.document?.issuerSigned?.extractIssuerCertificate()
-            }
-        }
-    }
-}
-
-fun DcApiResponseResult.extractIssuerCertificate(): X509Certificate? =
-    when (this) {
-        is AuthnResponseResult -> extractIssuerCertificate()
-        is Iso180137AnnexCWrapper -> documents.firstOrNull()?.document?.issuerSigned?.extractIssuerCertificate()
-    }
-fun CredentialPresentationRequest.DCQLRequest.extractSchemeIdentifier() =
-    when (val meta = this.dcqlQuery.credentials.firstOrNull()?.meta) {
-        is DCQLIsoMdocCredentialMetadataAndValidityConstraints -> meta.doctypeValue
-        is DCQLSdJwtCredentialMetadataAndValidityConstraints -> meta.vctValues.firstOrNull()
-        is DCQLJwtVcCredentialMetadataAndValidityConstraints -> meta.typeValues.firstOrNull()?.firstOrNull()
-        else -> null
-    }
-
-fun CredentialPresentationRequest.PresentationExchangeRequest.extractSchemeIdentifier() =
-    presentationDefinition.inputDescriptors.firstOrNull()?.constraints?.fields?.firstNotNullOf { it.filter?.const.toString() }
-        ?: presentationDefinition.inputDescriptors.firstOrNull()?.id

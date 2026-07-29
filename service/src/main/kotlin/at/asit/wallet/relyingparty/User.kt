@@ -2,6 +2,9 @@ package at.asit.wallet.relyingparty
 
 import at.asitplus.KmmResult
 import at.asitplus.openid.IdToken
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.eupid.EuPidDataElements
 import at.asitplus.wallet.eupidsdjwt.EuPidSdJwtDataElements
 import at.asitplus.wallet.lib.agent.Verifier
@@ -14,6 +17,7 @@ import at.asitplus.wallet.lib.data.CredentialToJsonConverter.toJsonElement
 import at.asitplus.wallet.lib.data.IsoDocumentParsed
 import at.asitplus.wallet.lib.data.VcDataModelConstants.VERIFIABLE_CREDENTIAL
 import at.asitplus.wallet.lib.data.VcJwsVerificationResultWrapper
+import at.asitplus.wallet.lib.data.VerifiableCredentialJws
 import at.asitplus.wallet.lib.data.VerifiablePresentationParsed
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatusValidationResult
 import at.asitplus.wallet.lib.openid.AuthnResponseResult
@@ -43,7 +47,6 @@ data class User(
     val idTokenError: String?,
     val credentials: Collection<ApiItemCredential>?,
     val presentationError: String?,
-    val trustState: TrustState? = null,
 ) : AuthenticatedPrincipal {
     @Transient
     val apiItem = ApiItem(
@@ -53,7 +56,6 @@ data class User(
         idTokenError = idTokenError,
         presentationError = presentationError,
         credentials = credentials ?: listOf(),
-        trustState = trustState,
     )
 
     override fun getName(): String =
@@ -87,10 +89,17 @@ fun ApiItemCredential.getClaim(claim: String) = allFields?.entries
             else -> it.toString()
         }
     }
-fun DcApiResponseResult.convertToUser() = when(this) {
-    is AuthnResponseResult -> this.toUser()
-    is Iso180137AnnexCWrapper -> this.toUser()
-}
+
+fun DcApiResponseResult.convertToUser(evaluateIssuerTrust: (ApiItemCredential) -> TrustState) =
+    when (this) {
+        is AuthnResponseResult -> toUser()
+        is Iso180137AnnexCWrapper -> toUser()
+    }.let { user ->
+        user.copy(credentials = user.credentials?.map { credential ->
+            credential.copy(trustState = evaluateIssuerTrust(credential))
+        })
+    }
+
 fun AuthnResponseResult.toUser() = User(
     idToken = idTokenValidationResult?.getOrNull(),
     idTokenError = idTokenValidationResult?.exceptionOrNull()?.message,
@@ -126,50 +135,64 @@ fun Iso180137AnnexCWrapper.toUser() = User(
     idToken = null,
     idTokenError = null,
     presentationError = null,
-    credentials = documents.map { it.toApiItemCredential() }
+    credentials = documents.map {
+        it.toApiItemCredential(it.document.issuerSigned.extractIssuerCertificate())
+    }
 )
 
-fun KmmResult<AuthnResponseResult>.convertToUser(): User = exceptionOrNull()?.let {
-    throw RuntimeException("Failed: input", it)
-} ?: getOrThrow().toUser()
-
-fun VerifiablePresentationParsed.toApiItemCredentials(): List<ApiItemCredential> =
-    freshVerifiableCredentials.takeIf { it.isNotEmpty() }?.let {
-        it.map {
+fun VerifiablePresentationParsed.toApiItemCredentials(): List<ApiItemCredential> {
+    val issuerCertificates = jws.payload.vp.verifiableCredential.mapNotNull { serializedCredential ->
+        runCatching { JwsCompactTyped<VerifiableCredentialJws>(serializedCredential) }.getOrNull()?.let {
+            it.payload.jwtId to it.jws.jwsHeader.certificateChain?.leaf
+        }
+    }.toMap()
+    return buildList {
+        addAll(freshVerifiableCredentials.map {
             ApiItemCredential(
                 jwtCredential = it.vcJws.vc.credentialSubject,
                 credentialType = it.vcJws.vc.type.filterNot { it == VERIFIABLE_CREDENTIAL }.firstOrNull(),
+                issuerCertificate = issuerCertificates[it.vcJws.jwtId],
             )
-        }
-    } ?: notVerifiablyFreshVerifiableCredentials.takeIf { it.isNotEmpty() }?.let {
-        it.map { it.freshnessSummary }
-            .map { it.toApiItemCredential() }
-    } ?: invalidVerifiableCredentials.takeIf { it.isNotEmpty() }?.let {
-        it.map { ApiItemCredential(error = "Structure invalid: $it") }
-    } ?: listOf(ApiItemCredential(error = "No result"))
+        })
+        addAll(notVerifiablyFreshVerifiableCredentials.map {
+            ApiItemCredential(
+                jwtCredential = it.vcJws.vc.credentialSubject,
+                credentialType = it.vcJws.vc.type.filterNot { type -> type == VERIFIABLE_CREDENTIAL }.firstOrNull(),
+                error = it.freshnessSummary.errorMessage(),
+                issuerCertificate = issuerCertificates[it.vcJws.jwtId],
+            )
+        })
+        addAll(invalidVerifiableCredentials.map { ApiItemCredential(error = "Structure invalid: $it") })
+        if (isEmpty()) add(ApiItemCredential(error = "No result"))
+    }
+}
 
 fun Verifier.VerifyPresentationResult.SuccessUnsigned.toApiItemCredentials(): List<ApiItemCredential> =
     vc.toApiItemCredentials()
 
 fun VcJwsVerificationResultWrapper.toApiItemCredentials(): List<ApiItemCredential> = if (freshnessSummary.isFresh) {
-    listOf(this).map {
+    listOf(
         ApiItemCredential(
-            jwtCredential = it.vcJws.vc.credentialSubject,
-            credentialType = it.vcJws.vc.type.first(),
+            jwtCredential = vcJws.vc.credentialSubject,
+            credentialType = vcJws.vc.type.first(),
         )
-    }
+    )
 } else {
-    listOf(freshnessSummary.toApiItemCredential())
+    listOf(
+        ApiItemCredential(
+            jwtCredential = vcJws.vc.credentialSubject,
+            credentialType = vcJws.vc.type.first(),
+            error = freshnessSummary.errorMessage(),
+        )
+    )
 }
-
-fun CredentialFreshnessSummary.VcJws.toApiItemCredential(): ApiItemCredential =
-    ApiItemCredential(error = errorMessage())
 
 fun Verifier.VerifyPresentationResult.SuccessSdJwt.toApiItemCredentials(): Collection<ApiItemCredential> = listOf(
     ApiItemCredential(
         allFields = reconstructedJsonObject,
         credentialType = verifiableCredentialSdJwt.verifiableCredentialType,
-        error = freshnessSummary.errorMessage()
+        error = freshnessSummary.errorMessage(),
+        issuerCertificate = sdJwtSigned.jws.jwsHeader.certificateChain?.leaf,
     )
 )
 
@@ -206,9 +229,9 @@ private fun kotlin.time.Instant.formatted(): String =
     })
 
 fun Verifier.VerifyPresentationResult.SuccessIso.toApiItemCredentials(): Collection<ApiItemCredential> =
-    documents.map { it.toApiItemCredential() }
+    documents.map { it.toApiItemCredential(it.document.issuerSigned.extractIssuerCertificate()) }
 
-private fun IsoDocumentParsed.toApiItemCredential(): ApiItemCredential = ApiItemCredential(
+private fun IsoDocumentParsed.toApiItemCredential(issuerCertificate: X509Certificate?): ApiItemCredential = ApiItemCredential(
     allFields = buildJsonObject {
         validItems.forEach {
             put(it.elementIdentifier, it.elementValue.toJsonElement())
@@ -216,7 +239,13 @@ private fun IsoDocumentParsed.toApiItemCredential(): ApiItemCredential = ApiItem
     },
     credentialType = mso.docType,
     error = freshnessSummary.errorMessage(),
+    issuerCertificate = issuerCertificate,
 )
+
+private fun at.asitplus.iso.IssuerSigned.extractIssuerCertificate(): X509Certificate? =
+    (issuerAuth.unprotectedHeader?.certificateChain?.firstOrNull()
+        ?: issuerAuth.protectedHeader.certificateChain?.firstOrNull())
+        ?.let { X509Certificate.decodeFromDer(it) }
 
 private fun CredentialFreshnessSummary.SdJwt.errorMessage(): String? =
     if (isFresh) null else listOfNotNull(
@@ -241,4 +270,3 @@ private fun TokenStatusValidationResult.errorMessage(): String? = when (this) {
     is TokenStatusValidationResult.Rejected -> "Rejected: Error is ${this.throwable.toString()}"
     is TokenStatusValidationResult.Valid -> null
 }
-
