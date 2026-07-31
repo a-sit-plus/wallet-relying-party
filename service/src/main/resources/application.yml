@@ -12,3 +12,16 @@ spring:
       enabled: true
 app:
   public-context: http://localhost:8080
+  wrp:
+    alias: alias
+    key-store: classpath:demo-wrp/wrp.p12
+    password: password
+    rc:
+      - label: Entwicklungsübersicht
+        jws: classpath:demo-wrp/wrprc-entwicklung.jws
+      - label: Altersprüfung 18+
+        jws: classpath:demo-wrp/wrprc-alterspruefung.jws
+      - label: Identitätsprofil
+        jws: classpath:demo-wrp/wrprc-identitaetsprofil.jws
+      - label: Adressübersicht
+        jws: classpath:demo-wrp/wrprc-adressuebersicht.jws

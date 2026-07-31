@@ -1,17 +1,11 @@
 package at.asit.wallet.relyingparty
 
-import at.asitplus.KmmResult
 import at.asitplus.catching
 import at.asitplus.dcapi.DigitalCredentialInterface
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.iso.Iso180137AnnexCVerifiedPresentationResult
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
-import at.asitplus.wallet.lib.openid.AuthnResponseResult
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
-import at.asitplus.wallet.lib.openid.DcApiResponseResult
-import at.asitplus.wallet.lib.openid.Iso180137AnnexCWrapper
 import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base64.Base64
@@ -59,6 +53,7 @@ class ApiController(
         val id: String,
         val profile: PreparedProfile,
         val dcApiOrigin: String,
+        val request: TransactionRequest,
         val presentationMechanism: PresentationMechanismEnum,
         val presentationExchangeRequest: CredentialPresentationRequest.PresentationExchangeRequest? = null,
         val dcqlRequest: CredentialPresentationRequest.DCQLRequest? = null,
@@ -113,7 +108,7 @@ class ApiController(
         if (request.dcApiOrigin != null && !ANDROID_APP_ORIGIN.matches(dcApiOrigin)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Android app origin")
         }
-        val profiles = profiles.knownProfiles.map {
+        val profiles = profiles.knownProfiles.mapNotNull {
             val transactionId = Uuid.random().toString()
             val transactionContext = buildTransactionContext(transactionId, it.supportedOptions, dcApiOrigin)
             val preparedProfile = profiles.prepare(it, transactionContext)
@@ -121,6 +116,7 @@ class ApiController(
                 id = transactionId,
                 profile = preparedProfile,
                 dcApiOrigin = dcApiOrigin,
+                request = request,
                 presentationMechanism = request.presentationMechanism,
                 presentationExchangeRequest = request.presentationDefinition?.let {
                     CredentialPresentationRequest.PresentationExchangeRequest(it)
@@ -129,20 +125,25 @@ class ApiController(
                     CredentialPresentationRequest.DCQLRequest(it)
                 },
             )
-            putTransaction(transaction)
-            val qrCodeUrl = preparedProfile.buildWalletUrl(transaction, transactionContext)
-            val qrCodeBytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
-            TransactionProfile(
-                id = transactionId,
-                name = preparedProfile.name,
-                description = preparedProfile.description,
-                label = preparedProfile.label,
-                prefix = preparedProfile.urlPrefix,
-                png = qrCodeBytes.toDataUrl(),
-                url = qrCodeUrl,
-                dcApiUrl = transactionContext.dcApiUrl,
-                supportedOptions = preparedProfile.supportedOptions
-            )
+            catching {
+                val qrCodeUrl = preparedProfile.buildWalletUrl(transaction, transactionContext)
+                val qrCodeBytes = QRCode.ofSquares().build(qrCodeUrl).render().getBytes()
+                putTransaction(transaction)
+                TransactionProfile(
+                    id = transactionId,
+                    name = preparedProfile.name,
+                    description = preparedProfile.description,
+                    label = preparedProfile.label,
+                    prefix = preparedProfile.urlPrefix,
+                    png = qrCodeBytes.toDataUrl(),
+                    url = qrCodeUrl,
+                    dcApiUrl = transactionContext.dcApiUrl,
+                    supportedOptions = preparedProfile.supportedOptions
+                )
+            }.getOrElse { throwable ->
+                Napier.w("Skipping profile", throwable)
+                return@mapNotNull null
+            }
         }
         val response = TransactionResponse(profiles)
         Napier.i("${Paths.Transaction.CreateUrl} returns $response")
@@ -168,7 +169,14 @@ class ApiController(
             check(transaction.profile.supportedOptions.any { it.isUrlOrQrCode }) { "Profile does not device flow" }
 
             val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
-            val body = transaction.transactionGet(responseUrl)
+            val verifierInfo = profiles.buildVerifierInfo(
+                selectedWrprcId = transaction.request.selectedWrprcId,
+            )
+            val body = transaction.transactionGet(
+                responseUrl,
+                verifierInfo,
+                transaction.request.includeWrpac,
+            )
                 .also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
             ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/" + JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST))
@@ -201,7 +209,17 @@ class ApiController(
         return catching {
             check(transaction.profile.supportedOptions.any { it.isDcApi }) { "Profile does not support DC API flow" }
             val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
-            val body = transaction.transactionGetDcApi(responseUrl, oid4vpMode, isoMdoc, encrypt)
+            val verifierInfo = profiles.buildVerifierInfo(
+                selectedWrprcId = transaction.request.selectedWrprcId,
+            )
+            val body = transaction.transactionGetDcApi(
+                responseUrl,
+                oid4vpMode,
+                isoMdoc,
+                encrypt,
+                verifierInfo,
+                transaction.request.includeWrpac,
+            )
                 .also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
             ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)

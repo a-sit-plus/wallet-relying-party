@@ -386,6 +386,48 @@ app:
 Do not use the in-memory key for interoperable or production-like testing where
 wallets need stable verifier trust material.
 
+### WRPAC/WRPRC
+To use access certificates and registration certificates you need a signed certificate from the registrar.
+#### 1. Create private key and a certificate signing request:
+```bash
+openssl req -new -newkey rsa:2048 -nodes -keyout wrp.key -out wrp.csr
+```
+#### 2. Add the private key and the certificate (signed by the registrar) to a key store
+```bash
+openssl pkcs12 -export -out wrp.p12 -inkey wrp.key -in wrp.pem -name changeit -passout pass:changeit
+```
+
+#### 3. Adjust the configuration to your needs
+To add access and registration certificates to the relying party, add the `wrp` section to `app`
+```yaml
+app:
+  [...]
+  wrp:
+    alias: changeit
+    key-store: keystore.p12
+    password: changeit
+    rc:
+      - label: Entwicklungsübersicht
+        jws: wrprc-entwicklung.jws
+      - label: Altersprüfung 18+
+        jws: wrprc-alterspruefung.jws
+      - label: Identitätsprofil
+        jws: wrprc-identitaetsprofil.jws
+      - label: Adressübersicht
+        jws: wrprc-adressuebersicht.jws
+```
+Access certificate:
+Parameters used for the key management.
+`wrp.key-store`: Path to the PKCS12 keystore file.
+`wrp.alias`: Alias of the key inside the PKCS12 keystore.
+`wrp.password`: Password to unlock the PKCS12 keystore.
+The PKCS12 keystore must contain the key as well as the certificate chain (provided through the registrar)!
+
+Registration certificate:
+List to load one or multiple registration certificates.
+`rc.jws`: Path to the registration certificate jws.
+`rc.label`: Human readable text describing the registration certificate
+
 ## Certificates
 
 For ISO 18013-5 and ISO 18013-7 related flows, the verifier certificate needs the

@@ -39,7 +39,6 @@
         import SuccessAlertComp from 'success-alert-comp'
         import LoginOptionsComp from 'login-options-comp'
         import RequestDetailsComp from 'request-details-comp'
-        import RequestDetailsCompRich from 'request-details-comp-rich'
         import AccordionComp from 'accordion-comp'
         import config from "main-config"
 
@@ -58,8 +57,7 @@
                 ErrorAlertComp,
                 SuccessAlertComp,
                 LoginOptionsComp,
-                RequestDetailsComp,
-                RequestDetailsCompRich
+                RequestDetailsComp
             }
         }).mount('#app');
     </script>
@@ -85,18 +83,21 @@
             </li>
         </ul>
         <div class="bg-white border rounded py-3">
-            <request-details-comp-rich
+            <request-details-comp
                 :request="reqSelection" :config="config" :active-profile="activeProfile" :active-profile-name="activeProfileName"
+                :cert-previews="certPreviews" :show-certificates="true"
                 @update-scheme-type="updateSchemeType"
                 @update-representation="updateRepresentation"
                 @update-presentation-mechanism-identifier="updatePresentationMechanismIdentifier"
+                @update-include-wrpac="updateIncludeWrpac"
+                @update-selected-wrprc="updateSelectedWrprc"
                 @update-attribute="updateAttribute"
                 @add-credential="addCredential"
                 @remove-credential="removeCredential"
                 @update-presentation-definition="updatePresentationDefinition"
                 @update-dcql-query="updateDcqlQuery"
                 @generate-qr-code="generateQrCode"
-            ></request-details-comp-rich>
+            ></request-details-comp>
         </div>
     </div>
 
