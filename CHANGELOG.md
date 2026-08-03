@@ -1,7 +1,7 @@
 # Changelog
 
-Version 7.0.0 (unreleased):
- - Update to VC-K 7.0.0-RC1
+Version 7.0.0:
+ - Update to VC-K 7.0.0
  - Rework resolving credential schemes
  - Update to Spring Boot 4.1.0
  - Display trust evaluation of received credentials
