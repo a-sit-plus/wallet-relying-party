@@ -39,6 +39,20 @@
         import RequestDetailsComp from 'request-details-comp'
         import config from "main-config"
 
+        const ehic = config.schemeTypes.find(type => type.value === "urn:eudi:ehic:1");
+        config.profiles = [
+            {
+                "label": "European Health Insurance Card (EHIC)",
+                "credentials": [
+                    {
+                        "schemeType": ehic.value,
+                        "representation": "SD_JWT",
+                        "attributes": ehic.attributes
+                    }
+                ]
+            }
+        ];
+
         createApp({
             setup: function () {
                 let app = createBasicSetup(config);
