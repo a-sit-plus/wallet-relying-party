@@ -439,6 +439,44 @@ Example content of a registration certificate jws file:
 ```json
 eyJ4NWMiOlsiTUlJQ1NqQ0NBZStnQXdJQkFnSVZBTlRMWXAwMXQ2VWY5dVVWWU5yMmJLaXZsbC9JTUFvR0NDcUdTT[...]
 ```
+```json
+{
+  "name": "Demo Services",
+  "sub_ln": "Service",
+  "sub": "WRP-5BF7F0FA3DBB",
+  "country": "AT",
+  "registry_uri": "https://wrp-registrar.a-sit.plus/wrp",
+  "srv_description": [
+    [ { "lang": "en", "value": "Identity Check" } ]
+  ],
+  "entitlements": [ "access-service" ],
+  "privacy_policy": "https://services.example.at/privacy/identity-check",
+  "info_uri": "",
+  "support_uri": "https://wallet.a-sit.plus/support",
+  "supervisory_authority": {},
+  "policy_id": [],
+  "certificate_policy": "https://wrp-registrar.a-sit.plus/certificate-policy",
+  "iat": 1783589391,
+  "status": {
+    "status_list": { "idx": 0, "uri": "https://wrp-registrar.a-sit.plus/statuslists/1" }
+  },
+  "purpose": [
+    { "lang": "en", "value": "Identity checks for digital onboarding processes" }
+  ],
+  "credentials": [
+    {
+      "format": "mso_mdoc",
+      "meta": { "doctype_value": "eu.europa.ec.eudi.pid.1", "vct_values": [] },
+      "claim": [ { "path": [ "eu.europa.ec.eudi.pid.1", "given_name" ] } ]
+    }
+  ],
+  "intended_use_id": "urn:uuid:ba626804-d6a1-5147-b3c9-b888f58e8bb5",
+  "provides_attestations": [],
+  "public_body": false,
+  "exp": 1815125391
+}
+```
+Reference: https://www.etsi.org/deliver/etsi_ts/119400_119499/119475/01.02.01_60/ts_119475v010201p.pdf
 
 
 ## Certificates
