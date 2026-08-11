@@ -4,7 +4,8 @@ export default {
     props: {
         request: {},
         config: {},
-        certPreviews: { default: null },
+        wrpacPreview: { default: null },
+        wrprcPreviews: { default: null },
         showCertificates: { default: false },
         singleColumn: { default: false },
         qrButtonText: { default: "Refresh Request" },
@@ -27,19 +28,17 @@ export default {
         'generateQrCode'
     ],
     computed: {
-        normalizedCertPreviews() {
-            return Array.isArray(this.certPreviews) ? this.certPreviews.filter(item => item && typeof item === 'object') : []
+        hasWrpacPreview() {
+            return !!(this.wrpacPreview && typeof this.wrpacPreview === 'object' && this.wrpacPreview.content)
         },
-        wrpacPreviews() {
-            return this.normalizedCertPreviews.filter(item => item.category === 'wrpac')
+        wrprcPreviewList() {
+            return Array.isArray(this.wrprcPreviews) ? this.wrprcPreviews.filter(item => item && typeof item === 'object') : []
         },
-        wrprcPreviews() {
-            return this.normalizedCertPreviews
-                .filter(item => item.category === 'wrprc')
-                .map(item => ({
-                    ...item,
-                    summary: this.wrprcSummary(item)
-                }))
+        wrprcPreviewsWithSummary() {
+            return this.wrprcPreviewList.map(item => ({
+                ...item,
+                summary: this.wrprcSummary(item)
+            }))
         }
     },
     methods: {
@@ -136,19 +135,19 @@ export default {
                            id="includeWrpac"
                            type="checkbox"
                            name="includeWrpac"
-                           :disabled="wrpacPreviews.length === 0"
+                           :disabled="!hasWrpacPreview"
                            :checked="request.includeWrpac"
                            @click="$emit('updateIncludeWrpac', !request.includeWrpac)">
                     <label class="form-check-label" for="includeWrpac">
                         WRP Access Certificate (WRPAC) - <span class="text-primary">x509_hash / x5c</span>
-                        <span v-if="wrpacPreviews.length === 0" class="text-muted">(not available)</span>
+                        <span v-if="!hasWrpacPreview" class="text-muted">(not available)</span>
                     </label>
                 </div>
                 <div class="mt-3">
                     <label class="form-label mb-1">
                         WRP Registration Certificate (WRPRC) - <span class="text-primary text-nowrap">verifier_info / registration_cert</span>
                     </label>
-                    <div v-if="wrprcPreviews.length === 0" class="text-muted small">(not available)</div>
+                    <div v-if="wrprcPreviewsWithSummary.length === 0" class="text-muted small">(not available)</div>
                     <div v-else class="form-check">
                         <input class="form-check-input"
                                id="selectedWrprcId-none"
@@ -160,7 +159,7 @@ export default {
                             Do not include WRPRC
                         </label>
                     </div>
-                    <div v-for="item in wrprcPreviews"
+                    <div v-for="item in wrprcPreviewsWithSummary"
                          :key="item.id"
                          class="form-check mb-2">
                         <input class="form-check-input"

@@ -20,35 +20,40 @@ class WrpCertificatesControllerTest {
     private lateinit var store: WrpCertificateStore
 
     @Test
-    fun `cert previews expose configured certificate artifacts`() {
-        Mockito.`when`(store.certificatePreviews()).thenReturn(
+    fun `access certificate preview exposes configured certificate artifact`() {
+        Mockito.`when`(store.accessCertificatePreview()).thenReturn(
+            WrpPreviewData(
+                label = "wrpac",
+                content = "chain",
+            )
+        )
+
+        mockMvc.get("/api/wrp/certs/access")
+            .andExpect {
+                status { isOk() }
+                jsonPath("$.label") { value("wrpac") }
+                jsonPath("$.content") { value("chain") }
+            }
+    }
+
+    @Test
+    fun `registration certificate preview exposes configured certificate artifacts`() {
+        Mockito.`when`(store.registrationCertificatePreview()).thenReturn(
             listOf(
-                WrpCertificatePreview(
-                    id = -1,
-                    label = "WRPAC",
-                    category = "wrpac",
-                    type = "x509-chain",
-                    content = "chain",
-                ),
-                WrpCertificatePreview(
+                RegistrationCertificatePreviewData(
                     id = 0,
                     label = "Identitätsprofil",
-                    category = "wrprc",
-                    type = "jws",
                     content = "token",
                 )
             )
         )
 
-        mockMvc.get("/api/wrp/certs")
+        mockMvc.get("/api/wrp/certs/registrations")
             .andExpect {
                 status { isOk() }
-                jsonPath("$[0].id") { value(-1) }
-                jsonPath("$[0].category") { value("wrpac") }
-                jsonPath("$[0].type") { value("x509-chain") }
-                jsonPath("$[1].id") { value(0) }
-                jsonPath("$[1].category") { value("wrprc") }
-                jsonPath("$[1].type") { value("jws") }
+                jsonPath("$[0].id") { value(0) }
+                jsonPath("$[0].label") { value("Identitätsprofil") }
+                jsonPath("$[0].content") { value("token") }
             }
     }
 

@@ -18,6 +18,10 @@ function normalizeCertificateItems(items) {
     return items.filter(item => item && typeof item === "object")
 }
 
+function normalizeAccessCertificate(item) {
+    return item && typeof item === "object" && item.content ? item : null
+}
+
 const createBasicSetup = function (config, options = {}) {
 
     // --- STATE ---------------------------------------------------
@@ -58,7 +62,8 @@ const createBasicSetup = function (config, options = {}) {
         oldRequestedCredentialsJSON: null,
         changed: false,
     })
-    const certPreviews = ref([])
+    const wrpacPreview = ref(null)
+    const wrprcPreviews = ref([])
 
     let resultInterval = null
     let requestQueriesPromise = null
@@ -632,28 +637,24 @@ const createBasicSetup = function (config, options = {}) {
 
     async function loadCertificatePreviews() {
         try {
-            const response = await fetch("api/wrp/certs", {cache: "no-store"})
-            if (response.ok) {
-                certPreviews.value = normalizeCertificateItems(await response.json())
-                syncCertificateSelection()
-                return
-            }
-            certPreviews.value = []
+            const [accessResp, registrationsResp] = await Promise.all([
+                fetch("api/wrp/certs/access", {cache: "no-store"}),
+                fetch("api/wrp/certs/registrations", {cache: "no-store"}),
+            ])
+            wrpacPreview.value = accessResp.ok ? normalizeAccessCertificate(await accessResp.json()) : null
+            wrprcPreviews.value = registrationsResp.ok ? normalizeCertificateItems(await registrationsResp.json()) : []
             syncCertificateSelection()
         } catch (err) {
             console.log('loadCertificatePreviews error: ', err)
-            certPreviews.value = []
+            wrpacPreview.value = null
+            wrprcPreviews.value = []
             syncCertificateSelection()
         }
     }
 
     function syncCertificateSelection() {
-        const hasWrpac = certPreviews.value.some(item => item.category === "wrpac")
-        const wrprcIds = new Set(
-            certPreviews.value
-                .filter(item => item.category === "wrprc")
-                .map(item => item.id)
-        )
+        const hasWrpac = !!wrpacPreview.value
+        const wrprcIds = new Set(wrprcPreviews.value.map(item => item.id))
         if (!hasWrpac && reqSelection.value.includeWrpac) {
             reqSelection.value.includeWrpac = false
         }
@@ -665,7 +666,8 @@ const createBasicSetup = function (config, options = {}) {
 
     return {
         config,
-        certPreviews,
+        wrpacPreview,
+        wrprcPreviews,
         reqSelection,
         isMdocRequest,
         selections,

@@ -14,9 +14,13 @@ data class WrpCertificateAvailability(
 class WrpCertificatesController(
     private val store: WrpCertificateStore,
 ) {
-    @GetMapping("/certs")
-    fun certificatePreviews(): List<WrpCertificatePreview> =
-        store.certificatePreviews()
+    @GetMapping("/certs/access")
+    fun accessCertificatePreview(): WrpPreviewData? =
+        store.accessCertificatePreview()
+
+    @GetMapping("/certs/registrations")
+    fun registrationCertificatePreview(): List<RegistrationCertificatePreviewData>? =
+        store.registrationCertificatePreview()
 
     @GetMapping("/availability")
     fun certificateAvailability(): WrpCertificateAvailability =

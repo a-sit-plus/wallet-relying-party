@@ -50,7 +50,8 @@
 
 <script>
     const api = {
-        previews: "api/wrp/certs",
+        access: "api/wrp/certs/access",
+        registrations: "api/wrp/certs/registrations",
     };
     const loadError = document.getElementById("loadError");
     const certificatePreviewList = document.getElementById("certificatePreviewList");
@@ -66,7 +67,7 @@
         const items = previews.length > 0
             ? previews.map(item => `
                 <div class="mb-2">
-                    <label class="form-label small mb-1">${escapeHtml(item.label)} <span class="text-muted">(${escapeHtml(item.type)})</span></label>
+                    <label class="form-label small mb-1">${escapeHtml(item.label)}</label>
                     <textarea class="form-control form-control-sm" rows="5" readonly>${escapeHtml(item.content)}</textarea>
                 </div>
             `).join("")
@@ -80,14 +81,18 @@
     }
 
     async function refreshData() {
-        const previewsResp = await fetch(api.previews);
-        if (!previewsResp.ok) {
+        const [accessResp, registrationsResp] = await Promise.all([
+            fetch(api.access),
+            fetch(api.registrations),
+        ]);
+        if (!accessResp.ok || !registrationsResp.ok) {
             throw new Error("Could not load certificate state");
         }
 
-        const previews = await previewsResp.json();
-        const wrpac = previews.filter(item => item.category === "wrpac");
-        const wrprc = previews.filter(item => item.category === "wrprc");
+        const access = await accessResp.json();
+        const registrations = await registrationsResp.json();
+        const wrpac = access?.content ? [access] : [];
+        const wrprc = Array.isArray(registrations) ? registrations : [];
         certificatePreviewList.innerHTML =
             renderGroup("WRPAC", wrpac, "No WRPAC loaded yet") +
             renderGroup("WRPRC", wrprc, "No WRPRC loaded yet");

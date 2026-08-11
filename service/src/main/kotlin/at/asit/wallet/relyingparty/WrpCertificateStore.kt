@@ -13,18 +13,16 @@ import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.security.KeyStore
 
-data class WrpCertificatePreview(
-    val id: Int? = null,
-    val label: String,
-    val category: String,
-    val type: String,
-    val content: String,
-) {
-    companion object {
-        const val JWS_TYPE = "jws"
-        const val X509_TYPE = "x509-chain"
-    }
-}
+open class WrpPreviewData(
+    open val label: String,
+    open val content: String,
+)
+
+data class RegistrationCertificatePreviewData(
+    override val label: String,
+    override val content: String,
+    val id: Int,
+) : WrpPreviewData(label, content)
 
 @Component
 class WrpCertificateStore(
@@ -60,28 +58,23 @@ class WrpCertificateStore(
 
     fun loadCertificateChain(): CertificateChain? = keyMaterial.getCertificateChain() ?: return null
 
-    fun certificatePreviews(): List<WrpCertificatePreview> {
-        val previews = mutableListOf<WrpCertificatePreview>()
-        val pem = loadCertificateChain()?.mapNotNull { it.encodeToPEM().getOrNull() }?.joinToString(separator = "")
-        pem?.let {
-            previews += WrpCertificatePreview(
+    fun accessCertificatePreview(): WrpPreviewData? =
+        loadCertificateChain()?.mapNotNull { it.encodeToPEM().getOrNull() }?.joinToString(separator = "\n")?.let {
+            WrpPreviewData(
                 label = CERT_ID_WRPAC,
-                category = CERT_ID_WRPAC,
-                type = WrpCertificatePreview.X509_TYPE,
                 content = it.trim(),
             )
         }
-        registrationCertificates?.forEach { index, (config, content) ->
-            previews += WrpCertificatePreview(
+
+    fun registrationCertificatePreview(): List<RegistrationCertificatePreviewData>? =
+        registrationCertificates?.map { (index, pair) ->
+            val (config, content) = pair
+            RegistrationCertificatePreviewData(
                 id = index,
                 label = config.label,
-                category = CERT_ID_WRPRC,
-                type = WrpCertificatePreview.JWS_TYPE,
                 content = content.trim(),
             )
         }
-        return previews
-    }
 
     private fun loadResourceAsString(uri: URI): String =
         StreamUtils.copyToString(resourceLoader.getResource(uri.toString()).inputStream, StandardCharsets.UTF_8)
@@ -93,6 +86,5 @@ class WrpCertificateStore(
 
     companion object {
         const val CERT_ID_WRPAC = "wrpac"
-        const val CERT_ID_WRPRC = "wrprc"
     }
 }
