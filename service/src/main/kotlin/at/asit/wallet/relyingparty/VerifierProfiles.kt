@@ -472,7 +472,7 @@ class VerifierProfiles(
         selectedWrprcId: Int?,
     ): NonEmptyList<VerifierInfo>? {
         val effectiveWrprcId = selectedWrprcId ?: return null
-        val wrprc = wrpCertificateStore.loadRegistrationCertificates()?.get(effectiveWrprcId)?.let { (_, content) ->
+        val wrprc = wrpCertificateStore.registrationCertificates?.get(effectiveWrprcId)?.let { (_, content) ->
             content.trim().takeIf { it.isNotBlank() }
         } ?: throw ClientFacingException("Selected WRPRC '$effectiveWrprcId' is not available")
 
@@ -490,7 +490,7 @@ class VerifierProfiles(
     ): OpenId4VpVerifier {
         val wrpacChain = wrpCertificateStore.loadCertificateChain()
             ?: throw ClientFacingException("includeWrpac is enabled, but no WRPAC certificate chain is stored")
-        val wrpacKeyMaterial = wrpCertificateStore.loadKeyMaterial()
+        val wrpacKeyMaterial = wrpCertificateStore.keyMaterial
             ?: throw ClientFacingException("includeWrpac is enabled, but no WRPAC key material is stored")
         val wrpacClientIdScheme = buildWrpacClientIdScheme(wrpacChain, defaultClientIdScheme)
 
@@ -510,7 +510,7 @@ class VerifierProfiles(
     ): DcApiVerifier {
         val wrpacChain = wrpCertificateStore.loadCertificateChain()
             ?: throw ClientFacingException("includeWrpac is enabled, but no WRPAC certificate chain is stored")
-        val wrpacKeyMaterial = wrpCertificateStore.loadKeyMaterial()
+        val wrpacKeyMaterial = wrpCertificateStore.keyMaterial
             ?: throw ClientFacingException("includeWrpac is enabled, but no WRPAC key material is stored")
         val wrpacClientIdScheme = buildWrpacClientIdScheme(wrpacChain, defaultClientIdScheme)
 

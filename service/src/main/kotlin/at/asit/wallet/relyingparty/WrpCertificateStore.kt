@@ -31,39 +31,34 @@ class WrpCertificateStore(
     private val configuration: AppConfigurationProperties,
     private val resourceLoader: ResourceLoader,
 ) {
-    fun hasCertificateChain(): Boolean = loadKeyMaterial()?.getCertificateChain()?.isNotEmpty() == true
+    fun hasCertificateChain(): Boolean = keyMaterial.getCertificateChain()?.isNotEmpty() == true
     val hasRegistrationCertificates: Boolean =
-        configuration.wrp?.rc?.isNotEmpty() == true && configuration.wrp.rc.all { resourceExists(URI(it.jws)) }
+        configuration.wrp?.rc?.isNotEmpty() == true && configuration.wrp.rc.all { resourceExists(it.jws) }
     private val keyStorePassword = configuration.wrp?.password
-    var cachedRegistrationCertificates: Map<Int, Pair<WrprcConfiguration, String>>? = null
-    fun loadRegistrationCertificates(): Map<Int, Pair<WrprcConfiguration, String>>? =
-        cachedRegistrationCertificates ?: run {
-            configuration.wrp?.rc?.mapIndexed { index, configuration ->
-                index to Pair(configuration, loadResourceAsString(URI(configuration.jws)))
-            }?.toMap()
-        }?.also {
-            cachedRegistrationCertificates = it
-        }
+    val registrationCertificates: Map<Int, Pair<WrprcConfiguration, String>>? =
+        configuration.wrp?.rc?.mapIndexed { index, configuration ->
+            index to Pair(configuration, loadResourceAsString(configuration.jws))
+        }?.toMap()
 
-    var cachedKeyMaterial: KeyStoreMaterial? = null
-    fun loadKeyMaterial(): KeyStoreMaterial? = cachedKeyMaterial ?: catching {
+    val keyMaterial: KeyStoreMaterial = catching {
         val password = keyStorePassword?.toCharArray()
-        val keyStoreBytes = configuration.wrp?.keyStore?.let { loadResourceAsBytes(URI(it)) } ?: return@catching null
+        val keyStoreBytes = configuration.wrp?.keyStore?.let { loadResourceAsBytes(it) }
+            ?: throw Throwable("Unable to load resource at path ${configuration.wrp?.keyStore}")
         val keyStore = KeyStore.getInstance("PKCS12").apply {
             load(ByteArrayInputStream(keyStoreBytes), password)
         }
-        Napier.i("$keyStore")
+        Napier.i("Loaded key store for WRPAC from ${configuration.wrp}")
         return@catching KeyStoreMaterial(
             keyStore = keyStore,
             keyAlias = configuration.wrp.alias,
             privateKeyPassword = password,
             certAlias = configuration.wrp.alias,
         )
-    }.getOrNull()?.also {
-        cachedKeyMaterial = it
+    }.getOrElse { error ->
+        throw Throwable("Unable to initialize KeyStore!", error)
     }
 
-    fun loadCertificateChain(): CertificateChain? = loadKeyMaterial()?.getCertificateChain() ?: return null
+    fun loadCertificateChain(): CertificateChain? = keyMaterial.getCertificateChain() ?: return null
 
     fun certificatePreviews(): List<WrpCertificatePreview> {
         val previews = mutableListOf<WrpCertificatePreview>()
@@ -76,7 +71,7 @@ class WrpCertificateStore(
                 content = it.trim(),
             )
         }
-        loadRegistrationCertificates()?.forEach { index, (config, content) ->
+        registrationCertificates?.forEach { index, (config, content) ->
             previews += WrpCertificatePreview(
                 id = index,
                 label = config.label,

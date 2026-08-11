@@ -310,26 +310,4 @@ class ProcessTest {
 
     private fun MvcResult.awaitAsync(): MvcResult =
         if (request.isAsyncStarted) mockMvc.perform(asyncDispatch(this)).andReturn() else this
-
-    private fun createSanDnsKeyMaterial(dnsName: String): KeyMaterial {
-        val extensions = listOf(
-            X509CertificateExtension(
-                KnownOIDs.subjectAltName_2_5_29_17, critical = false, Asn1EncapsulatingOctetString(
-                    listOf(
-                        Asn1.Sequence {
-                            +Asn1Primitive(
-                                SubjectAltNameImplicitTags.dNSName, Asn1String.UTF8(dnsName).encodeToTlv().content
-                            )
-                        })
-                )
-            )
-        )
-        return EphemeralKeyWithSelfSignedCert(extensions = extensions)
-    }
-
-    private fun decodeJwtPart(jwt: String, index: Int): String {
-        val segment = jwt.split(".").getOrNull(index) ?: error("JWT segment $index missing")
-        val padded = segment + "=".repeat((4 - segment.length % 4) % 4)
-        return String(Base64.getUrlDecoder().decode(padded), StandardCharsets.UTF_8)
-    }
 }

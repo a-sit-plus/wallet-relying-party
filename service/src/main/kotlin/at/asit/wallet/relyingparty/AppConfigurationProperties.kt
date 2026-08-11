@@ -49,14 +49,13 @@ enum class KeyType {
     KEYSTORE,
 }
 
-@ConfigurationProperties(prefix = "wrp")
 data class WrpConfigurationProperties(
     val rc: List<WrprcConfiguration> = listOf(),
     val alias: String,
-    val keyStore: String,
+    val keyStore: URI,
     val password: String?
 )
 data class WrprcConfiguration(
     val label: String,
-    val jws: String,
+    val jws: URI,
 )
