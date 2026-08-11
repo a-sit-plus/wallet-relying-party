@@ -388,11 +388,16 @@ wallets need stable verifier trust material.
 
 ### WRPAC/WRPRC
 To use access certificates and registration certificates you need a signed certificate from the registrar.
-#### 1. Create private key and a certificate signing request:
+For that purpose we use our demo registrar at https://wrp-registrar.a-sit.plus.
+
+Therefore, a wallet relying party creates a private key and a certificate signing request.
+#### 1. Create keys:
 ```bash
 openssl req -new -newkey rsa:2048 -nodes -keyout wrp.key -out wrp.csr
 ```
-#### 2. Add the private key and the certificate (signed by the registrar) to a key store
+Next the certificate signing request gets transmitted to the registrar which in turn approves the request and issues a certificate chain.
+We can store the now trusted private key as well as the associated certificate chain in a PKCS12 key store file
+#### 2. Add to keystore
 ```bash
 openssl pkcs12 -export -out wrp.p12 -inkey wrp.key -in wrp.pem -name changeit -passout pass:changeit
 ```
@@ -416,6 +421,7 @@ app:
       - label: Adressübersicht
         jws: wrprc-adressuebersicht.jws
 ```
+#### Field explanation
 Access certificate:
 Parameters used for the key management.
 `wrp.key-store`: Path to the PKCS12 keystore file.
@@ -427,6 +433,13 @@ Registration certificate:
 List to load one or multiple registration certificates.
 `rc.jws`: Path to the registration certificate jws.
 `rc.label`: Human readable text describing the registration certificate
+
+#### Example jws file content
+Example content of a registration certificate jws file:
+```json
+eyJ4NWMiOlsiTUlJQ1NqQ0NBZStnQXdJQkFnSVZBTlRMWXAwMXQ2VWY5dVVWWU5yMmJLaXZsbC9JTUFvR0NDcUdTT[...]
+```
+
 
 ## Certificates
 
