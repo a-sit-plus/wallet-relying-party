@@ -478,7 +478,7 @@ class VerifierProfiles(
 
         return listOf(
             VerifierInfo(
-                format = "registration_cert",
+                format = OpenIdConstants.VerifierInfo.REGISTRATION_CERT_FORMAT,
                 data = wrprc,
                 credentialIds = null,
             )
