@@ -2,6 +2,7 @@
 
 Version 8.0.0 (unreleased):
  - Add WRPAC and WRPRC support
+ - Remove support for Presentation Exchange
 
 Version 7.0.0:
  - Update to VC-K 7.0.0

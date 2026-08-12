@@ -73,10 +73,7 @@ private inline fun <T> Iterable<T>.firstEnglishOrFirst(locale: (T) -> String): T
 @Serializable
 private data class LoginConfig(
     val schemeTypes: List<UiSchemeType>,
-    val presentationMechanisms: List<UiLabelValue> = listOf(
-        UiLabelValue("DCQL", "dcql_query"),
-        UiLabelValue("Presentation Exchange", "presentation_definition"),
-    ),
+    val presentationMechanisms: List<UiLabelValue> = listOf(UiLabelValue("DCQL", "dcql_query")),
     val representation: List<UiLabelValue> = listOf(
         UiLabelValue("SD-JWT", "SD_JWT"),
         UiLabelValue("ISO mDoc", "ISO_MDOC"),
