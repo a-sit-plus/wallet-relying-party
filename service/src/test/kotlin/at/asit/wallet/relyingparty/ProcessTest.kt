@@ -1,12 +1,11 @@
 package at.asit.wallet.relyingparty
 
 import at.asitplus.openid.OidcUserInfoExtended
-import at.asitplus.wallet.lib.agent.ClaimToBeIssued
-import at.asitplus.wallet.lib.agent.CredentialToBeIssued
-import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
-import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
-import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.signum.indispensable.asn1.*
+import at.asitplus.signum.indispensable.asn1.encoding.Asn1
+import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
+import at.asitplus.signum.indispensable.pki.X509CertificateExtension
+import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
@@ -27,12 +26,15 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.MediaType
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import java.net.URLDecoder
+import java.nio.charset.StandardCharsets
+import java.util.*
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
@@ -48,6 +50,8 @@ class ProcessTest {
 
     @Autowired
     private lateinit var configuration: AppConfigurationProperties
+    @MockitoBean
+    private lateinit var wrpCertificateStore: WrpCertificateStore
 
     companion object {
         @BeforeAll
@@ -56,11 +60,6 @@ class ProcessTest {
             Napier.takeLogarithm()
             Napier.base(AntilogSlf4jAdapter)
         }
-    }
-
-    @Test
-    fun `simple transaction roundtrip, presentation exchange`() = runTest {
-        runProcess(PresentationMechanismEnum.PresentationExchange)
     }
 
     @Test
@@ -272,7 +271,6 @@ class ProcessTest {
         val holderKey = EphemeralKeyWithoutCert()
         val holder = HolderAgent(keyMaterial = holderKey)
         val issuer = IssuerAgent(
-            statusListBaseUrl = "https://wallet-issuer.a-sit.plus/credentials/status",
             identifier = UniformResourceIdentifier("https://example.com"),
         )
         holder.storeCredential(

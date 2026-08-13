@@ -386,6 +386,99 @@ app:
 Do not use the in-memory key for interoperable or production-like testing where
 wallets need stable verifier trust material.
 
+### WRPAC/WRPRC
+To use access certificates and registration certificates you need a signed certificate from the registrar.
+For that purpose we use our demo registrar at https://wrp-registrar.a-sit.plus.
+
+Therefore, a wallet relying party creates a private key and a certificate signing request.
+#### 1. Create keys:
+```bash
+openssl req -new -newkey rsa:2048 -nodes -keyout wrp.key -out wrp.csr
+```
+Next the certificate signing request gets transmitted to the registrar which in turn approves the request and issues a certificate chain.
+We can store the now trusted private key as well as the associated certificate chain in a PKCS12 key store file
+#### 2. Add to keystore
+```bash
+openssl pkcs12 -export -out wrp.p12 -inkey wrp.key -in wrp.pem -name changeit -passout pass:changeit
+```
+
+#### 3. Adjust the configuration to your needs
+To add access and registration certificates to the relying party, add the `wrp` section to `app`
+```yaml
+app:
+  [...]
+  wrp:
+    alias: changeit
+    key-store: keystore.p12
+    password: changeit
+    rc:
+      - label: Entwicklungsübersicht
+        jws: wrprc-entwicklung.jws
+      - label: Altersprüfung 18+
+        jws: wrprc-alterspruefung.jws
+      - label: Identitätsprofil
+        jws: wrprc-identitaetsprofil.jws
+      - label: Adressübersicht
+        jws: wrprc-adressuebersicht.jws
+```
+#### Field explanation
+Access certificate:
+Parameters used for the key management.
+`wrp.key-store`: Path to the PKCS12 keystore file.
+`wrp.alias`: Alias of the key inside the PKCS12 keystore.
+`wrp.password`: Password to unlock the PKCS12 keystore.
+The PKCS12 keystore must contain the key as well as the certificate chain (provided through the registrar)!
+
+Registration certificate:
+List to load one or multiple registration certificates.
+`rc.jws`: Path to the registration certificate jws.
+`rc.label`: Human readable text describing the registration certificate
+
+#### Example jws file content
+Example content of a registration certificate jws file:
+```json
+eyJ4NWMiOlsiTUlJQ1NqQ0NBZStnQXdJQkFnSVZBTlRMWXAwMXQ2VWY5dVVWWU5yMmJLaXZsbC9JTUFvR0NDcUdTT[...]
+```
+```json
+{
+  "name": "Demo Services",
+  "sub_ln": "Service",
+  "sub": "WRP-5BF7F0FA3DBB",
+  "country": "AT",
+  "registry_uri": "https://wrp-registrar.a-sit.plus/wrp",
+  "srv_description": [
+    [ { "lang": "en", "value": "Identity Check" } ]
+  ],
+  "entitlements": [ "access-service" ],
+  "privacy_policy": "https://services.example.at/privacy/identity-check",
+  "info_uri": "",
+  "support_uri": "https://wallet.a-sit.plus/support",
+  "supervisory_authority": {},
+  "policy_id": [],
+  "certificate_policy": "https://wrp-registrar.a-sit.plus/certificate-policy",
+  "iat": 1783589391,
+  "status": {
+    "status_list": { "idx": 0, "uri": "https://wrp-registrar.a-sit.plus/statuslists/1" }
+  },
+  "purpose": [
+    { "lang": "en", "value": "Identity checks for digital onboarding processes" }
+  ],
+  "credentials": [
+    {
+      "format": "mso_mdoc",
+      "meta": { "doctype_value": "eu.europa.ec.eudi.pid.1", "vct_values": [] },
+      "claim": [ { "path": [ "eu.europa.ec.eudi.pid.1", "given_name" ] } ]
+    }
+  ],
+  "intended_use_id": "urn:uuid:ba626804-d6a1-5147-b3c9-b888f58e8bb5",
+  "provides_attestations": [],
+  "public_body": false,
+  "exp": 1815125391
+}
+```
+Reference: https://www.etsi.org/deliver/etsi_ts/119400_119499/119475/01.02.01_60/ts_119475v010201p.pdf
+
+
 ## Certificates
 
 For ISO 18013-5 and ISO 18013-7 related flows, the verifier certificate needs the

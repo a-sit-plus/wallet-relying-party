@@ -1,5 +1,8 @@
 # Changelog
 
+Version 8.0.0 (unreleased):
+ - Add WRPAC and WRPRC support
+
 Version 7.0.0:
  - Update to VC-K 7.0.0
  - Rework resolving credential schemes

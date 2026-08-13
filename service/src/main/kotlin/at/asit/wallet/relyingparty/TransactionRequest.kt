@@ -18,6 +18,8 @@ data class TransactionRequest(
     val presentationDefinition: PresentationDefinition? = null,
     val dcqlQuery: DCQLQuery? = null,
     val dcApiOrigin: String? = null,
+    val includeWrpac: Boolean = false,
+    val selectedWrprcId: Int? = null,
 )
 
 @Serializable

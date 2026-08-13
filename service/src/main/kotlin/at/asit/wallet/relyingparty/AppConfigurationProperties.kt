@@ -16,6 +16,8 @@ data class AppConfigurationProperties(
     val transactionTtl: Duration = Duration.ofMinutes(30),
     /** How long validated demo results remain available through the result API. */
     val resultTtl: Duration = Duration.ofMinutes(30),
+    /** Wallet relying party certificate configuration */
+    val wrp: WrpConfigurationProperties? = null,
 )
 
 fun URL.appendPath(path: String): String = UriComponentsBuilder.fromUri(toURI()).path(path).toUriString()
@@ -47,3 +49,13 @@ enum class KeyType {
     KEYSTORE,
 }
 
+data class WrpConfigurationProperties(
+    val rc: List<WrprcConfiguration> = listOf(),
+    val alias: String,
+    val keyStore: URI,
+    val password: String?
+)
+data class WrprcConfiguration(
+    val label: String,
+    val jws: URI,
+)
