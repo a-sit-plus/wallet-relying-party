@@ -64,7 +64,7 @@ class ProcessTest {
 
     @Test
     fun `simple transaction roundtrip, DCQL`() = runTest {
-        runProcess(PresentationMechanismEnum.DCQL)
+        runProcess()
     }
 
     @Test
@@ -84,7 +84,6 @@ class ProcessTest {
             content = Json.encodeToString(
                 TransactionRequest(
                     presentationMechanism = PresentationMechanismEnum.DCQL,
-                    presentationDefinition = requestBuilder.toPresentationExchangeRequest().presentationDefinition,
                     dcqlQuery = requestBuilder.toDCQLRequest()?.dcqlQuery,
                 )
             )
@@ -237,10 +236,7 @@ class ProcessTest {
         it.response.contentAsString
     }
 
-    private suspend fun runProcess(
-        presentationMechanism: PresentationMechanismEnum,
-        profileName: String? = null,
-    ) {
+    private suspend fun runProcess(profileName: String? = null) {
         val givenName = uuid4().toString()
         val requestBuilder = CredentialPresentationRequestBuilder(
             listOf(
@@ -256,8 +252,7 @@ class ProcessTest {
         val transactionResult = mockMvc.post("/transaction/create") {
             content = Json.encodeToString(
                 TransactionRequest(
-                    presentationMechanism = presentationMechanism,
-                    presentationDefinition = requestBuilder.toPresentationExchangeRequest().presentationDefinition,
+                    presentationMechanism = PresentationMechanismEnum.DCQL,
                     dcqlQuery = requestBuilder.toDCQLRequest()?.dcqlQuery,
                 )
             )
