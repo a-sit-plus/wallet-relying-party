@@ -44,7 +44,6 @@ class CredentialMetadataRegistryTest {
         CredentialCatalog.entries.forEach { entry ->
             assertTrue(body.contains("\"${entry.identifier}\"")) { "login config misses ${entry.identifier}" }
         }
-        assertTrue(body.contains("\"dcql_query\"")) { "login config misses DCQL" }
-        assertTrue(!body.contains("\"presentation_definition\"")) { "login config exposes Presentation Exchange" }
+        assertTrue(!body.contains("\"presentationMechanisms\"")) { "login config exposes a mechanism selector" }
     }
 }

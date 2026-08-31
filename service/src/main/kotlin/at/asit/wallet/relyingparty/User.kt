@@ -25,7 +25,6 @@ import at.asitplus.wallet.lib.openid.DcApiResponseResult
 import at.asitplus.wallet.lib.openid.Iso180137AnnexCWrapper
 import at.asitplus.wallet.lib.openid.VpTokenValidationResult
 import at.asitplus.wallet.lib.openid.VpTokenValidationResultDCQL
-import at.asitplus.wallet.lib.openid.VpTokenValidationResultPresentationExchange
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import kotlinx.datetime.LocalDate
 import kotlinx.datetime.LocalDateTime
@@ -100,23 +99,20 @@ fun DcApiResponseResult.convertToUser(evaluateIssuerTrust: (ApiItemCredential) -
         })
     }
 
-fun AuthnResponseResult.toUser() = User(
-    idToken = idTokenValidationResult?.getOrNull(),
-    idTokenError = idTokenValidationResult?.exceptionOrNull()?.message,
-    credentials = vpTokenValidationResult?.getOrNull()?.presentations()?.flatMap {
-        it.toApiItemCredentials()
-    },
-    presentationError = vpTokenValidationResult?.exceptionOrNull()?.message ?: when (val presentation =
-        vpTokenValidationResult?.getOrNull()) {
-        is VpTokenValidationResultDCQL -> presentation.submissionRequirementsValidationResult.exceptionOrNull()?.message
-        is VpTokenValidationResultPresentationExchange -> null
-        null -> null
-    },
-)
+fun AuthnResponseResult.toUser(): User {
+    val presentation = vpTokenValidationResult?.getOrNull()?.requireDcql()
+    return User(
+        idToken = idTokenValidationResult?.getOrNull(),
+        idTokenError = idTokenValidationResult?.exceptionOrNull()?.message,
+        credentials = presentation?.presentationResults?.flatMap { it.toApiItemCredentials() },
+        presentationError = vpTokenValidationResult?.exceptionOrNull()?.message
+            ?: presentation?.submissionRequirementsValidationResult?.exceptionOrNull()?.message,
+    )
+}
 
-fun VpTokenValidationResult.presentations() = when (this) {
-    is VpTokenValidationResultDCQL -> credentialQueryResponseValidations.flatMap { it.value }
-    is VpTokenValidationResultPresentationExchange -> inputDescriptorResponseValidations.values
+internal fun VpTokenValidationResult.requireDcql(): VpTokenValidationResultDCQL {
+    require(this is VpTokenValidationResultDCQL) { "Only DCQL presentation responses are supported" }
+    return this
 }
 
 fun KmmResult<Verifier.VerifyPresentationResult>.toApiItemCredentials() = exceptionOrNull()?.let {

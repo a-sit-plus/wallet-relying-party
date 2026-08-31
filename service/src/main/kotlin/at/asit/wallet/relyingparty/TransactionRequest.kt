@@ -1,22 +1,15 @@
 package at.asit.wallet.relyingparty
 
-import at.asitplus.dif.PresentationDefinition
 import at.asitplus.openid.dcql.DCQLClaimsPathPointer
 import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.data.AttributeIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.CredentialRepresentation
-import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
 @Serializable
 data class TransactionRequest(
-    @SerialName("presentationMechanismIdentifier")
-    @Serializable(with = WebUiPresentationMechanismEnumSelectionSerializer::class)
-    val presentationMechanism: PresentationMechanismEnum = PresentationMechanismEnum.PresentationExchange,
-    val presentationDefinition: PresentationDefinition? = null,
-    val dcqlQuery: DCQLQuery? = null,
+    val dcqlQuery: DCQLQuery,
     val dcApiOrigin: String? = null,
     val includeWrpac: Boolean = false,
     val selectedWrprcId: Int? = null,

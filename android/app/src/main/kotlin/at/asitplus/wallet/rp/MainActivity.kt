@@ -145,7 +145,6 @@ class MainActivity : ComponentActivity() {
                 "$SERVICE_URL/transaction/create",
                 method = "POST",
                 body = JSONObject()
-                    .put("presentationMechanismIdentifier", "dcql_query")
                     .put("dcqlQuery", queries.getJSONObject("dcqlQuery"))
                     .put("dcApiOrigin", androidAppOrigin())
                     .toString(),
