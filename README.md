@@ -21,7 +21,7 @@ Reference relying party for EUDI Wallet presentations, built with Spring Boot an
 This project shows how a service provider can request credentials from a wallet,
 receive a presentation response, validate the returned credentials, and expose the
 result to a simple web UI. It is intended as a practical integration example for
-OpenID4VP, ISO mDoc, SD-JWT VC, DCQL, Presentation Exchange, and the browser
+OpenID4VP, ISO mDoc, SD-JWT VC, DCQL, and the browser
 Digital Credentials API.
 
 | ⚠️ Warning                                             |
@@ -33,7 +33,7 @@ Digital Credentials API.
 - **OpenID4VP relying party flows** using VC-K's verifier APIs.
 - **Cross-device and same-device wallet handover** with QR codes and wallet deep links.
 - **Digital Credentials API support** for OpenID4VP and ISO mDoc requests.
-- **DCQL and Presentation Exchange** request generation from selected credential attributes.
+- **DCQL request generation** from selected credential attributes.
 - **Signed authorization requests** using X.509 based client identifier schemes.
 - **Response validation** for OpenID4VP, SD-JWT VC, and ISO mDoc presentations.
 - **Status list resolution** for token status checks.
@@ -47,7 +47,7 @@ libraries:
 
 - `OpenId4VpVerifier` creates OpenID4VP authorization requests and validates wallet responses.
 - `Iso180137AnnexCVerifier` creates and validates ISO 18013-7 Annex C mDoc requests for DC API flows.
-- `CredentialPresentationRequestBuilder` converts selected credentials and attributes into Presentation Exchange, DCQL, and ISO mDoc device requests.
+- `CredentialPresentationRequestBuilder` converts selected credentials and attributes into DCQL and ISO mDoc device requests.
 - `VerifierAgent`, `ValidatorSdJwt`, and `ValidatorMdoc` validate credential presentations and their cryptographic material.
 - `ClientIdScheme.CertificateHash`, `ClientIdScheme.CertificateSanDns`, and `ClientIdScheme.RedirectUri` model the different verifier identification profiles.
 - Credential schemes are no longer compiled in per credential. Instead a `RemoteCredentialMetadataRegistry` (from `vck-openid-ktor`) resolves [SD-JWT Type Metadata](https://github.com/a-sit-plus/credentials-collection) documents over HTTP at runtime; no `Initializer.initWithVCK()` calls are needed. The `eupid` and `mobiledrivinglicence` libraries are still on the classpath, but only to register the ISO mdoc value serializers for non-primitive claims (dates, portrait, driving privileges).
@@ -99,7 +99,7 @@ Browser UI
    v
 Spring Boot relying party
    |
-   | builds Presentation Exchange / DCQL / ISO mDoc request with VC-K
+   | builds DCQL / ISO mDoc request with VC-K
    v
 Wallet handover
    |
@@ -124,7 +124,7 @@ Important endpoints:
 | `GET /transaction/get/{id}` | Returns the signed or unsigned authorization request for device handover flows. |
 | `GET /transaction/get/dcapi/{id}` | Returns Digital Credentials API request options. The optional `dcApiSignedOid4vp` query parameter (boolean, default `true`) controls whether the DC API request expects signed or unsigned OpenID4VP responses. |
 | `POST /transaction/result/{id}` | Receives wallet responses and validates them with VC-K. |
-| `POST /utilities/buildCredentialQueries` | Builds Presentation Exchange, DCQL, and device request payloads from credential selections. |
+| `POST /utilities/buildCredentialQueries` | Builds a DCQL query from credential selections. |
 | `GET /api/items` | Returns validated presentation results stored by the demo. |
 | `GET /api/single/{id}` | Returns one validated presentation result. |
 | `POST /api/remove` | Removes a stored demo result. |
