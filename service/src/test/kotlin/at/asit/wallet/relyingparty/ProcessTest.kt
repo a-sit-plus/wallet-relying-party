@@ -5,6 +5,7 @@ import at.asitplus.signum.indispensable.asn1.*
 import at.asitplus.signum.indispensable.asn1.encoding.Asn1
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
+import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
@@ -12,7 +13,6 @@ import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
-import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.test.runTest
@@ -68,6 +68,45 @@ class ProcessTest {
     }
 
     @Test
+    fun `credential query builder returns DCQL only`() = runTest {
+        val result = mockMvc.post(Paths.Utilities.BuildCredentialQueriesUrl) {
+            content = Json.encodeToString(
+                listOf(
+                    TransactionRequestCredential(
+                        credentialType = AtomicAttribute2023.sdJwtType,
+                        representation = ConstantIndex.CredentialRepresentation.SD_JWT.name,
+                        attributes = listOf(AtomicAttribute2023.CLAIM_GIVEN_NAME),
+                    )
+                )
+            )
+            contentType = MediaType.APPLICATION_JSON
+        }.andReturn().awaitAsync()
+
+        assertEquals(200, result.response.status)
+        assertTrue(result.response.contentAsString.contains("\"dcqlQuery\""))
+        assertFalse(result.response.contentAsString.contains("presentationDefinition"))
+    }
+
+    @Test
+    fun `transaction creation requires DCQL`() = runTest {
+        val dcqlQuery = CredentialPresentationRequestBuilder(
+            RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+        ).toDCQLRequest()!!.dcqlQuery
+
+        val missingDcql = mockMvc.post(Paths.Transaction.CreateUrl) {
+            content = "{}"
+            contentType = MediaType.APPLICATION_JSON
+        }.andReturn().awaitAsync()
+        assertEquals(400, missingDcql.response.status)
+
+        val dcqlOnly = mockMvc.post(Paths.Transaction.CreateUrl) {
+            content = Json.encodeToString(TransactionRequest(dcqlQuery = dcqlQuery))
+            contentType = MediaType.APPLICATION_JSON
+        }.andReturn().awaitAsync()
+        assertEquals(200, dcqlOnly.response.status)
+    }
+
+    @Test
     fun `AV transaction roundtrip uses transaction scoped redirect uri`() = runTest {
         val requestBuilder = CredentialPresentationRequestBuilder(
             listOf(
@@ -83,8 +122,7 @@ class ProcessTest {
         val transactionResult = mockMvc.post("/transaction/create") {
             content = Json.encodeToString(
                 TransactionRequest(
-                    presentationMechanism = PresentationMechanismEnum.DCQL,
-                    dcqlQuery = requestBuilder.toDCQLRequest()?.dcqlQuery,
+                    dcqlQuery = requestBuilder.toDCQLRequest()!!.dcqlQuery,
                 )
             )
             contentType = MediaType.APPLICATION_JSON
@@ -98,6 +136,7 @@ class ProcessTest {
         assertTrue(decodedQrUrl.startsWith("av://?"))
         assertTrue(!decodedQrUrl.startsWith("av://localhost"))
         assertTrue(decodedQrUrl.contains("dcql_query="))
+        assertFalse(decodedQrUrl.contains("presentation_definition="))
         assertTrue(decodedQrUrl.contains("response_mode=direct_post"))
         assertTrue(decodedQrUrl.contains("nonce="))
         assertTrue(decodedQrUrl.contains("state=${avProfile.id}"))
@@ -145,6 +184,7 @@ class ProcessTest {
         val plaintext = dcApiBody(eudiw.id, "?oid4vpMode=UNSIGNED&isoMdoc=false&encrypt=false")
         assertTrue(plaintext.contains("openid4vp-v1-unsigned"), plaintext)
         assertTrue(plaintext.contains("dcql_query"), plaintext)
+        assertFalse(plaintext.contains("presentation_definition"), plaintext)
         assertTrue(plaintext.contains("expected_origins"), plaintext)
         assertTrue(plaintext.contains("\"dc_api\""), plaintext)
         assertFalse(plaintext.contains("dc_api.jwt"), plaintext)
@@ -192,8 +232,13 @@ class ProcessTest {
 
     @Test
     fun `transaction creation rejects malformed Android app origin`() = runTest {
+        val dcqlQuery = CredentialPresentationRequestBuilder(
+            RequestOptionsCredential(AtomicAttribute2023)
+        ).toDCQLRequest()!!.dcqlQuery
         val result = mockMvc.post("/transaction/create") {
-            content = Json.encodeToString(TransactionRequest(dcApiOrigin = "https://attacker.example"))
+            content = Json.encodeToString(
+                TransactionRequest(dcqlQuery = dcqlQuery, dcApiOrigin = "https://attacker.example")
+            )
             contentType = MediaType.APPLICATION_JSON
         }.andReturn().awaitAsync()
 
@@ -217,8 +262,7 @@ class ProcessTest {
         val result = mockMvc.post("/transaction/create") {
             content = Json.encodeToString(
                 TransactionRequest(
-                    presentationMechanism = PresentationMechanismEnum.DCQL,
-                    dcqlQuery = requestBuilder.toDCQLRequest()?.dcqlQuery,
+                    dcqlQuery = requestBuilder.toDCQLRequest()!!.dcqlQuery,
                     dcApiOrigin = dcApiOrigin,
                 )
             )
@@ -252,8 +296,7 @@ class ProcessTest {
         val transactionResult = mockMvc.post("/transaction/create") {
             content = Json.encodeToString(
                 TransactionRequest(
-                    presentationMechanism = PresentationMechanismEnum.DCQL,
-                    dcqlQuery = requestBuilder.toDCQLRequest()?.dcqlQuery,
+                    dcqlQuery = requestBuilder.toDCQLRequest()!!.dcqlQuery,
                 )
             )
             contentType = MediaType.APPLICATION_JSON

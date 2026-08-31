@@ -27,10 +27,7 @@ const createBasicSetup = function (config, options = {}) {
     // --- STATE ---------------------------------------------------
 
     const reqSelection = ref({
-        presentationMechanismIdentifier: "dcql_query",
         credentials: [],
-        presentationDefinition: null,
-        presentationDefinitionError: null,
         dcqlQuery: null,
         dcqlQueryError: null,
         includeWrpac: false,
@@ -100,8 +97,6 @@ const createBasicSetup = function (config, options = {}) {
         let queries = await response.json();
 
         return {
-            presentationDefinition: JSON.stringify(queries["presentationDefinition"], null, 4),
-            presentationDefinitionError: queries["presentationDefinitionError"],
             dcqlQuery: JSON.stringify(queries["dcqlQuery"], null, 4),
             dcqlQueryError: queries["dcqlQueryError"],
         }
@@ -237,7 +232,6 @@ const createBasicSetup = function (config, options = {}) {
             credentials: credentials,
             profileLabel: profile.label,
             profileName: profile.name,
-            presentationMechanismIdentifier: "dcql_query",
             includeWrpac: reqSelection.value.includeWrpac || false,
             selectedWrprcId: reqSelection.value.selectedWrprcId || null,
         }
@@ -257,12 +251,6 @@ const createBasicSetup = function (config, options = {}) {
             credential.representation = config.representation
                 .find(r => schemeType.validRepresentations.includes(r.value)) || null
         }
-        handleRequestChanged()
-    }
-
-    async function updatePresentationMechanismIdentifier(presentationMechanismIdentifier) {
-        console.log('updatePresentationMechanismIdentifier', presentationMechanismIdentifier)
-        reqSelection.value.presentationMechanismIdentifier = presentationMechanismIdentifier
         handleRequestChanged()
     }
 
@@ -308,12 +296,6 @@ const createBasicSetup = function (config, options = {}) {
         handleRequestChanged()
     }
 
-    async function updatePresentationDefinition(presentationDefinition) {
-        console.log('updatePresentationDefinition', presentationDefinition)
-        reqSelection.value.presentationDefinition = presentationDefinition
-        compareRequestChanged()
-    }
-
     async function updateDcqlQuery(dcqlQuery) {
         console.log('updateDcqlQuery', dcqlQuery)
         reqSelection.value.dcqlQuery = dcqlQuery
@@ -351,19 +333,36 @@ const createBasicSetup = function (config, options = {}) {
         return errors
     }
 
+    // The service requires a DCQL query on /transaction/create, so check it separately
+    // after the queries have been refreshed rather than in validate().
+    function validateDcqlQuery() {
+        const errors = []
+        const dcqlQuery = reqSelection.value.dcqlQuery
+
+        if (dcqlQuery == null || dcqlQuery === "") {
+            const reason = reqSelection.value.dcqlQueryError
+            errors.push(reason ? "DCQL Query not set: " + reason : "DCQL Query not set")
+            return errors
+        }
+
+        try {
+            if (JSON.parse(dcqlQuery) == null) {
+                errors.push("DCQL Query malformed")
+            }
+        } catch (err) {
+            errors.push("DCQL Query invalid: " + err.message)
+        }
+
+        return errors
+    }
+
     function createRequestJSON() {
-        var presentationDefinition = reqSelection.value.presentationDefinition === "" ? null : reqSelection.value.presentationDefinition
         var dcqlQuery = reqSelection.value.dcqlQuery === "" ? null : reqSelection.value.dcqlQuery
 
-        if(presentationDefinition != null) {
-            presentationDefinition = JSON.parse(presentationDefinition)
-        }
         if(dcqlQuery != null) {
             dcqlQuery = JSON.parse(dcqlQuery)
         }
         const request = {
-            presentationMechanismIdentifier: reqSelection.value.presentationMechanismIdentifier,
-            presentationDefinition: presentationDefinition,
             dcqlQuery: dcqlQuery,
             includeWrpac: reqSelection.value.includeWrpac,
             selectedWrprcId: reqSelection.value.selectedWrprcId,
@@ -448,6 +447,13 @@ const createBasicSetup = function (config, options = {}) {
             }
 
             await handleRequestChanged()
+
+            const dcqlErrors = validateDcqlQuery()
+            if (dcqlErrors.length > 0) {
+                reqResult.value = null
+                setError("GENERIC", "Validation Error: " + dcqlErrors.join(", "))
+                return
+            }
 
             const requestJSON = createRequestJSON()
             console.log(`generateQrCode: fetching ${requestJSON}`)
@@ -587,8 +593,6 @@ const createBasicSetup = function (config, options = {}) {
             requestedCredentialsChanged.value.oldRequestedCredentialsJSON = requestBuilderJson
             requestedCredentialsChanged.value.changed = false
 
-            reqSelection.value.presentationDefinition = newQueries["presentationDefinition"]
-            reqSelection.value.presentationDefinitionError = newQueries["presentationDefinitionError"]
             reqSelection.value.dcqlQuery = newQueries["dcqlQuery"]
             reqSelection.value.dcqlQueryError = newQueries["dcqlQueryError"]
         })()
@@ -679,12 +683,10 @@ const createBasicSetup = function (config, options = {}) {
         updateProfile,
         updateSchemeType,
         updateRepresentation,
-        updatePresentationMechanismIdentifier,
         updateIncludeWrpac,
         updateSelectedWrprc,
         addCredential,
         removeCredential,
-        updatePresentationDefinition,
         updateDcqlQuery,
         updateAttribute,
         generateQrCode,

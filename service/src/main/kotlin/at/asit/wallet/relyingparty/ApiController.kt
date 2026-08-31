@@ -6,7 +6,6 @@ import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
-import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -54,9 +53,7 @@ class ApiController(
         val profile: PreparedProfile,
         val dcApiOrigin: String,
         val request: TransactionRequest,
-        val presentationMechanism: PresentationMechanismEnum,
-        val presentationExchangeRequest: CredentialPresentationRequest.PresentationExchangeRequest? = null,
-        val dcqlRequest: CredentialPresentationRequest.DCQLRequest? = null,
+        val dcqlRequest: CredentialPresentationRequest.DCQLRequest,
     )
 
     @GetMapping(Paths.Api.ItemsUrl)
@@ -81,16 +78,11 @@ class ApiController(
     ): ResponseEntity<TransactionRequestQueries> = CredentialPresentationRequestBuilder(
         credentials.map { it.toRequestOptionsCredential() }
     ).let {
-        val presentationDefinition = catching {
-            it.toPresentationExchangeRequest().presentationDefinition
-        }
         val dcqlQuery = catching {
             it.toDCQLRequest()?.dcqlQuery
         }
         ResponseEntity.ok(
             TransactionRequestQueries(
-                presentationDefinition = presentationDefinition.getOrNull(),
-                presentationDefinitionError = presentationDefinition.exceptionOrNull()?.message,
                 dcqlQuery = dcqlQuery.getOrNull(),
                 dcqlQueryError = dcqlQuery.exceptionOrNull()?.message,
             )
@@ -117,13 +109,7 @@ class ApiController(
                 profile = preparedProfile,
                 dcApiOrigin = dcApiOrigin,
                 request = request,
-                presentationMechanism = request.presentationMechanism,
-                presentationExchangeRequest = request.presentationDefinition?.let {
-                    CredentialPresentationRequest.PresentationExchangeRequest(it)
-                },
-                dcqlRequest = request.dcqlQuery?.let {
-                    CredentialPresentationRequest.DCQLRequest(it)
-                },
+                dcqlRequest = CredentialPresentationRequest.DCQLRequest(request.dcqlQuery),
             )
             catching {
                 val qrCodeUrl = preparedProfile.buildWalletUrl(transaction, transactionContext)
@@ -256,11 +242,11 @@ class ApiController(
         val transaction = removeTransaction(id)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
                 .also { Napier.w("${Paths.Transaction.ResultUrl}/$id returns NOT_FOUND") }
-        val validationResult = catching {
+        val user = catching {
             val isDcApiResponse = catching {
                 joseCompliantSerializer.decodeFromString<DigitalCredentialInterface>(requestBody)
             }.getOrNull() != null
-            if (isDcApiResponse && transaction.profile.supportedOptions.any { it.isDcApi }) {
+            val validationResult = if (isDcApiResponse && transaction.profile.supportedOptions.any { it.isDcApi }) {
                 checkNotNull(transaction.profile.dcApiVerifier) { "Missing verifier" }
                     .validateAuthnResponse(
                         input = requestBody,
@@ -275,12 +261,12 @@ class ApiController(
             } else {
                 error("Unsupported response for transaction $id")
             }
+            validationResult.convertToUser(trustListService::evaluateCredentialIssuerTrust)
         }.getOrElse {
             Napier.w("${Paths.Transaction.ResultUrl}/$id extracted got error", it)
             statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})", it)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.clientReason(HttpStatus.BAD_REQUEST), it)
         }
-        val user = validationResult.convertToUser(trustListService::evaluateCredentialIssuerTrust)
         Napier.i("${Paths.Transaction.ResultUrl}/$id extracted result $user")
         statisticLogger.info("$id success $user (${request.getHeader(HttpHeaders.USER_AGENT)})")
         transactionStore.put(id, user)

@@ -3,13 +3,13 @@ package at.asit.wallet.relyingparty
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
-import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
+import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
-import io.kotest.matchers.nulls.shouldBeNull
 import io.kotest.matchers.nulls.shouldNotBeNull
 import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
 import org.junit.jupiter.api.Test
 
@@ -39,8 +39,6 @@ class TransactionRequestTest {
     @Test
     fun deserializationWorks() {
         val tmp = """{
-          "presentationMechanismIdentifier": "dcql_query",
-          "presentationDefinition": null,
           "dcqlQuery": {
           "credentials": [
             {
@@ -152,14 +150,15 @@ class TransactionRequestTest {
         }
         }"""
         val request = Json.decodeFromString<TransactionRequest>(tmp)
-        request.presentationDefinition.shouldBeNull()
-        request.presentationMechanism shouldBe PresentationMechanismEnum.DCQL
-        request.dcqlQuery.shouldNotBeNull()
         request.dcqlQuery.credentials shouldHaveSize 2
         request.dcqlQuery.credentialSets.shouldNotBeNull() shouldHaveSize 1
         request.dcqlQuery.credentialSets.shouldNotBeNull().first().options shouldHaveSize 2
         request.dcqlQuery.credentialSets.shouldNotBeNull().first().options.forEach {
             it shouldHaveSize 1
+        }
+
+        shouldThrow<SerializationException> {
+            Json.decodeFromString<TransactionRequest>("{}")
         }
     }
 }
