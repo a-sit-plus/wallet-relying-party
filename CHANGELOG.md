@@ -1,7 +1,7 @@
 # Changelog
 
 Version 8.0.0 (unreleased):
- - Add WRPAC and WRPRC support
+ - Add WRPAC and WRPRC support, see Readme
  - Remove support for Presentation Exchange
  - Update the Gradle conventions plugin to 20260828 and the Gradle wrapper to 9.7.1
 

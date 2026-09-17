@@ -387,10 +387,12 @@ Do not use the in-memory key for interoperable or production-like testing where
 wallets need stable verifier trust material.
 
 ### WRPAC/WRPRC
+
 To use access certificates and registration certificates you need a signed certificate from the registrar.
 For that purpose we use our demo registrar at https://wrp-registrar.a-sit.plus.
 
 Therefore, a wallet relying party creates a private key and a certificate signing request.
+
 #### 1. Create keys:
 ```bash
 openssl req -new -newkey rsa:2048 -nodes -keyout wrp.key -out wrp.csr
@@ -406,11 +408,14 @@ openssl pkcs12 -export -out wrp.p12 -inkey wrp.key -in wrp.pem -name changeit -p
 To add access and registration certificates to the relying party, add the `wrp` section to `app`
 ```yaml
 app:
-  [...]
   wrp:
-    alias: changeit
-    key-store: keystore.p12
-    password: changeit
+    keystore:
+      path: file:keystore.p12
+      type: PKCS12
+      provider: BC
+      password: changeit
+      alias: wrpac
+      alias-password: changeit
     rc:
       - label: Entwicklungsübersicht
         jws: wrprc-entwicklung.jws
@@ -422,12 +427,15 @@ app:
         jws: wrprc-adressuebersicht.jws
 ```
 #### Field explanation
-Access certificate:
-Parameters used for the key management.
-`wrp.key-store`: Path to the PKCS12 keystore file.
-`wrp.alias`: Alias of the key inside the PKCS12 keystore.
-`wrp.password`: Password to unlock the PKCS12 keystore.
-The PKCS12 keystore must contain the key as well as the certificate chain (provided through the registrar)!
+Parameters used for the keystore for the access certificate:
+- `wrp.keystore.path`: Path to the keystore file.
+- `wrp.keystore.password`: Password to unlock the keystore.
+- `wrp.keystore.type`: Type of the keystore, e.g. "PKCS12".
+- `wrp.keystore.provider`: Provider of the keystore.
+- `wrp.keystore.alias`: Alias of the key inside the keystore.
+- `wrp.keystore.alias-password`: Password to unlock the key inside the keystore.
+
+The keystore must contain the key as well as the certificate chain (provided through the registrar)!
 
 Registration certificate:
 List to load one or multiple registration certificates.
