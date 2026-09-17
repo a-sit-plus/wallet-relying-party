@@ -2,6 +2,7 @@ package at.asit.wallet.relyingparty
 
 
 import at.asit.wallet.relyingparty.ApiController.Transaction
+import at.asitplus.catching
 import at.asitplus.data.NonEmptyList
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
@@ -26,7 +27,10 @@ import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
+import at.asitplus.wallet.lib.jws.PublicJsonWebKeyLookup
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
+import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrusted
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.ClientIdScheme.*
@@ -132,8 +136,31 @@ class VerifierProfiles(
         (jwsCompact.getPayload<JsonObject>().getOrNull()?.get("iss") as? JsonPrimitive?)?.content?.let { iss ->
             val url = OAuth2Utils.insertWellKnownPath(iss, OpenIdConstants.WellKnownPaths.JwtVcIssuer)
             Napier.i("Resolving Key for $iss from $url")
-            httpClient.get(url).body<JwtVcIssuerMetadata>().jsonWebKeySet?.keys?.toSet()
+            catching {
+                httpClient.get(url).body<JwtVcIssuerMetadata>().jsonWebKeySet?.keys?.toSet()
+            }.getOrElse {
+                Napier.w("Could not resolve issuer metadata from $url", it)
+                null
+            }
         }
+
+    /**
+     * Verifies issuer signatures against the key the JWS asserts itself, and consults the issuer's
+     * `jwt-vc-issuer` metadata only when the JWS names no key at all (e.g. a bare `kid`).
+     *
+     * This is what `VerifyJwsObject(publicKeyLookup = ...)` used to do; passing the lookup there now turns it
+     * into a trust list that is the *only* accepted signer, which rejects every credential whose issuer
+     * publishes no such metadata. Trust is decided separately, see [TrustListService].
+     */
+    private val verifyIssuerJws = VerifyJwsObjectFun { jwsObject ->
+        when (jwsObject.jwsHeader.publicKey) {
+            null -> VerifyJwsObjectTrusted(
+                trustedKeys = PublicJsonWebKeyLookup { remoteKeyLookup(it) },
+            )(jwsObject)
+
+            else -> VerifyJwsObject()(jwsObject)
+        }
+    }
 
     val knownProfiles: List<VerifierProfile> = listOf(
         VerifierProfile(
@@ -353,14 +380,17 @@ class VerifierProfiles(
     )
 
     fun buildValidatorSdJwt(): ValidatorSdJwt = ValidatorSdJwt(
-        verifyJwsObject = VerifyJwsObject(
-            publicKeyLookup = { jwsCompact ->
-                remoteKeyLookup(jwsCompact)
-            }
-        ),
+        verifyJwsObject = verifyIssuerJws,
         validator = buildValidator(),
     )
 
+    /**
+     * The default [at.asitplus.wallet.lib.cbor.VerifyCoseSignature] verifies `issuerAuth` against the
+     * certificate transported in its COSE headers, the mdoc counterpart to [verifyIssuerJws]. Do not pass a
+     * `publicKeyLookup` here: it turns signature verification into a trust list
+     * ([at.asitplus.wallet.lib.cbor.VerifyCoseSignatureTrusted]), and trust is decided separately, see
+     * [TrustListService].
+     */
     fun buildValidatorMdoc(): ValidatorMdoc = ValidatorMdoc(
         validator = buildValidator(),
     )

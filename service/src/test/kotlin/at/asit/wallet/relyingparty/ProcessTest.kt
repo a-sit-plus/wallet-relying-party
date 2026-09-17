@@ -1,10 +1,9 @@
 package at.asit.wallet.relyingparty
 
+import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.asn1.*
-import at.asitplus.signum.indispensable.asn1.encoding.Asn1
-import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
-import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.wallet.lib.RequestOptionsCredential
 import at.asitplus.wallet.lib.agent.*
 import at.asitplus.wallet.lib.data.ConstantIndex
@@ -26,15 +25,14 @@ import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.MediaType
-import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import java.net.URLDecoder
-import java.nio.charset.StandardCharsets
 import java.util.*
+import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
 
@@ -50,8 +48,6 @@ class ProcessTest {
 
     @Autowired
     private lateinit var configuration: AppConfigurationProperties
-    @MockitoBean
-    private lateinit var wrpCertificateStore: WrpCertificateStore
 
     companion object {
         @BeforeAll
@@ -104,6 +100,14 @@ class ProcessTest {
             contentType = MediaType.APPLICATION_JSON
         }.andReturn().awaitAsync()
         assertEquals(200, dcqlOnly.response.status)
+    }
+
+    @Test
+    fun `mdoc transaction roundtrip, DCQL`() = runTest {
+        runProcess(
+            representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+            profileName = "MDOCd23",
+        )
     }
 
     @Test
@@ -280,46 +284,23 @@ class ProcessTest {
         it.response.contentAsString
     }
 
-    private suspend fun runProcess(profileName: String? = null) {
+    private suspend fun runProcess(
+        representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.SD_JWT,
+        profileName: String? = null,
+    ) {
         val givenName = uuid4().toString()
-        val requestBuilder = CredentialPresentationRequestBuilder(
-            listOf(
-                TransactionRequestCredential(
-                    credentialType = AtomicAttribute2023.sdJwtType,
-                    representation = ConstantIndex.CredentialRepresentation.SD_JWT.name,
-                    attributes = listOf(AtomicAttribute2023.CLAIM_GIVEN_NAME),
-                )
-            ).map {
-                it.toRequestOptionsCredential()
-            }
-        )
-        val transactionResult = mockMvc.post("/transaction/create") {
-            content = Json.encodeToString(
-                TransactionRequest(
-                    dcqlQuery = requestBuilder.toDCQLRequest()!!.dcqlQuery,
-                )
-            )
-            contentType = MediaType.APPLICATION_JSON
-            accept = MediaType.APPLICATION_JSON
-        }.andReturn().awaitAsync()
-
-        val transactionResponse =
-            Json.decodeFromString<TransactionResponse>(transactionResult.response.contentAsString)
+        val transactionResponse = createTransaction(representation)
 
         val holderKey = EphemeralKeyWithoutCert()
         val holder = HolderAgent(keyMaterial = holderKey)
         val issuer = IssuerAgent(
+            // mdoc `issuerAuth` is verified against the certificate transported in its COSE headers
+            keyMaterial = EphemeralKeyWithSelfSignedCert(),
             identifier = UniformResourceIdentifier("https://example.com"),
         )
         holder.storeCredential(
             issuer.issueCredential(
-                CredentialToBeIssued.VcSd(
-                    claims = listOf(ClaimToBeIssued(AtomicAttribute2023.CLAIM_GIVEN_NAME, givenName)),
-                    expiration = Clock.System.now() + 1.minutes,
-                    scheme = AtomicAttribute2023,
-                    subjectPublicKey = holderKey.publicKey,
-                    userInfo = OidcUserInfoExtended.fromJsonObject(buildJsonObject { put("sub", "foo") }).getOrThrow()
-                )
+                credentialToBeIssued(representation, givenName, holderKey.publicKey)
             ).getOrThrow().toStoreCredentialInput()
         )
         val wallet = OpenId4VpHolder(
@@ -344,7 +325,46 @@ class ProcessTest {
         assertNotNull(user)
         assertEquals(givenName, user!!.credentials.firstNotNullOfOrNull { it.getClaim(AtomicAttribute2023.CLAIM_GIVEN_NAME) })
         assertTrue(user.credentials.all { it.trustState != null })
+        if (representation == ConstantIndex.CredentialRepresentation.ISO_MDOC) {
+            // the mdoc really was presented as one, and its issuerAuth was verified against the certificate
+            // transported in the COSE headers
+            val credential = user.credentials.single()
+            assertEquals(AtomicAttribute2023.isoDocType, credential.credentialType)
+            assertNotNull(credential.issuerCertificate)
+        }
     }
+
+    private fun credentialToBeIssued(
+        representation: ConstantIndex.CredentialRepresentation,
+        givenName: String,
+        subjectPublicKey: CryptoPublicKey,
+    ): CredentialToBeIssued = when (representation) {
+        ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
+            issuerSignedItems = listOf(
+                IssuerSignedItem(
+                    digestId = 0U,
+                    random = Random.nextBytes(16),
+                    elementIdentifier = AtomicAttribute2023.CLAIM_GIVEN_NAME,
+                    elementValue = givenName,
+                )
+            ),
+            expiration = Clock.System.now() + 1.minutes,
+            scheme = AtomicAttribute2023,
+            subjectPublicKey = subjectPublicKey,
+            userInfo = dummyUserInfo(),
+        )
+
+        else -> CredentialToBeIssued.VcSd(
+            claims = listOf(ClaimToBeIssued(AtomicAttribute2023.CLAIM_GIVEN_NAME, givenName)),
+            expiration = Clock.System.now() + 1.minutes,
+            scheme = AtomicAttribute2023,
+            subjectPublicKey = subjectPublicKey,
+            userInfo = dummyUserInfo(),
+        )
+    }
+
+    private fun dummyUserInfo() =
+        OidcUserInfoExtended.fromJsonObject(buildJsonObject { put("sub", "foo") }).getOrThrow()
 
     private fun MvcResult.awaitAsync(): MvcResult =
         if (request.isAsyncStarted) mockMvc.perform(asyncDispatch(this)).andReturn() else this
