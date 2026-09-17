@@ -41,7 +41,7 @@ class ApiController(
     private val configuration: AppConfigurationProperties,
     private val transactionStore: TransactionStore,
     private val profiles: VerifierProfiles,
-    private val trustListService: TrustListService
+    private val trustListService: TrustListService,
 ) {
     private val statisticLogger = LoggerFactory.getLogger("statistic")
     private val transactionMutex = Mutex()
@@ -153,17 +153,13 @@ class ApiController(
 
         return catching {
             check(transaction.profile.supportedOptions.any { it.isUrlOrQrCode }) { "Profile does not device flow" }
-
-            val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
-            val verifierInfo = profiles.buildVerifierInfo(
-                selectedWrprcId = transaction.request.selectedWrprcId,
-            )
             val body = transaction.transactionGet(
-                responseUrl,
-                verifierInfo,
-                transaction.request.includeWrpac,
-            )
-                .also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
+                responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}"),
+                verifierInfo = profiles.buildVerifierInfo(
+                    selectedWrprcId = transaction.request.selectedWrprcId,
+                ),
+                includeWrpac = transaction.request.includeWrpac,
+            ).also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
             ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/" + JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST))
                 .body(body)
@@ -194,19 +190,16 @@ class ApiController(
 
         return catching {
             check(transaction.profile.supportedOptions.any { it.isDcApi }) { "Profile does not support DC API flow" }
-            val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
-            val verifierInfo = profiles.buildVerifierInfo(
-                selectedWrprcId = transaction.request.selectedWrprcId,
-            )
             val body = transaction.transactionGetDcApi(
-                responseUrl,
-                oid4vpMode,
-                isoMdoc,
-                encrypt,
-                verifierInfo,
-                transaction.request.includeWrpac,
-            )
-                .also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
+                responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}"),
+                oid4vpMode = oid4vpMode,
+                isoMdoc = isoMdoc,
+                encrypt = encrypt,
+                verifierInfo = profiles.buildVerifierInfo(
+                    selectedWrprcId = transaction.request.selectedWrprcId,
+                ),
+                includeWrpac = transaction.request.includeWrpac,
+            ).also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
             ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)

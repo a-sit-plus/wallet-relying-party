@@ -4,11 +4,13 @@ package at.asit.wallet.relyingparty
 import at.asit.wallet.relyingparty.ApiController.Transaction
 import at.asitplus.data.NonEmptyList
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
+import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ResponseMode
 import at.asitplus.openid.VerifierInfo
+import at.asitplus.openid.encodeToParameters
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -26,8 +28,8 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils
-import at.asitplus.wallet.lib.oidvci.encodeToParameters
 import at.asitplus.wallet.lib.openid.ClientIdScheme
+import at.asitplus.wallet.lib.openid.ClientIdScheme.*
 import at.asitplus.wallet.lib.openid.CreationOptions
 import at.asitplus.wallet.lib.openid.DcApiCreationOptions
 import at.asitplus.wallet.lib.openid.DcApiVerifier
@@ -92,15 +94,13 @@ data class VerifierProfile(
     val label: String,
     val description: String,
     val urlPrefix: String,
-    val clientIdSchemeType: ClientIdSchemeType? = null,
-    val deviceFlowConfig: DeviceFlowConfig? = null,
+    val clientIdSchemeType: ClientIdSchemeType,
+    val deviceFlowConfig: DeviceFlowConfig,
 ) {
     // DC API is offered for every profile; the request contents are chosen per-request in the UI.
     val supportedOptions: Set<SupportedOptions> = buildSet {
-        if (deviceFlowConfig != null) {
-            add(SupportedOptions.CROSS_DEVICE)
-            add(SupportedOptions.SAME_DEVICE)
-        }
+        add(SupportedOptions.CROSS_DEVICE)
+        add(SupportedOptions.SAME_DEVICE)
         add(SupportedOptions.DC_API)
     }
 }
@@ -175,206 +175,125 @@ class VerifierProfiles(
     )
 
     suspend fun prepare(profile: VerifierProfile, context: TransactionContext): PreparedProfile =
-        profile.doPrepare(context)
-
-    private suspend fun VerifierProfile.doPrepare(context: TransactionContext): PreparedProfile {
-        suspend fun ClientIdSchemeType.build(): ClientIdScheme = when (this) {
-            ClientIdSchemeType.X509Hash -> x509Hash()
-            ClientIdSchemeType.X509SanDns -> x509SanDnsD23()
-            ClientIdSchemeType.RedirectUri -> redirectUri(context.responseUrl)
-        }
-
-        val clientIdScheme = clientIdSchemeType?.build()
-        val oid4vpVerifier = clientIdScheme?.let { openId4VpVerifier(it) }
-        // DC API is offered for every profile, using the profile's client_id scheme.
-        val dcApiVerifier = dcApiVerifier(
-            requireNotNull(clientIdScheme) { "DC API needs a client_id scheme for profile $name" }
+        PreparedVerifierProfile(
+            profile = profile,
+            context = context,
+            clientIdScheme = profile.clientIdSchemeType.build(context),
         )
-        val deviceFlow = deviceFlowConfig
 
-        return PreparedVerifierProfile(
-            name = name,
-            label = label,
-            description = description,
-            urlPrefix = urlPrefix,
-            supportedOptions = supportedOptions,
-            clientIdScheme = clientIdScheme,
-            oid4vpVerifier = oid4vpVerifier,
-            dcApiVerifier = dcApiVerifier,
-            buildQrCodeUrlFn = { requestUrl ->
-                if (deviceFlow != null) buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme)
-                else requestUrl
-            },
-            buildWalletUrlFn = { tx, ctx ->
-                when {
-                    deviceFlow?.walletUrlStyle == WalletUrlStyle.Inline -> {
-                        require(!tx.request.includeWrpac && tx.request.selectedWrprcId == null) {
-                            "VerifierProfile($name) cannot include a WRPAC or WRPRC"
-                        }
-                        tx.transactionGet(ctx.responseUrl)
-                    }
-
-                    deviceFlow != null ->
-                        buildQrCodeUrlByReference(urlPrefix, ctx.transactionGetUrl, clientIdScheme)
-
-                    else -> ctx.transactionGetUrl
-                }
-            },
-            transactionGetFn = { txId, responseUrl, request, verifierInfo, includeWrpac ->
-                val verifier = when (includeWrpac) {
-                    true -> selectOid4vpVerifier(clientIdScheme)
-                    else -> oid4vpVerifier!!
-                }
-                when (deviceFlow!!.responseMode) {
-                    DeviceResponseMode.DirectPost ->
-                        directPost(txId, responseUrl, request, verifier, deviceFlow.verifierMetadataMode, verifierInfo)
-                    DeviceResponseMode.DirectPostJwt ->
-                        directPostJwt(txId, responseUrl, request, verifier, verifierInfo, urlPrefix)
-                }
-            },
-            transactionGetDcApiFn = { txId, responseUrl, dcqlRequest, oid4vpMode, isoMdoc, encrypt, verifierInfo, includeWrpac ->
-                val verifier = when (includeWrpac) {
-                    true -> selectOid4vpDcApiVerifier(clientIdScheme)
-                    else -> dcApiVerifier
-
-                }
-                buildDcApiResponse(
-                    txId,
-                    responseUrl,
-                    dcqlRequest,
-                    oid4vpMode,
-                    isoMdoc,
-                    encrypt,
-                    verifier,
-                    context.dcApiOrigin,
-                    verifierInfo,
-                )
-            },
+    private suspend fun ClientIdSchemeType.build(context: TransactionContext): ClientIdScheme = when (this) {
+        ClientIdSchemeType.X509Hash -> CertificateHash(
+            chain = listOf(verifierKeyMaterial.getCertificate()!!),
+            redirectUri = configuration.publicContext.toString(),
         )
-    }
 
-    private class PreparedVerifierProfile(
-        override val name: String,
-        override val label: String,
-        override val description: String,
-        override val urlPrefix: String,
-        override val supportedOptions: Set<SupportedOptions>,
-        override val clientIdScheme: ClientIdScheme?,
-        override val oid4vpVerifier: OpenId4VpVerifier?,
-        override val dcApiVerifier: DcApiVerifier?,
-        private val buildQrCodeUrlFn: (String) -> String,
-        private val buildWalletUrlFn: suspend (Transaction, TransactionContext) -> String,
-        private val transactionGetFn: suspend (String, String, CredentialPresentationRequest.DCQLRequest, NonEmptyList<VerifierInfo>?, Boolean) -> String,
-        private val transactionGetDcApiFn: suspend (String, String, CredentialPresentationRequest.DCQLRequest, Oid4vpDcApiMode, Boolean, Boolean, NonEmptyList<VerifierInfo>?, Boolean) -> String,
-    ) : PreparedProfile {
-        override fun buildQrCodeUrl(requestUrl: String) = buildQrCodeUrlFn(requestUrl)
-        override suspend fun buildWalletUrl(transaction: Transaction, context: TransactionContext) =
-            buildWalletUrlFn(transaction, context)
-
-        override suspend fun transactionGet(
-            transactionId: String,
-            responseUrl: String,
-            presentationRequest: CredentialPresentationRequest.DCQLRequest,
-        ) = transactionGetFn(transactionId, responseUrl, presentationRequest, null, false)
-
-        override suspend fun transactionGet(
-            transactionId: String,
-            responseUrl: String,
-            presentationRequest: CredentialPresentationRequest.DCQLRequest,
-            verifierInfo: NonEmptyList<VerifierInfo>?,
-            includeWrpac: Boolean,
-        ) = transactionGetFn(transactionId, responseUrl, presentationRequest, verifierInfo, includeWrpac)
-
-        override suspend fun transactionGetDcApi(
-            transactionId: String,
-            responseUrl: String,
-            dcqlRequest: CredentialPresentationRequest.DCQLRequest,
-            oid4vpMode: Oid4vpDcApiMode,
-            isoMdoc: Boolean,
-            encrypt: Boolean,
-        ) = transactionGetDcApiFn(transactionId, responseUrl, dcqlRequest, oid4vpMode, isoMdoc, encrypt, null, false)
-
-        override suspend fun transactionGetDcApi(
-            transactionId: String,
-            responseUrl: String,
-            dcqlRequest: CredentialPresentationRequest.DCQLRequest,
-            oid4vpMode: Oid4vpDcApiMode,
-            isoMdoc: Boolean,
-            encrypt: Boolean,
-            verifierInfo: NonEmptyList<VerifierInfo>?,
-            includeWrpac: Boolean,
-        ) = transactionGetDcApiFn(transactionId, responseUrl, dcqlRequest, oid4vpMode, isoMdoc, encrypt, verifierInfo, includeWrpac)
-    }
-
-    private suspend fun buildDcApiResponse(
-        transactionId: String,
-        responseUrl: String,
-        dcqlRequest: CredentialPresentationRequest.DCQLRequest,
-        oid4vpMode: Oid4vpDcApiMode,
-        isoMdoc: Boolean,
-        encrypt: Boolean,
-        dcApiVerifier: DcApiVerifier?,
-        expectedOrigin: String,
-        verifierInfo: NonEmptyList<VerifierInfo>?,
-    ): String = joseCompliantSerializer.encodeToString(
-        dcApiVerifier!!.createAuthnRequest(
-            requestOptions = OpenId4VpRequestOptions(
-                state = transactionId,
-                // Encryption toggle governs the OpenID4VP part; ISO Annex C is HPKE-encrypted internally regardless.
-                responseMode = if (encrypt) ResponseMode.DcApiJwt else ResponseMode.DcApi,
-                responseUrl = responseUrl,
-                presentationRequest = dcqlRequest,
-                expectedOrigins = listOf(expectedOrigin),
-                verifierInfo = verifierInfo,
-            ),
-            creationOptions = listOfNotNull(
-                when (oid4vpMode) {
-                    Oid4vpDcApiMode.SIGNED -> DcApiCreationOptions.OpenId4VpSigned
-                    Oid4vpDcApiMode.UNSIGNED -> DcApiCreationOptions.OpenId4VpUnsigned
-                    Oid4vpDcApiMode.NONE -> null
-                },
-                if (isoMdoc) DcApiCreationOptions.Iso180137AnnexC else null,
-            ).toTypedArray()
-        ).getOrThrow()
-    )
-
-    private suspend fun openId4VpVerifier(clientIdScheme: ClientIdScheme) = OpenId4VpVerifier(
-        keyMaterial = verifierKeyMaterial,
-        clientIdScheme = clientIdScheme,
-        verifier = VerifierAgent(
-            identifier = clientIdScheme.clientId,
-            validatorSdJwt = potentialValidatorSdJwt(),
-            validatorMdoc = potentialValidatorMdoc()
-        ),
-    )
-
-    private fun dcApiVerifier(clientIdScheme: ClientIdScheme) = DcApiVerifier(
-        keyMaterial = verifierKeyMaterial,
-        clientIdScheme = clientIdScheme,
-        verifier = VerifierAgent(
-            identifier = clientIdScheme.clientId,
-            validatorSdJwt = potentialValidatorSdJwt(),
-            validatorMdoc = potentialValidatorMdoc()
-        )
-    )
-
-    private suspend fun x509SanDnsD23(redirectUri: String = configuration.publicContext.toString()): ClientIdScheme.CertificateSanDns =
-        ClientIdScheme.CertificateSanDns(
+        ClientIdSchemeType.X509SanDns -> CertificateSanDns(
             chain = listOf(verifierKeyMaterial.getCertificate()!!),
             clientIdDnsName = configuration.publicContext.host,
-            redirectUri = redirectUri
+            redirectUri = configuration.publicContext.toString()
         )
 
-    private suspend fun x509Hash(redirectUri: String = configuration.publicContext.toString()) =
-        ClientIdScheme.CertificateHash(
-            chain = listOf(verifierKeyMaterial.getCertificate()!!),
-            redirectUri = redirectUri,
+        ClientIdSchemeType.RedirectUri -> RedirectUri(
+            redirectUri = context.responseUrl,
+        )
+    }
+
+    private inner class PreparedVerifierProfile(
+        private val profile: VerifierProfile,
+        private val context: TransactionContext,
+        override val clientIdScheme: ClientIdScheme,
+    ) : PreparedProfile {
+        override val name: String get() = profile.name
+        override val label: String get() = profile.label
+        override val description: String get() = profile.description
+        override val urlPrefix: String get() = profile.urlPrefix
+        override val supportedOptions: Set<SupportedOptions> get() = profile.supportedOptions
+
+        override val oid4vpVerifier = OpenId4VpVerifier(
+            keyMaterial = verifierKeyMaterial,
+            clientIdScheme = clientIdScheme,
+            verifier = buildVerifierAgent(clientIdScheme),
         )
 
-    private suspend fun redirectUri(redirectUri: String = configuration.publicContext.toString()) =
-        ClientIdScheme.RedirectUri(
-            redirectUri = redirectUri,
+        override val dcApiVerifier = DcApiVerifier(
+            keyMaterial = verifierKeyMaterial,
+            clientIdScheme = clientIdScheme,
+            verifier = buildVerifierAgent(clientIdScheme),
         )
+
+        override fun buildQrCodeUrl(requestUrl: String): String =
+            buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme)
+
+        override suspend fun buildWalletUrl(
+            transaction: Transaction,
+            context: TransactionContext,
+        ): String = when (profile.deviceFlowConfig.walletUrlStyle) {
+            WalletUrlStyle.Inline -> {
+                require(!transaction.request.includeWrpac && transaction.request.selectedWrprcId == null) {
+                    "VerifierProfile($name) cannot include a WRPAC or WRPRC"
+                }
+                transaction.transactionGet(context.responseUrl)
+            }
+
+            WalletUrlStyle.ByReference -> buildQrCodeUrl(context.transactionGetUrl)
+        }
+
+        override suspend fun transactionGet(
+            transactionId: String,
+            responseUrl: String,
+            dcqlRequest: CredentialPresentationRequest.DCQLRequest,
+            verifierInfo: NonEmptyList<VerifierInfo>?,
+            includeWrpac: Boolean,
+        ): String = selectVerifier(includeWrpac, clientIdScheme, oid4vpVerifier).let { verifier ->
+            when (profile.deviceFlowConfig.responseMode) {
+                DeviceResponseMode.DirectPost -> verifier.directPost(
+                    transactionId = transactionId,
+                    responseUrl = responseUrl,
+                    dcqlRequest = dcqlRequest,
+                    verifierMetadataMode = profile.deviceFlowConfig.verifierMetadataMode,
+                    verifierInfo = verifierInfo
+                )
+
+                DeviceResponseMode.DirectPostJwt -> verifier.directPostJwt(transactionId, responseUrl, dcqlRequest, verifierInfo, urlPrefix)
+            }
+        }
+
+        override suspend fun transactionGetDcApi(
+            transactionId: String,
+            responseUrl: String,
+            dcqlRequest: CredentialPresentationRequest.DCQLRequest,
+            oid4vpMode: Oid4vpDcApiMode,
+            isoMdoc: Boolean,
+            encrypt: Boolean,
+            verifierInfo: NonEmptyList<VerifierInfo>?,
+            includeWrpac: Boolean
+        ): String = when (includeWrpac) {
+            true -> selectOid4vpDcApiVerifier(clientIdScheme)
+            else -> dcApiVerifier
+        }.let { verifier ->
+            joseCompliantSerializer.encodeToString<CredentialRequestOptions>(
+                verifier.createAuthnRequest(
+                    requestOptions = OpenId4VpRequestOptions(
+                        state = transactionId,
+                        // Encryption toggle governs the OpenID4VP part; ISO Annex C is HPKE-encrypted internally regardless.
+                        responseMode = if (encrypt) ResponseMode.DcApiJwt else ResponseMode.DcApi,
+                        responseUrl = responseUrl,
+                        presentationRequest = dcqlRequest,
+                        expectedOrigins = listOf(element = context.dcApiOrigin),
+                        verifierInfo = verifierInfo,
+                    ),
+                    creationOptions = listOfNotNull(
+                        when (oid4vpMode) {
+                            Oid4vpDcApiMode.SIGNED -> DcApiCreationOptions.OpenId4VpSigned
+                            Oid4vpDcApiMode.UNSIGNED -> DcApiCreationOptions.OpenId4VpUnsigned
+                            Oid4vpDcApiMode.NONE -> null
+                        },
+                        if (isoMdoc) DcApiCreationOptions.Iso180137AnnexC else null,
+                    ).toTypedArray<DcApiCreationOptions>()
+                ).getOrThrow()
+            )
+        }
+    }
 
     private fun buildQrCodeUrlByReference(
         urlPrefix: String,
@@ -388,33 +307,31 @@ class VerifierProfiles(
             .forEach { queryParam(it.key, it.value) }
     }.toUriString()
 
-    private suspend fun directPost(
+    private suspend fun OpenId4VpVerifier.directPost(
         transactionId: String,
         responseUrl: String,
-        presentationRequest: CredentialPresentationRequest.DCQLRequest,
-        verifier: OpenId4VpVerifier,
+        dcqlRequest: CredentialPresentationRequest.DCQLRequest,
         verifierMetadataMode: VerifierMetadataMode = VerifierMetadataMode.OMIT_IF_OUT_OF_BAND,
         verifierInfo: NonEmptyList<VerifierInfo>? = null,
-    ): String = verifier.createAuthnRequest(
+    ): String = createAuthnRequest(
         requestOptions = OpenId4VpRequestOptions(
             state = transactionId,
             responseMode = ResponseMode.DirectPost,
             responseUrl = responseUrl,
-            presentationRequest = presentationRequest,
+            presentationRequest = dcqlRequest,
             verifierMetadataMode = verifierMetadataMode,
             verifierInfo = verifierInfo,
         ),
         creationOptions = CreationOptions.Query("av://"),
     ).getOrThrow().url.normalizeAvWalletUrl()
 
-    private suspend fun directPostJwt(
+    private suspend fun OpenId4VpVerifier.directPostJwt(
         transactionId: String,
         responseUrl: String,
         presentationRequest: CredentialPresentationRequest.DCQLRequest,
-        verifier: OpenId4VpVerifier,
         verifierInfo: NonEmptyList<VerifierInfo>? = null,
         urlPrefix: String,
-    ): String = verifier.createAuthnRequest(
+    ): String = createAuthnRequest(
         requestOptions = OpenId4VpRequestOptions(
             state = transactionId,
             responseMode = ResponseMode.DirectPostJwt,
@@ -429,26 +346,26 @@ class VerifierProfiles(
         // wallet URL was already delivered as QR code, only the request object content is needed here
     ).getOrThrow().loadRequestObject!!.invoke(null).getOrThrow()
 
-    fun validator(): Validator = Validator(
+    fun buildValidator(): Validator = Validator(
         tokenStatusResolver = TokenStatusResolverImpl(
-            resolveStatusListToken = resolveStatusListToken(),
+            resolveStatusListToken = buildStatusListTokenResolver(),
         ),
     )
 
-    fun potentialValidatorSdJwt(): ValidatorSdJwt = ValidatorSdJwt(
+    fun buildValidatorSdJwt(): ValidatorSdJwt = ValidatorSdJwt(
         verifyJwsObject = VerifyJwsObject(
             publicKeyLookup = { jwsCompact ->
                 remoteKeyLookup(jwsCompact)
             }
         ),
-        validator = validator(),
+        validator = buildValidator(),
     )
 
-    fun potentialValidatorMdoc(): ValidatorMdoc = ValidatorMdoc(
-        validator = validator(),
+    fun buildValidatorMdoc(): ValidatorMdoc = ValidatorMdoc(
+        validator = buildValidator(),
     )
 
-    private fun resolveStatusListToken() = StatusListTokenResolver {
+    private fun buildStatusListTokenResolver() = StatusListTokenResolver {
         Napier.i("Resolving token status for from $it")
         run {
             httpClient.get(it.string) {
@@ -484,24 +401,23 @@ class VerifierProfiles(
         ).toNonEmptyList()
     }
 
-    private fun selectOid4vpVerifier(
-        defaultClientIdScheme: ClientIdScheme,
-    ): OpenId4VpVerifier {
-        val wrpacChain = wrpCertificateStore.loadCertificateChain()
-            ?: throw ClientFacingException("includeWrpac is enabled, but no WRPAC certificate chain is stored")
+    private fun selectVerifier(
+        includeWrpac: Boolean,
+        clientIdScheme: ClientIdScheme,
+        oid4vpVerifier: OpenId4VpVerifier?,
+    ): OpenId4VpVerifier = if (includeWrpac) {
         val wrpacKeyMaterial = wrpCertificateStore.keyMaterial
             ?: throw ClientFacingException("includeWrpac is enabled, but no WRPAC key material is stored")
-        val wrpacClientIdScheme = buildWrpacClientIdScheme(wrpacChain, defaultClientIdScheme)
-
-        return OpenId4VpVerifier(
+        val wrpacChain = wrpCertificateStore.loadCertificateChain()
+            ?: throw ClientFacingException("includeWrpac is enabled, but no WRPAC certificate chain is stored")
+        val wrpacClientIdScheme = buildWrpacClientIdScheme(wrpacChain, clientIdScheme)
+        OpenId4VpVerifier(
             keyMaterial = wrpacKeyMaterial,
             clientIdScheme = wrpacClientIdScheme,
-            verifier = VerifierAgent(
-                identifier = wrpacClientIdScheme.clientId,
-                validatorSdJwt = potentialValidatorSdJwt(),
-                validatorMdoc = potentialValidatorMdoc()
-            ),
+            verifier = buildVerifierAgent(wrpacClientIdScheme),
         )
+    } else {
+        oid4vpVerifier!!
     }
 
     private fun selectOid4vpDcApiVerifier(
@@ -516,18 +432,20 @@ class VerifierProfiles(
         return DcApiVerifier(
             keyMaterial = wrpacKeyMaterial,
             clientIdScheme = wrpacClientIdScheme,
-            verifier = VerifierAgent(
-                identifier = wrpacClientIdScheme.clientId,
-                validatorSdJwt = potentialValidatorSdJwt(),
-                validatorMdoc = potentialValidatorMdoc()
-            ),
+            verifier = buildVerifierAgent(wrpacClientIdScheme),
         )
     }
+
+    private fun buildVerifierAgent(clientIdScheme: ClientIdScheme): VerifierAgent = VerifierAgent(
+        identifier = clientIdScheme.clientId,
+        validatorSdJwt = buildValidatorSdJwt(),
+        validatorMdoc = buildValidatorMdoc()
+    )
 
     private fun buildWrpacClientIdScheme(
         wrpacChain: at.asitplus.signum.indispensable.pki.CertificateChain,
         defaultClientIdScheme: ClientIdScheme,
-    ): ClientIdScheme.CertificateHash {
+    ): CertificateHash {
         val redirectUri = when (defaultClientIdScheme.canBuildCertificateHash()) {
             true -> defaultClientIdScheme.redirectUri
             else -> throw ClientFacingException(
@@ -536,7 +454,7 @@ class VerifierProfiles(
             )
         }
         return runCatching {
-            ClientIdScheme.CertificateHash(
+            CertificateHash(
                 chain = wrpacChain,
                 redirectUri = redirectUri,
             )
@@ -553,7 +471,7 @@ suspend fun Transaction.transactionGet(
 ): String = profile.transactionGet(
     transactionId = id,
     responseUrl = responseUrl,
-    presentationRequest = dcqlRequest,
+    dcqlRequest = dcqlRequest,
     verifierInfo = verifierInfo,
     includeWrpac = includeWrpac,
 )
@@ -605,16 +523,10 @@ interface PreparedProfile {
     suspend fun transactionGet(
         transactionId: String,
         responseUrl: String,
-        presentationRequest: CredentialPresentationRequest.DCQLRequest,
-    ): String = throw IllegalStateException("Not supported for this profile")
-
-    suspend fun transactionGet(
-        transactionId: String,
-        responseUrl: String,
-        presentationRequest: CredentialPresentationRequest.DCQLRequest,
-        verifierInfo: NonEmptyList<VerifierInfo>?,
-        includeWrpac: Boolean,
-    ): String = throw IllegalStateException("Not supported for this profile")
+        dcqlRequest: CredentialPresentationRequest.DCQLRequest,
+        verifierInfo: NonEmptyList<VerifierInfo>? = null,
+        includeWrpac: Boolean = false,
+    ): String
 
     suspend fun transactionGetDcApi(
         transactionId: String,
@@ -623,22 +535,13 @@ interface PreparedProfile {
         oid4vpMode: Oid4vpDcApiMode,
         isoMdoc: Boolean,
         encrypt: Boolean,
-    ): String = throw IllegalStateException("DC API not supported for this profile")
-
-    suspend fun transactionGetDcApi(
-        transactionId: String,
-        responseUrl: String,
-        dcqlRequest: CredentialPresentationRequest.DCQLRequest,
-        oid4vpMode: Oid4vpDcApiMode,
-        isoMdoc: Boolean,
-        encrypt: Boolean,
-        verifierInfo: NonEmptyList<VerifierInfo>?,
-        includeWrpac: Boolean,
-    ): String = throw IllegalStateException("DC API not supported for this profile")
+        verifierInfo: NonEmptyList<VerifierInfo>? = null,
+        includeWrpac: Boolean = false,
+    ): String
 }
 
-fun ClientIdScheme.canBuildCertificateHash() = when(this) {
-    is ClientIdScheme.CertificateSanDns -> true
-    is ClientIdScheme.CertificateHash -> true
+fun ClientIdScheme.canBuildCertificateHash() = when (this) {
+    is CertificateSanDns -> true
+    is CertificateHash -> true
     else -> false
 }
