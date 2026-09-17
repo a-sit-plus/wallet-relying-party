@@ -437,16 +437,18 @@ Parameters used for the keystore for the access certificate:
 
 The keystore must contain the key as well as the certificate chain (provided through the registrar)!
 
-Registration certificate:
-List to load one or multiple registration certificates.
-`rc.jws`: Path to the registration certificate jws.
-`rc.label`: Human readable text describing the registration certificate
+Registration certificates: List to load one or multiple registration certificates:
+- `rc.label`: Human readable text describing the registration certificate
+- `rc.path`: Path to the registration certificate as JWS, see below
 
 #### Example jws file content
-Example content of a registration certificate jws file:
+
+Example content of a registration certificate JWS file:
+
 ```json
 eyJ4NWMiOlsiTUlJQ1NqQ0NBZStnQXdJQkFnSVZBTlRMWXAwMXQ2VWY5dVVWWU5yMmJLaXZsbC9JTUFvR0NDcUdTT[...]
 ```
+
 ```json
 {
   "name": "Demo Services",

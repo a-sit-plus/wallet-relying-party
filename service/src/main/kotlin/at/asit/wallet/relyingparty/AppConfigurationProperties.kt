@@ -56,5 +56,5 @@ data class WrpConfigurationProperties(
 
 data class WrprcConfiguration(
     val label: String,
-    val jws: URI,
+    val path: URI,
 )

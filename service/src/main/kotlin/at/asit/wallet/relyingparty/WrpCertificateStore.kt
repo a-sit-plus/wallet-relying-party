@@ -30,11 +30,11 @@ class WrpCertificateStore(
     fun hasCertificateChain(): Boolean = keyMaterial?.getCertificateChain()?.isNotEmpty() == true
 
     val hasRegistrationCertificates: Boolean =
-        configuration.wrp?.rc?.isNotEmpty() == true && configuration.wrp.rc.all { resourceExists(it.jws) }
+        configuration.wrp?.rc?.isNotEmpty() == true && configuration.wrp.rc.all { resourceExists(it.path) }
 
     val registrationCertificates: Map<Int, Pair<WrprcConfiguration, String>>? =
         configuration.wrp?.rc?.mapIndexed { index, configuration ->
-            index to Pair(configuration, loadResourceAsString(configuration.jws))
+            index to Pair(configuration, loadResourceAsString(configuration.path))
         }?.toMap()
 
     val keyMaterial: KeyStoreMaterial? = configuration.wrp?.keystore?.let { config ->
