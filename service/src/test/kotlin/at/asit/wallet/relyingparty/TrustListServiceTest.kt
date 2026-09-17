@@ -31,7 +31,7 @@ class TrustListServiceTest {
 
         assertEquals(listOf(TrustState.TRUSTED, TrustState.UNKNOWN), credentials.map { it.trustState })
 
-        val apiItem = User(null, null, credentials, null).apiItem
+        val apiItem = User(credentials, null).apiItem
         val serialized = Json.encodeToJsonElement(ApiItem.serializer(), apiItem).jsonObject
         assertFalse("trustState" in serialized)
         assertEquals(

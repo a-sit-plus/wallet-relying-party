@@ -1,7 +1,6 @@
 package at.asit.wallet.relyingparty
 
 import at.asitplus.KmmResult
-import at.asitplus.openid.IdToken
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.signum.indispensable.pki.leaf
@@ -42,8 +41,6 @@ import java.time.Instant
 
 @Serializable
 data class User(
-    val idToken: IdToken?,
-    val idTokenError: String?,
     val credentials: Collection<ApiItemCredential>?,
     val presentationError: String?,
 ) : AuthenticatedPrincipal {
@@ -51,8 +48,6 @@ data class User(
     val apiItem = ApiItem(
         imageDataBase64 = credentials?.firstNotNullOfOrNull { it.getPortrait() }?.toImage(),
         timestamp = Instant.now().toEpochMilli(),
-        idToken = idToken,
-        idTokenError = idTokenError,
         presentationError = presentationError,
         credentials = credentials ?: listOf(),
     )
@@ -102,8 +97,6 @@ fun DcApiResponseResult.convertToUser(evaluateIssuerTrust: (ApiItemCredential) -
 fun AuthnResponseResult.toUser(): User {
     val presentation = vpTokenValidationResult?.getOrNull()?.requireDcql()
     return User(
-        idToken = idTokenValidationResult?.getOrNull(),
-        idTokenError = idTokenValidationResult?.exceptionOrNull()?.message,
         credentials = presentation?.presentationResults?.flatMap { it.toApiItemCredentials() },
         presentationError = vpTokenValidationResult?.exceptionOrNull()?.message
             ?: presentation?.submissionRequirementsValidationResult?.exceptionOrNull()?.message,
@@ -128,8 +121,6 @@ fun Verifier.VerifyPresentationResult.Success.toApiItemCredentials(): Collection
     vp.toApiItemCredentials()
 
 fun Iso180137AnnexCWrapper.toUser() = User(
-    idToken = null,
-    idTokenError = null,
     presentationError = null,
     credentials = documents.map {
         it.toApiItemCredential(it.document.issuerSigned.extractIssuerCertificate())

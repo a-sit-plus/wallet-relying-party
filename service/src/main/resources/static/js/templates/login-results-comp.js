@@ -57,13 +57,7 @@ export default {
 
       <div v-for="item in loginList" :key="item.timestamp" class="col-md-6">
           <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm bg-white">
-              <div v-if="item.idTokenError != null">
-                  <p><span class="row alert alert-danger" role="alert">
-                    <h4>Id token error</h4>
-                    <span> {{ item.idTokenError }}</span>
-                  </span></p>
-              </div>
-              <div v-if="item.presentationError != null">
+           <div v-if="item.presentationError != null">
                 <p><span class="row alert alert-danger" role="alert">
                   <h4>Presentation error</h4>
                   <span> {{ item.presentationError }}</span>
