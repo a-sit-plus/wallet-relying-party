@@ -5,7 +5,7 @@ import org.springframework.web.bind.annotation.RequestMapping
 import org.springframework.web.bind.annotation.RestController
 
 data class WrpCertificateAvailability(
-    val hasCertificateChain: Boolean,
+    val hasAccessCertificates: Boolean,
     val hasRegistrationCertificates: Boolean,
 )
 
@@ -15,7 +15,7 @@ class WrpCertificatesController(
     private val store: WrpCertificateStore,
 ) {
     @GetMapping("/certs/access")
-    fun accessCertificatePreview(): WrpPreviewData? =
+    fun accessCertificatePreview(): List<AccessCertificatePreviewData> =
         store.accessCertificatePreview()
 
     @GetMapping("/certs/registrations")
@@ -25,7 +25,7 @@ class WrpCertificatesController(
     @GetMapping("/availability")
     fun certificateAvailability(): WrpCertificateAvailability =
         WrpCertificateAvailability(
-            hasCertificateChain = store.hasCertificateChain(),
+            hasAccessCertificates = store.hasAccessCertificates,
             hasRegistrationCertificates = store.hasRegistrationCertificates,
         )
 }

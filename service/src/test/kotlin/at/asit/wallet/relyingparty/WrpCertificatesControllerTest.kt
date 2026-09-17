@@ -22,17 +22,40 @@ class WrpCertificatesControllerTest {
     @Test
     fun `access certificate preview exposes configured certificate artifact`() {
         Mockito.`when`(store.accessCertificatePreview()).thenReturn(
-            WrpPreviewData(
-                label = "wrpac",
-                content = "chain",
+            listOf(
+                AccessCertificatePreviewData(
+                    id = 0,
+                    label = "Demo Service",
+                    content = "chain",
+                ),
+                AccessCertificatePreviewData(
+                    id = 1,
+                    label = "Age Verification",
+                    content = "other-chain",
+                ),
             )
         )
 
         mockMvc.get("/api/wrp/certs/access")
             .andExpect {
                 status { isOk() }
-                jsonPath("$.label") { value("wrpac") }
-                jsonPath("$.content") { value("chain") }
+                jsonPath("$[0].id") { value(0) }
+                jsonPath("$[0].label") { value("Demo Service") }
+                jsonPath("$[0].content") { value("chain") }
+                jsonPath("$[1].id") { value(1) }
+                jsonPath("$[1].label") { value("Age Verification") }
+                jsonPath("$[1].content") { value("other-chain") }
+            }
+    }
+
+    @Test
+    fun `access certificate preview is an empty array when none are configured`() {
+        Mockito.`when`(store.accessCertificatePreview()).thenReturn(emptyList())
+
+        mockMvc.get("/api/wrp/certs/access")
+            .andExpect {
+                status { isOk() }
+                content { json("[]") }
             }
     }
 
@@ -59,13 +82,13 @@ class WrpCertificatesControllerTest {
 
     @Test
     fun `availability exposes current certificate flags`() {
-        Mockito.`when`(store.hasCertificateChain()).thenReturn(true)
+        Mockito.`when`(store.hasAccessCertificates).thenReturn(true)
         Mockito.`when`(store.hasRegistrationCertificates).thenReturn(true)
 
         mockMvc.get("/api/wrp/availability")
             .andExpect {
                 status { isOk() }
-                jsonPath("$.hasCertificateChain") { value(true) }
+                jsonPath("$.hasAccessCertificates") { value(true) }
                 jsonPath("$.hasRegistrationCertificates") { value(true) }
             }
     }

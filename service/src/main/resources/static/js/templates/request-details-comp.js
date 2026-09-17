@@ -4,7 +4,7 @@ export default {
     props: {
         request: {},
         config: {},
-        wrpacPreview: { default: null },
+        wrpacPreviews: { default: null },
         wrprcPreviews: { default: null },
         showCertificates: { default: false },
         singleColumn: { default: false },
@@ -19,7 +19,7 @@ export default {
     emits: [
         'updateSchemeType',
         'updateRepresentation',
-        'updateIncludeWrpac',
+        'updateSelectedWrpac',
         'updateSelectedWrprc',
         'updateAttribute',
         'addCredential',
@@ -27,8 +27,8 @@ export default {
         'generateQrCode'
     ],
     computed: {
-        hasWrpacPreview() {
-            return !!(this.wrpacPreview && typeof this.wrpacPreview === 'object' && this.wrpacPreview.content)
+        wrpacPreviewList() {
+            return Array.isArray(this.wrpacPreviews) ? this.wrpacPreviews.filter(item => item && typeof item === 'object') : []
         },
         wrprcPreviewList() {
             return Array.isArray(this.wrprcPreviews) ? this.wrprcPreviews.filter(item => item && typeof item === 'object') : []
@@ -129,18 +129,36 @@ export default {
         <fieldset class="row mb-3">
             <legend class="col-form-label col-sm-4 pt-0 fw-bold">Add Certificates to Request</legend>
             <div class="col-sm-8">
-                <div class="form-check">
-                    <input class="form-check-input"
-                           id="includeWrpac"
-                           type="checkbox"
-                           name="includeWrpac"
-                           :disabled="!hasWrpacPreview"
-                           :checked="request.includeWrpac"
-                           @click="$emit('updateIncludeWrpac', !request.includeWrpac)">
-                    <label class="form-check-label" for="includeWrpac">
+                <div class="mb-3">
+                    <label class="form-label mb-1">
                         WRP Access Certificate (WRPAC) - <span class="text-primary">x509_hash / x5c</span>
-                        <span v-if="!hasWrpacPreview" class="text-muted">(not available)</span>
                     </label>
+                    <div v-if="wrpacPreviewList.length === 0" class="text-muted small">(not available)</div>
+                    <div v-else class="form-check">
+                        <input class="form-check-input"
+                               id="selectedWrpacId-none"
+                               type="radio"
+                               name="selectedWrpacId"
+                               :checked="request.selectedWrpacId === null"
+                               @click="$emit('updateSelectedWrpac', null)">
+                        <label class="form-check-label" for="selectedWrpacId-none">
+                            Do not include WRPAC
+                        </label>
+                    </div>
+                    <div v-for="item in wrpacPreviewList"
+                         :key="item.id"
+                         class="form-check">
+                        <input class="form-check-input"
+                               type="radio"
+                               :id="certificateInputId('selectedWrpacId', item.id)"
+                               name="selectedWrpacId"
+                               :value="item.id"
+                               :checked="request.selectedWrpacId === item.id"
+                               @click="$emit('updateSelectedWrpac', item.id)">
+                        <label class="form-check-label" :for="certificateInputId('selectedWrpacId', item.id)">
+                            {{ item.label }}
+                        </label>
+                    </div>
                 </div>
                 <div class="mt-3">
                     <label class="form-label mb-1">
@@ -152,7 +170,7 @@ export default {
                                id="selectedWrprcId-none"
                                type="radio"
                                name="selectedWrprcId"
-                               :checked="!request.selectedWrprcId"
+                               :checked="request.selectedWrprcId === null"
                                @click="$emit('updateSelectedWrprc', null)">
                         <label class="form-check-label" for="selectedWrprcId-none">
                             Do not include WRPRC

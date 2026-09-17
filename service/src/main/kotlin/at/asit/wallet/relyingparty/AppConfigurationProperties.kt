@@ -50,7 +50,12 @@ enum class KeyType {
 }
 
 data class WrpConfigurationProperties(
+    val ac: List<WrpacConfiguration> = listOf(),
     val rc: List<WrprcConfiguration> = listOf(),
+)
+
+data class WrpacConfiguration(
+    val label: String,
     val keystore: KeyStoreConfiguration,
 )
 

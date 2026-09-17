@@ -158,7 +158,7 @@ class ApiController(
                 verifierInfo = profiles.buildVerifierInfo(
                     selectedWrprcId = transaction.request.selectedWrprcId,
                 ),
-                includeWrpac = transaction.request.includeWrpac,
+                selectedWrpacId = transaction.request.selectedWrpacId,
             ).also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
             ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/" + JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST))
@@ -198,7 +198,7 @@ class ApiController(
                 verifierInfo = profiles.buildVerifierInfo(
                     selectedWrprcId = transaction.request.selectedWrprcId,
                 ),
-                includeWrpac = transaction.request.includeWrpac,
+                selectedWrpacId = transaction.request.selectedWrpacId,
             ).also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
             ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)

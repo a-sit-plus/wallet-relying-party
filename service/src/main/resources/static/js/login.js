@@ -18,10 +18,6 @@ function normalizeCertificateItems(items) {
     return items.filter(item => item && typeof item === "object")
 }
 
-function normalizeAccessCertificate(item) {
-    return item && typeof item === "object" && item.content ? item : null
-}
-
 const createBasicSetup = function (config, options = {}) {
 
     // --- STATE ---------------------------------------------------
@@ -30,7 +26,7 @@ const createBasicSetup = function (config, options = {}) {
         credentials: [],
         dcqlQuery: null,
         dcqlQueryError: null,
-        includeWrpac: false,
+        selectedWrpacId: null,
         selectedWrprcId: null,
     })
     const selections = ref({})
@@ -59,7 +55,7 @@ const createBasicSetup = function (config, options = {}) {
         oldRequestedCredentialsJSON: null,
         changed: false,
     })
-    const wrpacPreview = ref(null)
+    const wrpacPreviews = ref([])
     const wrprcPreviews = ref([])
 
     let resultInterval = null
@@ -232,8 +228,8 @@ const createBasicSetup = function (config, options = {}) {
             credentials: credentials,
             profileLabel: profile.label,
             profileName: profile.name,
-            includeWrpac: reqSelection.value.includeWrpac || false,
-            selectedWrprcId: reqSelection.value.selectedWrprcId || null,
+            selectedWrpacId: reqSelection.value.selectedWrpacId ?? null,
+            selectedWrprcId: reqSelection.value.selectedWrprcId ?? null,
         }
         console.log('updateProfile result', reqSelection.value)
 
@@ -254,10 +250,10 @@ const createBasicSetup = function (config, options = {}) {
         handleRequestChanged()
     }
 
-    async function updateIncludeWrpac(includeWrpac) {
-        console.log('updateIncludeWrpac', includeWrpac)
-        reqSelection.value.includeWrpac = includeWrpac
-        handleRequestChanged()
+    async function updateSelectedWrpac(selectedWrpacId) {
+        console.log('updateSelectedWrpac', selectedWrpacId)
+        reqSelection.value.selectedWrpacId = selectedWrpacId
+        compareRequestChanged()
     }
 
     async function updateSelectedWrprc(selectedWrprcId) {
@@ -364,7 +360,7 @@ const createBasicSetup = function (config, options = {}) {
         }
         const request = {
             dcqlQuery: dcqlQuery,
-            includeWrpac: reqSelection.value.includeWrpac,
+            selectedWrpacId: reqSelection.value.selectedWrpacId,
             selectedWrprcId: reqSelection.value.selectedWrprcId,
         }
 
@@ -645,24 +641,24 @@ const createBasicSetup = function (config, options = {}) {
                 fetch("api/wrp/certs/access", {cache: "no-store"}),
                 fetch("api/wrp/certs/registrations", {cache: "no-store"}),
             ])
-            wrpacPreview.value = accessResp.ok ? normalizeAccessCertificate(await accessResp.json()) : null
+            wrpacPreviews.value = accessResp.ok ? normalizeCertificateItems(await accessResp.json()) : []
             wrprcPreviews.value = registrationsResp.ok ? normalizeCertificateItems(await registrationsResp.json()) : []
             syncCertificateSelection()
         } catch (err) {
             console.log('loadCertificatePreviews error: ', err)
-            wrpacPreview.value = null
+            wrpacPreviews.value = []
             wrprcPreviews.value = []
             syncCertificateSelection()
         }
     }
 
     function syncCertificateSelection() {
-        const hasWrpac = !!wrpacPreview.value
+        const wrpacIds = new Set(wrpacPreviews.value.map(item => item.id))
         const wrprcIds = new Set(wrprcPreviews.value.map(item => item.id))
-        if (!hasWrpac && reqSelection.value.includeWrpac) {
-            reqSelection.value.includeWrpac = false
+        if (reqSelection.value.selectedWrpacId !== null && !wrpacIds.has(reqSelection.value.selectedWrpacId)) {
+            reqSelection.value.selectedWrpacId = null
         }
-        if (reqSelection.value.selectedWrprcId && !wrprcIds.has(reqSelection.value.selectedWrprcId)) {
+        if (reqSelection.value.selectedWrprcId !== null && !wrprcIds.has(reqSelection.value.selectedWrprcId)) {
             reqSelection.value.selectedWrprcId = null
         }
     }
@@ -670,7 +666,7 @@ const createBasicSetup = function (config, options = {}) {
 
     return {
         config,
-        wrpacPreview,
+        wrpacPreviews,
         wrprcPreviews,
         reqSelection,
         isMdocRequest,
@@ -683,7 +679,7 @@ const createBasicSetup = function (config, options = {}) {
         updateProfile,
         updateSchemeType,
         updateRepresentation,
-        updateIncludeWrpac,
+        updateSelectedWrpac,
         updateSelectedWrprc,
         addCredential,
         removeCredential,

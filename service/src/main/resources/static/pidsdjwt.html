@@ -108,10 +108,10 @@
     <accordion-comp title="Request Details">
         <request-details-comp
                 :request="reqSelection" :config="config" :active-profile="activeProfile" :active-profile-name="activeProfileName"
-                :wrpac-preview="wrpacPreview" :wrprc-previews="wrprcPreviews"
+                :wrpac-previews="wrpacPreviews" :wrprc-previews="wrprcPreviews"
                 @update-scheme-type="updateSchemeType"
                 @update-representation="updateRepresentation"
-                @update-include-wrpac="updateIncludeWrpac"
+                @update-selected-wrpac="updateSelectedWrpac"
                 @update-selected-wrprc="updateSelectedWrprc"
                 @update-attribute="updateAttribute"
                 @add-credential="addCredential"

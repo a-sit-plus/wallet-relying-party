@@ -1,8 +1,15 @@
 package at.asit.wallet.relyingparty
 
+import at.asitplus.data.NonEmptyList.Companion.nonEmptyListOf
 import at.asitplus.openid.dcql.DCQLClaimsPathPointerSegment
+import at.asitplus.openid.dcql.DCQLCredentialQueryIdentifier
+import at.asitplus.openid.dcql.DCQLCredentialQueryList
+import at.asitplus.openid.dcql.DCQLJwtVcCredentialMetadataAndValidityConstraints
+import at.asitplus.openid.dcql.DCQLJwtVcCredentialQuery
+import at.asitplus.openid.dcql.DCQLQuery
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
+import com.benasher44.uuid.uuid4
 import io.kotest.assertions.throwables.shouldThrow
 import io.kotest.matchers.collections.shouldContain
 import io.kotest.matchers.collections.shouldHaveSize
@@ -11,9 +18,33 @@ import io.kotest.matchers.shouldBe
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.SerializationException
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import org.junit.jupiter.api.Test
 
 class TransactionRequestTest {
+    @Test
+    fun `WRPAC selection zero is serialized and deserialized`() {
+        val encoded = Json.encodeToJsonElement(
+            TransactionRequest.serializer(),
+            TransactionRequest(
+                selectedWrpacId = 0, dcqlQuery = DCQLQuery(
+                    credentials = DCQLCredentialQueryList(
+                        DCQLJwtVcCredentialQuery(
+                            id = DCQLCredentialQueryIdentifier(uuid4().toString()),
+                            meta = DCQLJwtVcCredentialMetadataAndValidityConstraints(
+                                typeValues = nonEmptyListOf(listOfNotNull(ConstantIndex.AtomicAttribute2023.vcType))
+                            ),
+                        )
+                    )
+                )
+            ),
+        ).jsonObject
+
+        encoded.getValue("selectedWrpacId").jsonPrimitive.content shouldBe "0"
+        Json.decodeFromJsonElement(TransactionRequest.serializer(), encoded).selectedWrpacId shouldBe 0
+    }
+
     @Test
     fun `address subfields are requested as nested claim paths`() = runTest {
         // No metadata registry is registered here, so resolution falls back to a generic SD-JWT scheme; this test only

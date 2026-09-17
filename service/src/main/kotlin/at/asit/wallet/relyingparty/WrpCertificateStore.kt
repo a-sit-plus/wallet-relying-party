@@ -2,6 +2,7 @@ package at.asit.wallet.relyingparty
 
 import at.asitplus.signum.indispensable.asn1.encodeToPEM
 import at.asitplus.signum.indispensable.pki.CertificateChain
+import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.KeyStoreMaterial
 import io.github.aakira.napier.Napier
 import org.springframework.core.io.ResourceLoader
@@ -22,12 +23,25 @@ data class RegistrationCertificatePreviewData(
     val id: Int,
 ) : WrpPreviewData(label, content)
 
+data class AccessCertificatePreviewData(
+    override val label: String,
+    override val content: String,
+    val id: Int,
+) : WrpPreviewData(label, content)
+
+data class AccessCertificateData(
+    val label: String,
+    val keyMaterial: KeyMaterial,
+    val certificateChain: CertificateChain?,
+)
+
 @Component
 class WrpCertificateStore(
     private val configuration: AppConfigurationProperties,
     private val resourceLoader: ResourceLoader,
 ) {
-    fun hasCertificateChain(): Boolean = keyMaterial?.getCertificateChain()?.isNotEmpty() == true
+    val hasAccessCertificates: Boolean
+        get() = accessCertificates.values.any { it.certificateChain?.isNotEmpty() == true }
 
     val hasRegistrationCertificates: Boolean =
         configuration.wrp?.rc?.isNotEmpty() == true && configuration.wrp.rc.all { resourceExists(it.path) }
@@ -37,27 +51,38 @@ class WrpCertificateStore(
             index to Pair(configuration, loadResourceAsString(configuration.path))
         }?.toMap()
 
-    val keyMaterial: KeyStoreMaterial? = configuration.wrp?.keystore?.let { config ->
-        KeyStoreMaterial(
-            keyStore = KeyStore.getInstance(config.type, config.provider ?: "BC").apply {
-                load(config.path.toURL().openStream(), config.password?.toCharArray() ?: charArrayOf())
-            },
-            keyAlias = config.alias,
-            privateKeyPassword = config.aliasPassword?.toCharArray() ?: charArrayOf(),
-            certAlias = config.alias,
-        )
-    }?.also {
-        Napier.i("Loaded key store for WRPAC from ${configuration.wrp.keystore.path}")
-    }
-
-    fun loadCertificateChain(): CertificateChain? = keyMaterial?.getCertificateChain() ?: return null
-
-    fun accessCertificatePreview(): WrpPreviewData? =
-        loadCertificateChain()?.mapNotNull { it.encodeToPEM().getOrNull() }?.joinToString(separator = "\n")?.let {
-            WrpPreviewData(
-                label = CERT_ID_WRPAC,
-                content = it.trim(),
+    val accessCertificates: Map<Int, AccessCertificateData> = configuration.wrp?.ac.orEmpty()
+        .mapIndexed { index, wrpacConfiguration ->
+            val config = wrpacConfiguration.keystore
+            val keyMaterial = KeyStoreMaterial(
+                keyStore = KeyStore.getInstance(config.type, config.provider ?: "BC").apply {
+                    load(config.path.toURL().openStream(), config.password?.toCharArray() ?: charArrayOf())
+                },
+                keyAlias = config.alias,
+                privateKeyPassword = config.aliasPassword?.toCharArray() ?: charArrayOf(),
+                certAlias = config.alias,
             )
+            Napier.i("Loaded key store for WRPAC '${wrpacConfiguration.label}' from ${config.path}")
+            index to AccessCertificateData(
+                label = wrpacConfiguration.label,
+                keyMaterial = keyMaterial,
+                certificateChain = keyMaterial.getCertificateChain(),
+            )
+        }
+        .toMap()
+
+    fun accessCertificatePreview(): List<AccessCertificatePreviewData> =
+        accessCertificates.mapNotNull { (index, data) ->
+            data.certificateChain
+                ?.mapNotNull { it.encodeToPEM().getOrNull() }
+                ?.joinToString(separator = "\n")
+                ?.let {
+                    AccessCertificatePreviewData(
+                        id = index,
+                        label = data.label,
+                        content = it.trim(),
+                    )
+                }
         }
 
     fun registrationCertificatePreview(): List<RegistrationCertificatePreviewData>? =
@@ -74,9 +99,5 @@ class WrpCertificateStore(
         StreamUtils.copyToString(resourceLoader.getResource(uri.toString()).inputStream, StandardCharsets.UTF_8)
 
     private fun resourceExists(uri: URI): Boolean = resourceLoader.getResource(uri.toString()).exists()
-
-    companion object {
-        const val CERT_ID_WRPAC = "wrpac"
-    }
 
 }

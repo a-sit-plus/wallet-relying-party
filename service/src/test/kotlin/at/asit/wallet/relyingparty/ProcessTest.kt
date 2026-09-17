@@ -1,11 +1,21 @@
 package at.asit.wallet.relyingparty
 
+import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
+import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.CryptoPublicKey
-import at.asitplus.signum.indispensable.asn1.*
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.pki.leaf
 import at.asitplus.wallet.lib.RequestOptionsCredential
-import at.asitplus.wallet.lib.agent.*
+import at.asitplus.wallet.lib.agent.ClaimToBeIssued
+import at.asitplus.wallet.lib.agent.CredentialToBeIssued
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
+import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
+import at.asitplus.wallet.lib.agent.HolderAgent
+import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
@@ -21,17 +31,18 @@ import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.*
 import org.junit.jupiter.api.BeforeAll
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito
 import org.springframework.beans.factory.annotation.Autowired
 import org.springframework.boot.test.context.SpringBootTest
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc
 import org.springframework.http.MediaType
+import org.springframework.test.context.bean.override.mockito.MockitoBean
 import org.springframework.test.web.servlet.MockMvc
 import org.springframework.test.web.servlet.MvcResult
 import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import java.net.URLDecoder
-import java.util.*
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
@@ -48,6 +59,9 @@ class ProcessTest {
 
     @Autowired
     private lateinit var configuration: AppConfigurationProperties
+
+    @MockitoBean
+    private lateinit var wrpCertificateStore: WrpCertificateStore
 
     companion object {
         @BeforeAll
@@ -86,7 +100,7 @@ class ProcessTest {
     @Test
     fun `transaction creation requires DCQL`() = runTest {
         val dcqlQuery = CredentialPresentationRequestBuilder(
-            RequestOptionsCredential(ConstantIndex.AtomicAttribute2023)
+            RequestOptionsCredential(AtomicAttribute2023)
         ).toDCQLRequest()!!.dcqlQuery
 
         val missingDcql = mockMvc.post(Paths.Transaction.CreateUrl) {
@@ -175,7 +189,8 @@ class ProcessTest {
     @Test
     fun `DC API signed OpenID4VP works for a formerly device-only profile`() = runTest {
         // EUDIW previously had no DC API at all; universal DC API must now produce a signed request for it.
-        val eudiw = createTransaction(ConstantIndex.CredentialRepresentation.SD_JWT).profiles.first { it.name == "EUDIW" }
+        val eudiw =
+            createTransaction(ConstantIndex.CredentialRepresentation.SD_JWT).profiles.first { it.name == "EUDIW" }
         val body = dcApiBody(eudiw.id, "?oid4vpMode=SIGNED&isoMdoc=false&encrypt=true")
         assertTrue(body.contains("openid4vp-v1-signed"), body)
     }
@@ -183,7 +198,8 @@ class ProcessTest {
     @Test
     fun `DC API unsigned OpenID4VP is plaintext when encrypt is off, encrypted when on`() = runTest {
         // Unsigned exercises the x509_san_dns scheme (EUDIW), where the request body is inspectable (not a JWS).
-        val eudiw = createTransaction(ConstantIndex.CredentialRepresentation.SD_JWT).profiles.first { it.name == "EUDIW" }
+        val eudiw =
+            createTransaction(ConstantIndex.CredentialRepresentation.SD_JWT).profiles.first { it.name == "EUDIW" }
 
         val plaintext = dcApiBody(eudiw.id, "?oid4vpMode=UNSIGNED&isoMdoc=false&encrypt=false")
         assertTrue(plaintext.contains("openid4vp-v1-unsigned"), plaintext)
@@ -199,7 +215,8 @@ class ProcessTest {
 
     @Test
     fun `DC API offers ISO Annex C, with and without OpenID4VP encryption`() = runTest {
-        val mdoc = createTransaction(ConstantIndex.CredentialRepresentation.ISO_MDOC).profiles.first { it.name == "MDOCd23" }
+        val mdoc =
+            createTransaction(ConstantIndex.CredentialRepresentation.ISO_MDOC).profiles.first { it.name == "MDOCd23" }
 
         // ISO alone, encrypt off (R1: ISO is HPKE-encrypted internally regardless of responseMode).
         assertTrue(dcApiBody(mdoc.id, "?oid4vpMode=NONE&isoMdoc=true&encrypt=false").contains("org-iso-mdoc"))
@@ -249,9 +266,52 @@ class ProcessTest {
         assertEquals(400, result.response.status)
     }
 
+    @Test
+    fun `selected WRPAC determines device and DC API request signing certificate`() = runTest {
+        val first = EphemeralKeyWithSelfSignedCert()
+        val second = EphemeralKeyWithSelfSignedCert()
+        Mockito.`when`(wrpCertificateStore.accessCertificates).thenReturn(
+            mapOf(
+                0 to AccessCertificateData("First", first, listOf(first.getCertificate()!!)),
+                1 to AccessCertificateData("Second", second, listOf(second.getCertificate()!!)),
+            )
+        )
+        val profile = createTransaction(
+            ConstantIndex.CredentialRepresentation.SD_JWT,
+            selectedWrpacId = 1,
+        ).profiles.first { it.name == "HAIPd05" }
+        val body = mockMvc.get("/transaction/get/${profile.id}") {
+            accept = MediaType.ALL
+        }.andReturn().awaitAsync().response.contentAsString
+
+        assertEquals(second.getCertificate(), JwsCompact(body).jwsHeader.certificateChain?.leaf)
+
+        val dcApiRequest = joseCompliantSerializer.decodeFromString<CredentialRequestOptions>(
+            dcApiBody(profile.id, "?oid4vpMode=SIGNED&isoMdoc=false&encrypt=true")
+        ).digital.requests.single() as DigitalCredentialGetRequest.OpenId4VpSigned
+        assertEquals(second.getCertificate(), dcApiRequest.data.request.jwsHeader.certificateChain?.leaf)
+    }
+
+    @Test
+    fun `unknown WRPAC selection is rejected when the request is resolved`() = runTest {
+        Mockito.`when`(wrpCertificateStore.accessCertificates).thenReturn(emptyMap())
+
+        val profile = createTransaction(
+            ConstantIndex.CredentialRepresentation.SD_JWT,
+            selectedWrpacId = 42,
+        ).profiles.first { it.name == "HAIPd05" }
+
+        assertEquals(
+            400,
+            mockMvc.get("/transaction/get/${profile.id}") { accept = MediaType.ALL }
+                .andReturn().awaitAsync().response.status,
+        )
+    }
+
     private suspend fun createTransaction(
         representation: ConstantIndex.CredentialRepresentation,
         dcApiOrigin: String? = null,
+        selectedWrpacId: Int? = null,
     ): TransactionResponse {
         val requestBuilder = CredentialPresentationRequestBuilder(
             listOf(
@@ -268,6 +328,7 @@ class ProcessTest {
                 TransactionRequest(
                     dcqlQuery = requestBuilder.toDCQLRequest()!!.dcqlQuery,
                     dcApiOrigin = dcApiOrigin,
+                    selectedWrpacId = selectedWrpacId,
                 )
             )
             contentType = MediaType.APPLICATION_JSON
@@ -323,7 +384,9 @@ class ProcessTest {
 
         val user = transactionStore.getApiItem(selectedProfile.id)
         assertNotNull(user)
-        assertEquals(givenName, user!!.credentials.firstNotNullOfOrNull { it.getClaim(AtomicAttribute2023.CLAIM_GIVEN_NAME) })
+        assertEquals(
+            givenName,
+            user!!.credentials.firstNotNullOfOrNull { it.getClaim(AtomicAttribute2023.CLAIM_GIVEN_NAME) })
         assertTrue(user.credentials.all { it.trustState != null })
         if (representation == ConstantIndex.CredentialRepresentation.ISO_MDOC) {
             // the mdoc really was presented as one, and its issuerAuth was verified against the certificate

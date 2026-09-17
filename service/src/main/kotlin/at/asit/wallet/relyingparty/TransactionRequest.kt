@@ -11,7 +11,7 @@ import kotlinx.serialization.Serializable
 data class TransactionRequest(
     val dcqlQuery: DCQLQuery,
     val dcApiOrigin: String? = null,
-    val includeWrpac: Boolean = false,
+    val selectedWrpacId: Int? = null,
     val selectedWrprcId: Int? = null,
 )
 

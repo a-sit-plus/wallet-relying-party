@@ -409,33 +409,36 @@ To add access and registration certificates to the relying party, add the `wrp` 
 ```yaml
 app:
   wrp:
-    keystore:
-      path: file:keystore.p12
-      type: PKCS12
-      provider: BC
-      password: changeit
-      alias: wrpac
-      alias-password: changeit
+    ac:
+      - label: Demo Service
+        keystore:
+          path: file:keystore.p12
+          type: PKCS12
+          provider: BC
+          password: changeit
+          alias: wrpac
+          alias-password: changeit
     rc:
       - label: Entwicklungsübersicht
-        jws: wrprc-entwicklung.jws
+        path: file:wrprc-entwicklung.jws
       - label: Altersprüfung 18+
-        jws: wrprc-alterspruefung.jws
+        path: file:wrprc-alterspruefung.jws
       - label: Identitätsprofil
-        jws: wrprc-identitaetsprofil.jws
+        path: file:wrprc-identitaetsprofil.jws
       - label: Adressübersicht
-        jws: wrprc-adressuebersicht.jws
+        path: file:wrprc-adressuebersicht.jws
 ```
 #### Field explanation
-Parameters used for the keystore for the access certificate:
-- `wrp.keystore.path`: Path to the keystore file.
-- `wrp.keystore.password`: Password to unlock the keystore.
-- `wrp.keystore.type`: Type of the keystore, e.g. "PKCS12".
-- `wrp.keystore.provider`: Provider of the keystore.
-- `wrp.keystore.alias`: Alias of the key inside the keystore.
-- `wrp.keystore.alias-password`: Password to unlock the key inside the keystore.
+Access certificates: List to load one or multiple access certificates:
+- `ac.label`: Human-readable text shown when selecting the access certificate.
+- `ac.keystore.path`: Path to the keystore file.
+- `ac.keystore.password`: Password to unlock the keystore.
+- `ac.keystore.type`: Type of the keystore, e.g. "PKCS12".
+- `ac.keystore.provider`: Provider of the keystore.
+- `ac.keystore.alias`: Alias of the key inside the keystore.
+- `ac.keystore.alias-password`: Password to unlock the key inside the keystore.
 
-The keystore must contain the key as well as the certificate chain (provided through the registrar)!
+Each keystore must contain the key as well as the certificate chain provided through the registrar.
 
 Registration certificates: List to load one or multiple registration certificates:
 - `rc.label`: Human readable text describing the registration certificate

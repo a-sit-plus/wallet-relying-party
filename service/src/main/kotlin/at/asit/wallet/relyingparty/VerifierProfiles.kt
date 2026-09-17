@@ -256,7 +256,7 @@ class VerifierProfiles(
             context: TransactionContext,
         ): String = when (profile.deviceFlowConfig.walletUrlStyle) {
             WalletUrlStyle.Inline -> {
-                require(!transaction.request.includeWrpac && transaction.request.selectedWrprcId == null) {
+                require(transaction.request.selectedWrpacId == null && transaction.request.selectedWrprcId == null) {
                     "VerifierProfile($name) cannot include a WRPAC or WRPRC"
                 }
                 transaction.transactionGet(context.responseUrl)
@@ -270,8 +270,8 @@ class VerifierProfiles(
             responseUrl: String,
             dcqlRequest: CredentialPresentationRequest.DCQLRequest,
             verifierInfo: NonEmptyList<VerifierInfo>?,
-            includeWrpac: Boolean,
-        ): String = selectVerifier(includeWrpac, clientIdScheme, oid4vpVerifier).let { verifier ->
+            selectedWrpacId: Int?,
+        ): String = selectVerifier(selectedWrpacId, clientIdScheme, oid4vpVerifier).let { verifier ->
             when (profile.deviceFlowConfig.responseMode) {
                 DeviceResponseMode.DirectPost -> verifier.directPost(
                     transactionId = transactionId,
@@ -293,10 +293,10 @@ class VerifierProfiles(
             isoMdoc: Boolean,
             encrypt: Boolean,
             verifierInfo: NonEmptyList<VerifierInfo>?,
-            includeWrpac: Boolean
-        ): String = when (includeWrpac) {
-            true -> selectOid4vpDcApiVerifier(clientIdScheme)
-            else -> dcApiVerifier
+            selectedWrpacId: Int?,
+        ): String = when (selectedWrpacId) {
+            null -> dcApiVerifier
+            else -> selectOid4vpDcApiVerifier(selectedWrpacId, clientIdScheme)
         }.let { verifier ->
             joseCompliantSerializer.encodeToString<CredentialRequestOptions>(
                 verifier.createAuthnRequest(
@@ -432,17 +432,17 @@ class VerifierProfiles(
     }
 
     private fun selectVerifier(
-        includeWrpac: Boolean,
+        selectedWrpacId: Int?,
         clientIdScheme: ClientIdScheme,
         oid4vpVerifier: OpenId4VpVerifier?,
-    ): OpenId4VpVerifier = if (includeWrpac) {
-        val wrpacKeyMaterial = wrpCertificateStore.keyMaterial
-            ?: throw ClientFacingException("includeWrpac is enabled, but no WRPAC key material is stored")
-        val wrpacChain = wrpCertificateStore.loadCertificateChain()
-            ?: throw ClientFacingException("includeWrpac is enabled, but no WRPAC certificate chain is stored")
+    ): OpenId4VpVerifier = if (selectedWrpacId != null) {
+        val wrpac = wrpCertificateStore.accessCertificates[selectedWrpacId]
+            ?: throw ClientFacingException("Selected WRPAC '$selectedWrpacId' is not available")
+        val wrpacChain = wrpac.certificateChain
+            ?: throw ClientFacingException("Selected WRPAC '$selectedWrpacId' has no certificate chain")
         val wrpacClientIdScheme = buildWrpacClientIdScheme(wrpacChain, clientIdScheme)
         OpenId4VpVerifier(
-            keyMaterial = wrpacKeyMaterial,
+            keyMaterial = wrpac.keyMaterial,
             clientIdScheme = wrpacClientIdScheme,
             verifier = buildVerifierAgent(wrpacClientIdScheme),
         )
@@ -451,16 +451,17 @@ class VerifierProfiles(
     }
 
     private fun selectOid4vpDcApiVerifier(
+        selectedWrpacId: Int,
         defaultClientIdScheme: ClientIdScheme,
     ): DcApiVerifier {
-        val wrpacChain = wrpCertificateStore.loadCertificateChain()
-            ?: throw ClientFacingException("includeWrpac is enabled, but no WRPAC certificate chain is stored")
-        val wrpacKeyMaterial = wrpCertificateStore.keyMaterial
-            ?: throw ClientFacingException("includeWrpac is enabled, but no WRPAC key material is stored")
+        val wrpac = wrpCertificateStore.accessCertificates[selectedWrpacId]
+            ?: throw ClientFacingException("Selected WRPAC '$selectedWrpacId' is not available")
+        val wrpacChain = wrpac.certificateChain
+            ?: throw ClientFacingException("Selected WRPAC '$selectedWrpacId' has no certificate chain")
         val wrpacClientIdScheme = buildWrpacClientIdScheme(wrpacChain, defaultClientIdScheme)
 
         return DcApiVerifier(
-            keyMaterial = wrpacKeyMaterial,
+            keyMaterial = wrpac.keyMaterial,
             clientIdScheme = wrpacClientIdScheme,
             verifier = buildVerifierAgent(wrpacClientIdScheme),
         )
@@ -479,7 +480,7 @@ class VerifierProfiles(
         val redirectUri = when (defaultClientIdScheme.canBuildCertificateHash()) {
             true -> defaultClientIdScheme.redirectUri
             else -> throw ClientFacingException(
-                "includeWrpac is enabled, but profile client_id scheme ${defaultClientIdScheme::class.simpleName} " +
+                "A WRPAC is selected, but profile client_id scheme ${defaultClientIdScheme::class.simpleName} " +
                         "cannot be replaced with x509_hash"
             )
         }
@@ -497,15 +498,14 @@ class VerifierProfiles(
 suspend fun Transaction.transactionGet(
     responseUrl: String,
     verifierInfo: NonEmptyList<VerifierInfo>? = null,
-    includeWrpac: Boolean = false,
+    selectedWrpacId: Int? = null,
 ): String = profile.transactionGet(
     transactionId = id,
     responseUrl = responseUrl,
     dcqlRequest = dcqlRequest,
     verifierInfo = verifierInfo,
-    includeWrpac = includeWrpac,
+    selectedWrpacId = selectedWrpacId,
 )
-
 
 suspend fun Transaction.transactionGetDcApi(
     responseUrl: String,
@@ -513,7 +513,7 @@ suspend fun Transaction.transactionGetDcApi(
     isoMdoc: Boolean,
     encrypt: Boolean,
     verifierInfo: NonEmptyList<VerifierInfo>? = null,
-    includeWrpac: Boolean,
+    selectedWrpacId: Int?,
 ): String = profile.transactionGetDcApi(
     transactionId = id,
     responseUrl = responseUrl,
@@ -522,7 +522,7 @@ suspend fun Transaction.transactionGetDcApi(
     isoMdoc = isoMdoc,
     encrypt = encrypt,
     verifierInfo = verifierInfo,
-    includeWrpac = includeWrpac
+    selectedWrpacId = selectedWrpacId
 )
 
 data class TransactionContext(
@@ -555,7 +555,7 @@ interface PreparedProfile {
         responseUrl: String,
         dcqlRequest: CredentialPresentationRequest.DCQLRequest,
         verifierInfo: NonEmptyList<VerifierInfo>? = null,
-        includeWrpac: Boolean = false,
+        selectedWrpacId: Int? = null,
     ): String
 
     suspend fun transactionGetDcApi(
@@ -566,7 +566,7 @@ interface PreparedProfile {
         isoMdoc: Boolean,
         encrypt: Boolean,
         verifierInfo: NonEmptyList<VerifierInfo>? = null,
-        includeWrpac: Boolean = false,
+        selectedWrpacId: Int? = null,
     ): String
 }
 

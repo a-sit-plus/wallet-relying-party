@@ -91,7 +91,7 @@
 
         const access = await accessResp.json();
         const registrations = await registrationsResp.json();
-        const wrpac = access?.content ? [access] : [];
+        const wrpac = Array.isArray(access) ? access : [];
         const wrprc = Array.isArray(registrations) ? registrations : [];
         certificatePreviewList.innerHTML =
             renderGroup("WRPAC", wrpac, "No WRPAC loaded yet") +
