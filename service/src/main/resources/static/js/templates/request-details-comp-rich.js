@@ -18,41 +18,15 @@ export default {
     emits: [
         'updateSchemeType',
         'updateRepresentation',
-        'updatePresentationMechanismIdentifier',
         'updateAttribute',
         'addCredential',
         'removeCredential',
-        'updatePresentationDefinition',
         'updateDcqlQuery',
         'generateQrCode'
     ],
     template: `
 
 
-<div class="row border-top pt-2">
-    <legend class="">
-        Request Details
-    </legend>
-    <div :class="singleColumn ? '' : 'col-lg-7 overflow-hidden'">
-        <fieldset class="row mb-3">
-            <legend class="col-form-label col-sm-4 pt-0 fw-bold">Presentation Mechanism (Unsupported for DC API)</legend>
-            <div class="col-sm-8">
-                <div v-for="presentationMechanism in config.presentationMechanisms"
-                     :key="presentationMechanism.value"
-                     class="form-check">
-                    <input class="form-check-input" type="radio"
-                           :name="presentationMechanism.label"
-                           :value="presentationMechanism.value"
-                           :checked="request.presentationMechanismIdentifier && request.presentationMechanismIdentifier == presentationMechanism.value"
-                           @click="$emit('updatePresentationMechanismIdentifier', presentationMechanism.value)">
-                    <label class="form-check-label">
-                        {{ presentationMechanism.label }} - <span class="text-primary">{{ presentationMechanism.value }}</span>
-                    </label>
-                </div>
-            </div>
-        </fieldset>
-    </div>
-</div>
 <div class="row border-top pt-2"
      v-for="credential in request.credentials"
      :key="credential.schemeType">
@@ -127,15 +101,6 @@ export default {
     </p>
 </div>
 
-<accordion-comp title="Presentation Definition (JSON)">
-    <textarea
-       :value="request.presentationDefinition"
-       :placeholder="request.presentationDefinitionError ? request.presentationDefinitionError : 'Enter your PresentationDefinition (JSON)'"
-       rows="10"
-       @input="$emit('updatePresentationDefinition', $event.target.value)"
-       style="resize:both;width:100%"
-     ></textarea>
-</accordion-comp>
 <accordion-comp title="DCQL Query (JSON)">
     <textarea
        :value="request.dcqlQuery"

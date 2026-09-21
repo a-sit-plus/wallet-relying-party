@@ -33,7 +33,6 @@ import at.asitplus.wallet.lib.openid.DcApiCreationOptions
 import at.asitplus.wallet.lib.openid.DcApiVerifier
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
-import at.asitplus.wallet.lib.openid.PresentationMechanismEnum
 import at.asitplus.wallet.lib.openid.VerifierMetadataMode
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
@@ -265,8 +264,8 @@ class VerifierProfiles(
         override val dcApiVerifier: DcApiVerifier?,
         private val buildQrCodeUrlFn: (String) -> String,
         private val buildWalletUrlFn: suspend (Transaction, TransactionContext) -> String,
-        private val transactionGetFn: suspend (String, String, CredentialPresentationRequest?, NonEmptyList<VerifierInfo>?, Boolean) -> String,
-        private val transactionGetDcApiFn: suspend (String, String, CredentialPresentationRequest.DCQLRequest?, Oid4vpDcApiMode, Boolean, Boolean, NonEmptyList<VerifierInfo>?, Boolean) -> String,
+        private val transactionGetFn: suspend (String, String, CredentialPresentationRequest.DCQLRequest, NonEmptyList<VerifierInfo>?, Boolean) -> String,
+        private val transactionGetDcApiFn: suspend (String, String, CredentialPresentationRequest.DCQLRequest, Oid4vpDcApiMode, Boolean, Boolean, NonEmptyList<VerifierInfo>?, Boolean) -> String,
     ) : PreparedProfile {
         override fun buildQrCodeUrl(requestUrl: String) = buildQrCodeUrlFn(requestUrl)
         override suspend fun buildWalletUrl(transaction: Transaction, context: TransactionContext) =
@@ -275,13 +274,13 @@ class VerifierProfiles(
         override suspend fun transactionGet(
             transactionId: String,
             responseUrl: String,
-            presentationRequest: CredentialPresentationRequest?,
+            presentationRequest: CredentialPresentationRequest.DCQLRequest,
         ) = transactionGetFn(transactionId, responseUrl, presentationRequest, null, false)
 
         override suspend fun transactionGet(
             transactionId: String,
             responseUrl: String,
-            presentationRequest: CredentialPresentationRequest?,
+            presentationRequest: CredentialPresentationRequest.DCQLRequest,
             verifierInfo: NonEmptyList<VerifierInfo>?,
             includeWrpac: Boolean,
         ) = transactionGetFn(transactionId, responseUrl, presentationRequest, verifierInfo, includeWrpac)
@@ -289,7 +288,7 @@ class VerifierProfiles(
         override suspend fun transactionGetDcApi(
             transactionId: String,
             responseUrl: String,
-            dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
+            dcqlRequest: CredentialPresentationRequest.DCQLRequest,
             oid4vpMode: Oid4vpDcApiMode,
             isoMdoc: Boolean,
             encrypt: Boolean,
@@ -298,7 +297,7 @@ class VerifierProfiles(
         override suspend fun transactionGetDcApi(
             transactionId: String,
             responseUrl: String,
-            dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
+            dcqlRequest: CredentialPresentationRequest.DCQLRequest,
             oid4vpMode: Oid4vpDcApiMode,
             isoMdoc: Boolean,
             encrypt: Boolean,
@@ -310,7 +309,7 @@ class VerifierProfiles(
     private suspend fun buildDcApiResponse(
         transactionId: String,
         responseUrl: String,
-        dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
+        dcqlRequest: CredentialPresentationRequest.DCQLRequest,
         oid4vpMode: Oid4vpDcApiMode,
         isoMdoc: Boolean,
         encrypt: Boolean,
@@ -324,7 +323,7 @@ class VerifierProfiles(
                 // Encryption toggle governs the OpenID4VP part; ISO Annex C is HPKE-encrypted internally regardless.
                 responseMode = if (encrypt) ResponseMode.DcApiJwt else ResponseMode.DcApi,
                 responseUrl = responseUrl,
-                presentationRequest = checkNotNull(dcqlRequest) { "No DCQL query available for this request" },
+                presentationRequest = dcqlRequest,
                 expectedOrigins = listOf(expectedOrigin),
                 verifierInfo = verifierInfo,
             ),
@@ -392,7 +391,7 @@ class VerifierProfiles(
     private suspend fun directPost(
         transactionId: String,
         responseUrl: String,
-        presentationRequest: CredentialPresentationRequest?,
+        presentationRequest: CredentialPresentationRequest.DCQLRequest,
         verifier: OpenId4VpVerifier,
         verifierMetadataMode: VerifierMetadataMode = VerifierMetadataMode.OMIT_IF_OUT_OF_BAND,
         verifierInfo: NonEmptyList<VerifierInfo>? = null,
@@ -411,7 +410,7 @@ class VerifierProfiles(
     private suspend fun directPostJwt(
         transactionId: String,
         responseUrl: String,
-        presentationRequest: CredentialPresentationRequest?,
+        presentationRequest: CredentialPresentationRequest.DCQLRequest,
         verifier: OpenId4VpVerifier,
         verifierInfo: NonEmptyList<VerifierInfo>? = null,
         urlPrefix: String,
@@ -551,25 +550,13 @@ suspend fun Transaction.transactionGet(
     responseUrl: String,
     verifierInfo: NonEmptyList<VerifierInfo>? = null,
     includeWrpac: Boolean = false,
-): String = when (presentationMechanism) {
-    PresentationMechanismEnum.PresentationExchange -> profile.transactionGet(
-        transactionId = id,
-        responseUrl = responseUrl,
-        presentationRequest = presentationExchangeRequest,
-        verifierInfo = verifierInfo,
-        includeWrpac = includeWrpac,
-    )
-
-    PresentationMechanismEnum.DCQL -> profile.transactionGet(
-        transactionId = id,
-        responseUrl = responseUrl,
-        presentationRequest = dcqlRequest,
-        verifierInfo = verifierInfo,
-        includeWrpac = includeWrpac,
-    )
-
-    PresentationMechanismEnum.DeviceRequest -> throw IllegalStateException("Not supported for this type of request.")
-}
+): String = profile.transactionGet(
+    transactionId = id,
+    responseUrl = responseUrl,
+    presentationRequest = dcqlRequest,
+    verifierInfo = verifierInfo,
+    includeWrpac = includeWrpac,
+)
 
 
 suspend fun Transaction.transactionGetDcApi(
@@ -618,13 +605,13 @@ interface PreparedProfile {
     suspend fun transactionGet(
         transactionId: String,
         responseUrl: String,
-        presentationRequest: CredentialPresentationRequest?,
+        presentationRequest: CredentialPresentationRequest.DCQLRequest,
     ): String = throw IllegalStateException("Not supported for this profile")
 
     suspend fun transactionGet(
         transactionId: String,
         responseUrl: String,
-        presentationRequest: CredentialPresentationRequest?,
+        presentationRequest: CredentialPresentationRequest.DCQLRequest,
         verifierInfo: NonEmptyList<VerifierInfo>?,
         includeWrpac: Boolean,
     ): String = throw IllegalStateException("Not supported for this profile")
@@ -632,7 +619,7 @@ interface PreparedProfile {
     suspend fun transactionGetDcApi(
         transactionId: String,
         responseUrl: String,
-        dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
+        dcqlRequest: CredentialPresentationRequest.DCQLRequest,
         oid4vpMode: Oid4vpDcApiMode,
         isoMdoc: Boolean,
         encrypt: Boolean,
@@ -641,7 +628,7 @@ interface PreparedProfile {
     suspend fun transactionGetDcApi(
         transactionId: String,
         responseUrl: String,
-        dcqlRequest: CredentialPresentationRequest.DCQLRequest?,
+        dcqlRequest: CredentialPresentationRequest.DCQLRequest,
         oid4vpMode: Oid4vpDcApiMode,
         isoMdoc: Boolean,
         encrypt: Boolean,
