@@ -232,7 +232,7 @@ class VerifierProfiles(
                         directPostJwt(txId, responseUrl, request, verifier, verifierInfo, urlPrefix)
                 }
             },
-            transactionGetDcApiFn = { txId, responseUrl, dcqlRequest, oid4vpMode, isoMdoc, encrypt, verifierInfo, includeWrpac ->
+            transactionGetDcApiFn = { txId, _, dcqlRequest, oid4vpMode, isoMdoc, encrypt, verifierInfo, includeWrpac ->
                 val verifier = when (includeWrpac) {
                     true -> selectOid4vpDcApiVerifier(clientIdScheme)
                     else -> dcApiVerifier
@@ -240,7 +240,6 @@ class VerifierProfiles(
                 }
                 buildDcApiResponse(
                     txId,
-                    responseUrl,
                     dcqlRequest,
                     oid4vpMode,
                     isoMdoc,
@@ -308,7 +307,6 @@ class VerifierProfiles(
 
     private suspend fun buildDcApiResponse(
         transactionId: String,
-        responseUrl: String,
         dcqlRequest: CredentialPresentationRequest.DCQLRequest,
         oid4vpMode: Oid4vpDcApiMode,
         isoMdoc: Boolean,
@@ -322,7 +320,6 @@ class VerifierProfiles(
                 state = transactionId,
                 // Encryption toggle governs the OpenID4VP part; ISO Annex C is HPKE-encrypted internally regardless.
                 responseMode = if (encrypt) ResponseMode.DcApiJwt else ResponseMode.DcApi,
-                responseUrl = responseUrl,
                 presentationRequest = dcqlRequest,
                 expectedOrigins = listOf(expectedOrigin),
                 verifierInfo = verifierInfo,
