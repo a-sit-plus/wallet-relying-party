@@ -1,5 +1,6 @@
 package at.asit.wallet.relyingparty
 
+import at.asitplus.wallet.lib.etsi.LoTEStage
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.web.util.UriComponentsBuilder
 import java.net.URI
@@ -18,6 +19,8 @@ data class AppConfigurationProperties(
     val resultTtl: Duration = Duration.ofMinutes(30),
     /** Wallet relying party certificate configuration */
     val wrp: WrpConfigurationProperties? = null,
+    /** Trust list configuration (which stage(s) to fetch Lists of Trusted Entities from) */
+    val trust: TrustConfigurationProperties = TrustConfigurationProperties()
 )
 
 fun URL.appendPath(path: String): String = UriComponentsBuilder.fromUri(toURI()).path(path).toUriString()
@@ -58,4 +61,8 @@ data class WrpConfigurationProperties(
 data class WrprcConfiguration(
     val label: String,
     val jws: URI,
+)
+
+data class TrustConfigurationProperties(
+    val stages: List<LoTEStage> = listOf(LoTEStage.PRODUCTION),
 )

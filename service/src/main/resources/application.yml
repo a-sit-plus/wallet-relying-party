@@ -12,3 +12,7 @@ spring:
       enabled: true
 app:
   public-context: http://localhost:8080
+  trust:
+    stages:
+      - PRODUCTION
+      - ACCEPTANCE

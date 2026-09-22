@@ -26,7 +26,8 @@ import kotlin.collections.flatMap
 
 @Service
 class TrustListService(
-    private val trustListCache: TrustListCache
+    private val trustListCache: TrustListCache,
+    private val configuration: AppConfigurationProperties,
 ) {
     private val httpClient = HttpClient {
         install(ContentNegotiation) {
@@ -46,6 +47,7 @@ class TrustListService(
         checkNotNull(javaClass.getResource("/asit-root.pem")) { "Missing ASIT root certificate" }.readText()
     ).getOrThrow()
     private val loTeFilterService = LoTEFilterService()
+    private val trustListUrls: List<String> = LoteProfile.fetchUrls(configuration.trust.stages)
 
     @PostConstruct
     fun initCacheBootstrap() = runBlocking {
@@ -66,7 +68,7 @@ class TrustListService(
     }
 
     suspend fun refreshAll() {
-        LoteProfile.defaultUrls.forEach { url ->
+        trustListUrls.forEach { url ->
             syncSingleUrl(url)
         }
     }
