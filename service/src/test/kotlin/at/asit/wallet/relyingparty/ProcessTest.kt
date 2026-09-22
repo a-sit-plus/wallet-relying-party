@@ -1,8 +1,14 @@
 package at.asit.wallet.relyingparty
 
+import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
+import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest
+import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.asn1.*
 import at.asitplus.signum.indispensable.asn1.encoding.Asn1
+import at.asitplus.signum.indispensable.josef.JwsCompact
+import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.typed
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
 import at.asitplus.wallet.lib.RequestOptionsCredential
@@ -174,6 +180,10 @@ class ProcessTest {
         val eudiw = createTransaction(ConstantIndex.CredentialRepresentation.SD_JWT).profiles.first { it.name == "EUDIW" }
         val body = dcApiBody(eudiw.id, "?oid4vpMode=SIGNED&isoMdoc=false&encrypt=true")
         assertTrue(body.contains("openid4vp-v1-signed"), body)
+        val request = joseCompliantSerializer.decodeFromString<CredentialRequestOptions>(body)
+            .digital.requests.single() as DigitalCredentialGetRequest.OpenId4VpSigned
+        val typed = request.data.request.typed<AuthenticationRequestParameters, JwsCompact>()
+        assertNull(typed.payload.responseUrl)
     }
 
     @Test
@@ -188,6 +198,9 @@ class ProcessTest {
         assertTrue(plaintext.contains("expected_origins"), plaintext)
         assertTrue(plaintext.contains("\"dc_api\""), plaintext)
         assertFalse(plaintext.contains("dc_api.jwt"), plaintext)
+        val request = joseCompliantSerializer.decodeFromString<CredentialRequestOptions>(plaintext)
+            .digital.requests.single() as DigitalCredentialGetRequest.OpenId4VpUnsigned
+        assertNull(request.data.responseUrl)
 
         val encrypted = dcApiBody(eudiw.id, "?oid4vpMode=UNSIGNED&isoMdoc=false&encrypt=true")
         assertTrue(encrypted.contains("dc_api.jwt"), encrypted)
