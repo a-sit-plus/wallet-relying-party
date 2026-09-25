@@ -5,6 +5,7 @@ import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.signum.indispensable.CryptoPublicKey
+import at.asitplus.signum.indispensable.asn1.encodeToPEM
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.leaf
@@ -43,6 +44,7 @@ import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import java.net.URLDecoder
+import java.net.URI
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
@@ -75,6 +77,18 @@ class ProcessTest {
     @Test
     fun `simple transaction roundtrip, DCQL`() = runTest {
         runProcess()
+    }
+
+    @Test
+    fun `selected WRPAC and WRPRC decrypt wallet response`() = runTest {
+        val wrpacKey = EphemeralKeyWithSelfSignedCert()
+        Mockito.`when`(wrpCertificateStore.accessCertificates).thenReturn(
+            mapOf(0 to AccessCertificateData("Selected", wrpacKey, listOf(wrpacKey.getCertificate()!!)))
+        )
+        Mockito.`when`(wrpCertificateStore.registrationCertificates).thenReturn(
+            mapOf(0 to (WrprcConfiguration("Selected", URI("file:/unused.pem")) to wrpacKey.getCertificate()!!.encodeToPEM().getOrThrow()))
+        )
+        runProcess(selectedWrpacId = 0, selectedWrprcId = 0, profileName = "HAIPd05")
     }
 
     @Test
@@ -312,6 +326,7 @@ class ProcessTest {
         representation: ConstantIndex.CredentialRepresentation,
         dcApiOrigin: String? = null,
         selectedWrpacId: Int? = null,
+        selectedWrprcId: Int? = null,
     ): TransactionResponse {
         val requestBuilder = CredentialPresentationRequestBuilder(
             listOf(
@@ -329,6 +344,7 @@ class ProcessTest {
                     dcqlQuery = requestBuilder.toDCQLRequest()!!.dcqlQuery,
                     dcApiOrigin = dcApiOrigin,
                     selectedWrpacId = selectedWrpacId,
+                    selectedWrprcId = selectedWrprcId,
                 )
             )
             contentType = MediaType.APPLICATION_JSON
@@ -348,9 +364,15 @@ class ProcessTest {
     private suspend fun runProcess(
         representation: ConstantIndex.CredentialRepresentation = ConstantIndex.CredentialRepresentation.SD_JWT,
         profileName: String? = null,
+        selectedWrpacId: Int? = null,
+        selectedWrprcId: Int? = null,
     ) {
         val givenName = uuid4().toString()
-        val transactionResponse = createTransaction(representation)
+        val transactionResponse = createTransaction(
+            representation,
+            selectedWrpacId = selectedWrpacId,
+            selectedWrprcId = selectedWrprcId,
+        )
 
         val holderKey = EphemeralKeyWithoutCert()
         val holder = HolderAgent(keyMaterial = holderKey)

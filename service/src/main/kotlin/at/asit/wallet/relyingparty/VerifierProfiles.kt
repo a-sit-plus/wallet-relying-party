@@ -201,11 +201,12 @@ class VerifierProfiles(
         ),
     )
 
-    suspend fun prepare(profile: VerifierProfile, context: TransactionContext): PreparedProfile =
+    suspend fun prepare(profile: VerifierProfile, context: TransactionContext, selectedWrpacId: Int?): PreparedProfile =
         PreparedVerifierProfile(
             profile = profile,
             context = context,
             clientIdScheme = profile.clientIdSchemeType.build(context),
+            selectedWrpacId = selectedWrpacId,
         )
 
     private suspend fun ClientIdSchemeType.build(context: TransactionContext): ClientIdScheme = when (this) {
@@ -229,6 +230,7 @@ class VerifierProfiles(
         private val profile: VerifierProfile,
         private val context: TransactionContext,
         override val clientIdScheme: ClientIdScheme,
+        private val selectedWrpacId: Int?,
     ) : PreparedProfile {
         override val name: String get() = profile.name
         override val label: String get() = profile.label
@@ -236,17 +238,28 @@ class VerifierProfiles(
         override val urlPrefix: String get() = profile.urlPrefix
         override val supportedOptions: Set<SupportedOptions> get() = profile.supportedOptions
 
-        override val oid4vpVerifier = OpenId4VpVerifier(
+        private val defaultOid4vpVerifier = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = clientIdScheme,
             verifier = buildVerifierAgent(clientIdScheme),
         )
 
-        override val dcApiVerifier = DcApiVerifier(
+        private val defaultDcApiVerifier = DcApiVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = clientIdScheme,
             verifier = buildVerifierAgent(clientIdScheme),
         )
+
+        // Request creation stores an ephemeral response-decryption key in the verifier.
+        // Keep the selected WRPAC verifier on this transaction for response validation.
+        override val oid4vpVerifier: OpenId4VpVerifier by lazy {
+            selectVerifier(selectedWrpacId, clientIdScheme, defaultOid4vpVerifier)
+        }
+
+        override val dcApiVerifier: DcApiVerifier by lazy {
+            if (selectedWrpacId == null) defaultDcApiVerifier
+            else selectOid4vpDcApiVerifier(selectedWrpacId, clientIdScheme)
+        }
 
         override fun buildQrCodeUrl(requestUrl: String): String =
             buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme)
@@ -270,8 +283,7 @@ class VerifierProfiles(
             responseUrl: String,
             dcqlRequest: CredentialPresentationRequest.DCQLRequest,
             verifierInfo: NonEmptyList<VerifierInfo>?,
-            selectedWrpacId: Int?,
-        ): String = selectVerifier(selectedWrpacId, clientIdScheme, oid4vpVerifier).let { verifier ->
+        ): String = oid4vpVerifier.let { verifier ->
             when (profile.deviceFlowConfig.responseMode) {
                 DeviceResponseMode.DirectPost -> verifier.directPost(
                     transactionId = transactionId,
@@ -293,11 +305,7 @@ class VerifierProfiles(
             isoMdoc: Boolean,
             encrypt: Boolean,
             verifierInfo: NonEmptyList<VerifierInfo>?,
-            selectedWrpacId: Int?,
-        ): String = when (selectedWrpacId) {
-            null -> dcApiVerifier
-            else -> selectOid4vpDcApiVerifier(selectedWrpacId, clientIdScheme)
-        }.let { verifier ->
+        ): String = dcApiVerifier.let { verifier ->
             joseCompliantSerializer.encodeToString<CredentialRequestOptions>(
                 verifier.createAuthnRequest(
                     requestOptions = OpenId4VpRequestOptions(
@@ -498,13 +506,11 @@ class VerifierProfiles(
 suspend fun Transaction.transactionGet(
     responseUrl: String,
     verifierInfo: NonEmptyList<VerifierInfo>? = null,
-    selectedWrpacId: Int? = null,
 ): String = profile.transactionGet(
     transactionId = id,
     responseUrl = responseUrl,
     dcqlRequest = dcqlRequest,
     verifierInfo = verifierInfo,
-    selectedWrpacId = selectedWrpacId,
 )
 
 suspend fun Transaction.transactionGetDcApi(
@@ -513,7 +519,6 @@ suspend fun Transaction.transactionGetDcApi(
     isoMdoc: Boolean,
     encrypt: Boolean,
     verifierInfo: NonEmptyList<VerifierInfo>? = null,
-    selectedWrpacId: Int?,
 ): String = profile.transactionGetDcApi(
     transactionId = id,
     responseUrl = responseUrl,
@@ -522,7 +527,6 @@ suspend fun Transaction.transactionGetDcApi(
     isoMdoc = isoMdoc,
     encrypt = encrypt,
     verifierInfo = verifierInfo,
-    selectedWrpacId = selectedWrpacId
 )
 
 data class TransactionContext(
@@ -555,7 +559,6 @@ interface PreparedProfile {
         responseUrl: String,
         dcqlRequest: CredentialPresentationRequest.DCQLRequest,
         verifierInfo: NonEmptyList<VerifierInfo>? = null,
-        selectedWrpacId: Int? = null,
     ): String
 
     suspend fun transactionGetDcApi(
@@ -566,7 +569,6 @@ interface PreparedProfile {
         isoMdoc: Boolean,
         encrypt: Boolean,
         verifierInfo: NonEmptyList<VerifierInfo>? = null,
-        selectedWrpacId: Int? = null,
     ): String
 }
 

@@ -103,7 +103,7 @@ class ApiController(
         val profiles = profiles.knownProfiles.mapNotNull {
             val transactionId = Uuid.random().toString()
             val transactionContext = buildTransactionContext(transactionId, it.supportedOptions, dcApiOrigin)
-            val preparedProfile = profiles.prepare(it, transactionContext)
+            val preparedProfile = profiles.prepare(it, transactionContext, request.selectedWrpacId)
             val transaction = Transaction(
                 id = transactionId,
                 profile = preparedProfile,
@@ -158,7 +158,6 @@ class ApiController(
                 verifierInfo = profiles.buildVerifierInfo(
                     selectedWrprcId = transaction.request.selectedWrprcId,
                 ),
-                selectedWrpacId = transaction.request.selectedWrpacId,
             ).also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
             ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/" + JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST))
@@ -198,7 +197,6 @@ class ApiController(
                 verifierInfo = profiles.buildVerifierInfo(
                     selectedWrprcId = transaction.request.selectedWrprcId,
                 ),
-                selectedWrpacId = transaction.request.selectedWrpacId,
             ).also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
             ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
