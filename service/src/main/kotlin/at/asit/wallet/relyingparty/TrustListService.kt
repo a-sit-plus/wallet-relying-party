@@ -4,9 +4,8 @@ import at.asitplus.etsi.TrustListPayload
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.wallet.lib.etsi.LoTEFilterCriteria
 import at.asitplus.wallet.lib.etsi.LoTEFilterService
-import at.asitplus.wallet.lib.etsi.LoTEServiceType
+import at.asitplus.wallet.lib.etsi.LoteProfile
 import at.asitplus.wallet.lib.etsi.isTrustedBy
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectJades
 import io.github.aakira.napier.Napier
@@ -23,10 +22,12 @@ import jakarta.annotation.PostConstruct
 import kotlinx.coroutines.runBlocking
 import kotlinx.serialization.Serializable
 import org.springframework.scheduling.annotation.Scheduled
+import kotlin.collections.flatMap
 
 @Service
 class TrustListService(
-    private val trustListCache: TrustListCache
+    private val trustListCache: TrustListCache,
+    private val configuration: AppConfigurationProperties,
 ) {
     private val httpClient = HttpClient {
         install(ContentNegotiation) {
@@ -46,6 +47,7 @@ class TrustListService(
         checkNotNull(javaClass.getResource("/asit-root.pem")) { "Missing ASIT root certificate" }.readText()
     ).getOrThrow()
     private val loTeFilterService = LoTEFilterService()
+    private val trustListUrls: List<String> = LoteProfile.fetchUrls(configuration.trust.stages)
 
     @PostConstruct
     fun initCacheBootstrap() = runBlocking {
@@ -66,7 +68,7 @@ class TrustListService(
     }
 
     suspend fun refreshAll() {
-        LoTEServiceType.defaultUrls.forEach { url ->
+        trustListUrls.forEach { url ->
             syncSingleUrl(url)
         }
     }
@@ -88,17 +90,16 @@ class TrustListService(
      */
     fun evaluateIssuer(
         issuer: X509Certificate,
-        serviceType: LoTEServiceType
+        serviceProfile: LoteProfile
     ): TrustState = try {
         if (issuer.isTrustedBy(listOf(asitIssuerCert)).isSuccess) {
             return TrustState.TRUSTED
         }
 
-        val criteria = LoTEFilterCriteria(expectedServiceType = serviceType)
         val allLoTes = trustListCache.getAll()
 
-        val certificateList: List<X509Certificate> = allLoTes
-            .flatMap { lote -> loTeFilterService.extractTrustedCertificates(lote.key, lote.value.loTe, criteria) }
+        val certificateList: List<X509Certificate> = allLoTes.values
+            .flatMap { lote -> loTeFilterService.extractIssuanceCertificates(lote.loTe, serviceProfile) }
             .mapNotNull { it.certificate }
 
         if (certificateList.isEmpty()) {
@@ -114,7 +115,7 @@ class TrustListService(
 
     fun evaluateCredentialIssuerTrust(credential: ApiItemCredential): TrustState =
         credential.issuerCertificate?.let {
-            evaluateIssuer(it, LoTEServiceType.fromSchemeIdentifier(credential.credentialType))
+            evaluateIssuer(it, LoteProfile.fromSchemeIdentifier(credential.credentialType))
         } ?: TrustState.UNKNOWN
 }
 

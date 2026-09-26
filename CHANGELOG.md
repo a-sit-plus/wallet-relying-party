@@ -5,6 +5,7 @@ Version 8.0.0 (unreleased):
  - Allow configuring and selecting multiple WRP access certificates per transaction
  - Remove support for Presentation Exchange
  - Update the Gradle conventions plugin to 20260828 and the Gradle wrapper to 9.7.1
+ - Align `TrustListService` with the VC-K
 
 Version 7.0.0:
  - Update to VC-K 7.0.0
