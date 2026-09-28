@@ -5,7 +5,8 @@ export default {
         'error',
         'dcapiSelection',
         'isoMdocRequest',
-        'profileNames'
+        'profileNames',
+        'flow'
     ],
     data() {
         return {
@@ -88,7 +89,7 @@ export default {
 
     <div class="card-header">
         <ul class="nav nav-tabs card-header-tabs" role="tablist">
-            <li class="nav-item" v-for="profile in result.profiles">
+            <li class="nav-item" v-for="profile in displayProfiles">
                 <button class="nav-link" data-bs-toggle="tab"
                         :data-bs-target="'#tab-' + profile.name"
                         :class="{ 'active' : activeProfileName === profile.name}"
@@ -118,7 +119,7 @@ export default {
 
                  <p>Details: {{profile.description}}</p>
                 <div class="options-grid">
-                <div v-if="profile.supportedOptions.includes('CROSS_DEVICE')" class="option-card border rounded p-2 bg-white">
+                <div v-if="flow !== 'dcapi' && profile.supportedOptions.includes('CROSS_DEVICE')" class="option-card border rounded p-2 bg-white">
                     <h2>Option A: Cross device</h2>
                     <p>Scan the QR code with your Wallet App:</p>
                     <div class="text-left">
@@ -127,7 +128,7 @@ export default {
                         </a>
                     </div>
                 </div>
-                <div v-if="profile.supportedOptions.includes('SAME_DEVICE')" class="option-card border rounded p-2 bg-white">
+                <div v-if="flow !== 'dcapi' && profile.supportedOptions.includes('SAME_DEVICE')" class="option-card border rounded p-2 bg-white">
                     <h2>Option B: Same device</h2>
                     <p>Click the following button to open the Wallet App on this device:</p>
                     <div class="text-center">
@@ -136,14 +137,15 @@ export default {
                     <p>The whole link is: <a target="_blank" :href="profile.url">{{ profile.url }}</a></p>
                 </div>
                 
-                <div v-if="profile.supportedOptions.includes('DC_API')" class="option-card border rounded p-2 bg-white">
+                <div v-if="flow !== 'redirect' && profile.supportedOptions.includes('DC_API')" class="option-card border rounded p-2 bg-white">
                     <h2>Option C: Digital Credentials API</h2>
                     <div v-if="!dcApiSupported" class="alert alert-info mb-0" role="alert">
-                        This browser does not support the Digital Credentials API. Use Option A or B, or try a browser that supports <code>navigator.credentials.get({ digital })</code>.
+                        This browser does not support the Digital Credentials API. <span v-if="!flow">Use Option A or B, or </span>Try a browser that supports <code>navigator.credentials.get({ digital })</code>.
                     </div>
                     <template v-else>
-                    <p>Select the request types to offer in a single browser call:</p>
-                    <fieldset class="text-start mb-2">
+                    <p v-if="!flow">Select the request types to offer in a single browser call:</p>
+                    <p v-else>Protocol: <strong>{{ flow === 'annex-c' ? 'ISO 18013-7 Annex C' : 'OpenID4VP' }}</strong></p>
+                    <fieldset v-if="!flow" class="text-start mb-2">
                         <legend class="fs-6 fw-bold">OpenID4VP</legend>
                         <div class="form-check">
                             <input class="form-check-input" type="radio" :id="'dcapi-oid4vp-none-' + profile.name"
@@ -167,13 +169,13 @@ export default {
                             <label class="form-check-label" :for="'dcapi-oid4vp-unsigned-' + profile.name">Unsigned OpenID4VP</label>
                         </div>
                     </fieldset>
-                    <div v-if="isoMdocRequest" class="form-check text-start">
+                    <div v-if="!flow && isoMdocRequest" class="form-check text-start">
                         <input class="form-check-input" type="checkbox" :id="'dcapi-iso-' + profile.name"
                                :checked="dcapiSelection.isoMdoc === true"
                                @change="$emit('update:dcapiSelection', { ...dcapiSelection, isoMdoc: $event.target.checked })">
                         <label class="form-check-label" :for="'dcapi-iso-' + profile.name">ISO 18013-7 Annex C</label>
                     </div>
-                    <div class="form-check text-start">
+                    <div v-if="!flow" class="form-check text-start">
                         <input class="form-check-input" type="checkbox" :id="'dcapi-encrypt-' + profile.name"
                                :checked="dcapiSelection.encrypt !== false"
                                @change="$emit('update:dcapiSelection', { ...dcapiSelection, encrypt: $event.target.checked })">

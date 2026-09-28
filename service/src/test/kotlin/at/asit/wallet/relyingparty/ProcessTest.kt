@@ -139,6 +139,15 @@ class ProcessTest {
     }
 
     @Test
+    fun `empty issuer trust list marks a valid presented mdoc untrusted`() = runTest {
+        runProcess(
+            representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
+            profileName = "MDOCd23",
+            emptyIssuerTrustList = true,
+        )
+    }
+
+    @Test
     fun `AV transaction roundtrip uses transaction scoped redirect uri`() = runTest {
         val requestBuilder = CredentialPresentationRequestBuilder(
             listOf(
@@ -198,6 +207,23 @@ class ProcessTest {
             assertTrue(it.supportedOptions.contains(SupportedOptions.DC_API), "profile ${it.name} missing DC_API")
             assertNotNull(it.dcApiUrl, "profile ${it.name} missing dcApiUrl")
         }
+    }
+
+    @Test
+    fun `2026 redirect case selects only eu-eaap profile`() = runTest {
+        val response = createTransaction(
+            ConstantIndex.CredentialRepresentation.SD_JWT,
+            profileName = "EUDIW2026",
+        )
+        assertEquals(1, response.profiles.size)
+        val profile = response.profiles.single()
+        assertEquals("EUDIW2026", profile.name)
+        assertTrue(profile.url.startsWith("eu-eaap://"), profile.url)
+        val requestObject = mockMvc.get("/transaction/get/${profile.id}") {
+            accept = MediaType.ALL
+        }.andReturn().awaitAsync().response.contentAsString
+        val payload = JwsCompact(requestObject).getPayload<kotlinx.serialization.json.JsonObject>().getOrThrow()
+        assertTrue(payload.toString().contains("direct_post.jwt"), payload.toString())
     }
 
     @Test
@@ -327,6 +353,8 @@ class ProcessTest {
         dcApiOrigin: String? = null,
         selectedWrpacId: Int? = null,
         selectedWrprcId: Int? = null,
+        profileName: String? = null,
+        emptyIssuerTrustList: Boolean = false,
     ): TransactionResponse {
         val requestBuilder = CredentialPresentationRequestBuilder(
             listOf(
@@ -345,6 +373,8 @@ class ProcessTest {
                     dcApiOrigin = dcApiOrigin,
                     selectedWrpacId = selectedWrpacId,
                     selectedWrprcId = selectedWrprcId,
+                    profileName = profileName,
+                    emptyIssuerTrustList = emptyIssuerTrustList,
                 )
             )
             contentType = MediaType.APPLICATION_JSON
@@ -366,12 +396,14 @@ class ProcessTest {
         profileName: String? = null,
         selectedWrpacId: Int? = null,
         selectedWrprcId: Int? = null,
+        emptyIssuerTrustList: Boolean = false,
     ) {
         val givenName = uuid4().toString()
         val transactionResponse = createTransaction(
             representation,
             selectedWrpacId = selectedWrpacId,
             selectedWrprcId = selectedWrprcId,
+            emptyIssuerTrustList = emptyIssuerTrustList,
         )
 
         val holderKey = EphemeralKeyWithoutCert()
@@ -410,6 +442,7 @@ class ProcessTest {
             givenName,
             user!!.credentials.firstNotNullOfOrNull { it.getClaim(AtomicAttribute2023.CLAIM_GIVEN_NAME) })
         assertTrue(user.credentials.all { it.trustState != null })
+        if (emptyIssuerTrustList) assertTrue(user.credentials.all { it.trustState == TrustState.UNTRUSTED })
         if (representation == ConstantIndex.CredentialRepresentation.ISO_MDOC) {
             // the mdoc really was presented as one, and its issuerAuth was verified against the certificate
             // transported in the COSE headers

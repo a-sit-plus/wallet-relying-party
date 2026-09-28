@@ -23,6 +23,7 @@ object Paths {
         const val HaipVp = "haip-vp://"
         const val MdocOpenId4Vp = "mdoc-openid4vp://"
         const val OpenId4Vp = "openid4vp://"
+        const val EuEaap = "eu-eaap://"
     }
 
     object Utilities {

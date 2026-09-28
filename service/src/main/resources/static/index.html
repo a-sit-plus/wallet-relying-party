@@ -1,96 +1,60 @@
 <!doctype html>
-<html lang="de" xmlns:v-bind="http://www.w3.org/1999/xhtml">
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Wallet Relying Party</title>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>EUDI.Wallet 2026 remote presentation tests</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
           integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
     <link rel="stylesheet" href="styles.css">
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
-            integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
-            crossorigin="anonymous"></script>
-
-    <script type="importmap">
-        {
-          "imports": {
-            "login": "./js/login.js",
-            "vue": "https://unpkg.com/vue@3/dist/vue.esm-browser.js",
-            "header-comp": "./js/templates/header-comp.js",
-            "card-comp": "./js/templates/card-comp.js",
-            "ext-card-comp": "./js/templates/ext-card-comp.js"
-          }
-        }
-    </script>
-
+    <script type="importmap">{"imports":{"vue":"https://unpkg.com/vue@3/dist/vue.esm-browser.js","header-comp":"./js/templates/header-comp.js"}}</script>
     <script type="module">
-        import {createBasicSetup} from 'login'
-        import {createApp, ref} from 'vue'
+        import {createApp} from 'vue'
         import HeaderComp from 'header-comp'
-        import CardComp from 'card-comp'
-        import ExtCardComp from 'ext-card-comp'
-
+        import {remoteCases, remoteVerifierCases} from './js/remote-cases.js'
         createApp({
-            components: {
-                HeaderComp,
-                CardComp,
-                ExtCardComp
+            components: {HeaderComp},
+            setup() {
+                return {groups: [
+                    {title: 'OpenID4VP redirect', description: 'eu-eaap:// requests', cases: remoteCases.filter(c => c.id <= 4)},
+                    {title: 'ISO 18013-7 Annex C', description: 'Digital Credentials API with org-iso-mdoc', cases: remoteCases.filter(c => c.id >= 5 && c.id <= 8)},
+                    {title: 'OpenID4VP via Digital Credentials API', description: 'Browser mediated OpenID4VP requests', cases: remoteCases.filter(c => c.id >= 9 && c.id <= 12)},
+                    {title: 'Reader and issuer trust', description: 'Negative presentation cases', cases: remoteCases.filter(c => c.id >= 13 && c.id <= 17)},
+                    {title: 'Revocation', description: 'Identifier and status lists', cases: remoteCases.filter(c => c.id >= 18 && c.id <= 20)},
+                    {title: 'Qualified signature', description: 'External signing service', cases: remoteCases.filter(c => c.id === 21)},
+                    {title: 'ITB remote verifier cases', description: 'Reference verifier scenarios PRE-01 to PRE-14', cases: remoteVerifierCases},
+                ]}
             }
-        }).mount('#app');
+        }).mount('#app')
     </script>
 </head>
 <body id="app">
-
 <header-comp></header-comp>
-
-<div class="container px-4 py-5">
-    <h1 class="my-5">EUDI Launchpad Test Cases</h1>
-    <div class="row g-5 mb-5">
-        <div class="col-md-6">
-            <card-comp title="Launchpad Remote Presentation 1" icon="bi-passport"
-                       button-text="PID SD-JWT" button-href="pidsdjwt.html">
-                Presentation of PID in sd-jwt format using HAIP via Redirects
-            </card-comp>
-        </div>
-        <div class="col-md-6">
-            <card-comp title="Launchpad Remote Presentation 2" icon="bi-passport"
-                       button-text="PID mdoc" button-href="pidmdoc.html">
-                Presentation of PID in mdoc format using HAIP via Redirects
-            </card-comp>
-        </div>
-        <div class="col-md-6">
-            <card-comp title="Launchpad Remote Presentation 3" icon="bi-car-front-fill"
-                       button-text="mDL Page" button-href="mdl.html">
-                Presentation of the full mDL using HAIP via Redirects
-            </card-comp>
-        </div>
-        <div class="col-md-6">
-            <ext-card-comp title="Remote Qualified Electronic Signatures" icon="bi-pen"
-                       button-text="Signature Service (ext.)" button-href="https://apps.egiz.gv.at/drivingapp/">
-                Present a PID to authorize access to a signature key at a QTSP.
-            </ext-card-comp>
-        </div>
-        <div class="col-md-6">
-            <card-comp title="DC4EU - European Health Insurance Card" icon="bi-capsule-pill"
-                       button-text="EHIC Page" button-href="ehic.html">
-                Present a European Health Insurance Card associated with the wallet holder to the service provider.
-            </card-comp>
-        </div>
-        <div class="col-md-6">
-            <card-comp title="AV - Age Verification" icon="bi-rocket-takeoff"
-                       button-text="AV Page" button-href="av.html">
-                Prove that you are over 18 years old.
-            </card-comp>
-        </div>
-        <div class="col-md-6">
-            <card-comp title="Custom Requests" icon="bi-card-checklist" button-text="Custom Request Page"
-                       button-href="custom.html">
-                Request any custom combination of data.
-            </card-comp>
-        </div>
+<main class="container px-4 py-5">
+    <div class="mb-5">
+        <p class="text-uppercase text-muted fw-semibold mb-2">EUDI.Wallet Launchpad 2026</p>
+        <h1>Remote presentation test cases</h1>
+        <p class="lead">Choose a playbook case to see its purpose, setup, expected result, and request.</p>
+        <a href="custom.html" class="btn btn-outline-primary"><i class="bi bi-sliders me-2"></i>Custom request</a>
     </div>
-</div>
-
+    <section v-for="group in groups" :key="group.title" class="mb-5">
+        <div class="d-flex flex-wrap align-items-baseline gap-3 mb-3">
+            <h2 class="h4 mb-0">{{ group.title }}</h2><span class="text-muted">{{ group.description }}</span>
+        </div>
+        <div class="row g-3">
+            <div v-for="item in group.cases" :key="item.id" class="col-md-6 col-xl-4">
+                <a :href="'remote-case.html?' + (item.displayId ? 'pre=' : 'id=') + item.id" class="card h-100 text-decoration-none text-body shadow-sm">
+                    <div class="card-body">
+                        <span class="small text-primary fw-semibold">{{ item.displayId || 'Remote_Presentation_' + item.id }}</span>
+                        <h3 class="h5 mt-2">{{ item.title }}</h3>
+                        <p class="card-text text-muted small mb-2">{{ item.description }}</p>
+                        <span v-if="item.id === 5" class="badge text-bg-warning">Optional · service limitation</span>
+                        <span v-else class="small text-primary">Open test case <i class="bi bi-arrow-right"></i></span>
+                    </div>
+                </a>
+            </div>
+        </div>
+    </section>
+</main>
 </body>
 </html>

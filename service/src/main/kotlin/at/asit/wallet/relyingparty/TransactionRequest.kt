@@ -13,6 +13,8 @@ data class TransactionRequest(
     val dcApiOrigin: String? = null,
     val selectedWrpacId: Int? = null,
     val selectedWrprcId: Int? = null,
+    val profileName: String? = null,
+    val emptyIssuerTrustList: Boolean = false,
 )
 
 @Serializable

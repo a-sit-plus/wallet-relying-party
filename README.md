@@ -65,6 +65,8 @@ The main integration points are:
 
 The demo currently creates requests for these verifier profiles:
 
+// TODO remove that, not correct
+
 | Profile | Purpose | Supported modes |
 | --- | --- | --- |
 | `HAIPd05` | HAIP-style OpenID4VP with `x509_hash` and `direct_post.jwt` | Cross-device, same-device, OpenID4VP DC API |

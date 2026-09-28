@@ -362,6 +362,7 @@ const createBasicSetup = function (config, options = {}) {
             dcqlQuery: dcqlQuery,
             selectedWrpacId: reqSelection.value.selectedWrpacId,
             selectedWrprcId: reqSelection.value.selectedWrprcId,
+            ...(options.transactionFields || {}),
         }
 
         return JSON.stringify(request)
@@ -470,7 +471,7 @@ const createBasicSetup = function (config, options = {}) {
                 const newSelections = {}
                 const newCredentialRequestOptions = {}
                 for (const profile of data.profiles) {
-                    newSelections[profile.name] = {
+                    newSelections[profile.name] = options.defaultDcApiSelection || {
                         oid4vpMode: 'SIGNED', // Default: signed OpenID4VP, encrypted, no ISO
                         isoMdoc: false,
                         encrypt: true,

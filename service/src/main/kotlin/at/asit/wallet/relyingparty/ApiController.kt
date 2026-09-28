@@ -100,7 +100,13 @@ class ApiController(
         if (request.dcApiOrigin != null && !ANDROID_APP_ORIGIN.matches(dcApiOrigin)) {
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid Android app origin")
         }
-        val profiles = profiles.knownProfiles.mapNotNull {
+        val selectedProfiles = profiles.knownProfiles.filter {
+            if (request.profileName == null) it.offeredByDefault else it.name == request.profileName
+        }
+        if (selectedProfiles.isEmpty()) {
+            throw ResponseStatusException(HttpStatus.BAD_REQUEST, "Unknown verifier profile")
+        }
+        val profiles = selectedProfiles.mapNotNull {
             val transactionId = Uuid.random().toString()
             val transactionContext = buildTransactionContext(transactionId, it.supportedOptions, dcApiOrigin)
             val preparedProfile = profiles.prepare(it, transactionContext, request.selectedWrpacId)
@@ -252,7 +258,13 @@ class ApiController(
             } else {
                 error("Unsupported response for transaction $id")
             }
-            validationResult.convertToUser(trustListService::evaluateCredentialIssuerTrust)
+            validationResult.convertToUser { credential ->
+                if (transaction.request.emptyIssuerTrustList) {
+                    TrustState.UNTRUSTED
+                } else {
+                    trustListService.evaluateCredentialIssuerTrust(credential)
+                }
+            }
         }.getOrElse {
             Napier.w("${Paths.Transaction.ResultUrl}/$id extracted got error", it)
             statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})", it)

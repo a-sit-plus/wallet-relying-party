@@ -12,6 +12,8 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ResponseMode
 import at.asitplus.openid.VerifierInfo
 import at.asitplus.openid.encodeToParameters
+import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
@@ -24,6 +26,7 @@ import at.asitplus.wallet.lib.agent.VerifierAgent
 import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
+import at.asitplus.wallet.lib.data.StatusListCwt
 import at.asitplus.wallet.lib.data.StatusListJwt
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
@@ -48,6 +51,7 @@ import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.springframework.stereotype.Component
@@ -100,6 +104,7 @@ data class VerifierProfile(
     val urlPrefix: String,
     val clientIdSchemeType: ClientIdSchemeType,
     val deviceFlowConfig: DeviceFlowConfig,
+    val offeredByDefault: Boolean = true,
 ) {
     // DC API is offered for every profile; the request contents are chosen per-request in the UI.
     val supportedOptions: Set<SupportedOptions> = buildSet {
@@ -163,6 +168,15 @@ class VerifierProfiles(
     }
 
     val knownProfiles: List<VerifierProfile> = listOf(
+        VerifierProfile(
+            name = "EUDIW2026",
+            label = "EUDI.Wallet 2026",
+            description = "eu-eaap:// for redirects, x509_hash, OpenID4VP 1.0",
+            urlPrefix = Paths.Schemes.EuEaap,
+            clientIdSchemeType = ClientIdSchemeType.X509Hash,
+            deviceFlowConfig = DeviceFlowConfig(DeviceResponseMode.DirectPostJwt),
+            offeredByDefault = false,
+        ),
         VerifierProfile(
             name = "HAIPd05",
             label = "OpenID4VP: HAIP (d05)",
@@ -405,14 +419,27 @@ class VerifierProfiles(
 
     private fun buildStatusListTokenResolver() = StatusListTokenResolver {
         Napier.i("Resolving token status for from $it")
-        run {
-            httpClient.get(it.string) {
-                header(HttpHeaders.Accept, MediaTypes.Application.STATUSLIST_JWT)
-            }.body<String>()
-        }.let {
-            JwsCompactTyped<StatusListTokenPayload>(it)
-        }.let {
-            StatusListJwt(it, Clock.System.now())
+        val response = httpClient.get(it.string) {
+            header(
+                HttpHeaders.Accept,
+                listOf(
+                    MediaTypes.Application.STATUSLIST_JWT,
+                    MediaTypes.Application.STATUSLIST_CWT,
+                    MediaTypes.Application.IDENTIFIERLIST_CWT,
+                ).joinToString(", ")
+            )
+        }
+        val bytes = response.body<ByteArray>()
+        when (response.contentType()?.withoutParameters()?.toString()?.lowercase()) {
+            MediaTypes.Application.STATUSLIST_CWT,
+            MediaTypes.Application.IDENTIFIERLIST_CWT -> StatusListCwt(
+                coseCompliantSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(bytes),
+                Clock.System.now(),
+            )
+            else -> StatusListJwt(
+                JwsCompactTyped<StatusListTokenPayload>(bytes.decodeToString()),
+                Clock.System.now(),
+            )
         }
     }
 

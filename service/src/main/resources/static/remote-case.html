@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>EUDI.Wallet 2026 remote presentation</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.2/font/bootstrap-icons.min.css">
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"
+            integrity="sha384-MrcW6ZMFYlzcLA8Nl+NtUVF0sA7MsXsP1UyJoMp4YLEuNSfAP+JcXn/tWtIaxVXM"
+            crossorigin="anonymous"></script>
+    <script type="importmap">
+        {"imports":{
+            "login":"./js/login.js","vue":"https://unpkg.com/vue@3/dist/vue.esm-browser.js",
+            "header-comp":"./js/templates/header-comp.js","error-alert-comp":"./js/templates/error-alert-comp.js",
+            "accordion-comp":"./js/templates/accordion-comp.js","login-options-comp":"./js/templates/login-options-comp.js",
+            "request-details-comp":"./js/templates/request-details-comp.js","main-config":"./js/login-config.js"
+        }}
+    </script>
+    <script type="module">
+        import {createApp} from 'vue'
+        import {createBasicSetup} from 'login'
+        import HeaderComp from 'header-comp'
+        import ErrorAlertComp from 'error-alert-comp'
+        import AccordionComp from 'accordion-comp'
+        import LoginOptionsComp from 'login-options-comp'
+        import RequestDetailsComp from 'request-details-comp'
+        import config from 'main-config'
+        import {caseById, caseFlow, verifierCaseById} from './js/remote-cases.js'
+
+        const params = new URLSearchParams(location.search)
+        const testCase = params.has('pre') ? verifierCaseById(params.get('pre')) : caseById(params.get('id'))
+        const unsupported = testCase && !testCase.displayId && testCase.id === 5
+        const missingCredentials = testCase?.credentials.filter(credential =>
+            !config.schemeTypes.some(type => type.value === credential.schemeType)) || []
+        if (testCase) document.title = `${testCase.displayId || 'Remote_Presentation_' + testCase.id} · EUDI.Wallet 2026`
+        if (testCase && testCase.credentials.length && !unsupported) {
+            config.profiles = [{
+                label: testCase.displayId || `Remote_Presentation_${testCase.id}`,
+                credentials: testCase.credentials.map(credential => {
+                    const scheme = config.schemeTypes.find(type => type.value === credential.schemeType)
+                    return {...credential, attributes: scheme?.attributes.filter(attribute => testCase.allClaims || attribute.isSelected) || []}
+                })
+            }]
+        }
+        createApp({
+            components: {HeaderComp, ErrorAlertComp, AccordionComp, LoginOptionsComp, RequestDetailsComp},
+            setup() {
+                const flowConfig = testCase && caseFlow(testCase)
+                const runHere = testCase && !unsupported && !testCase.externalUrl && missingCredentials.length === 0
+                const app = runHere ? createBasicSetup(config, {
+                    transactionFields: {
+                        profileName: flowConfig.profileName,
+                        emptyIssuerTrustList: testCase.emptyIssuerTrustList === true,
+                    },
+                    defaultDcApiSelection: flowConfig.selection || undefined,
+                }) : {}
+                if (runHere) {
+                    ;(async () => {
+                        try {
+                            await app.updateProfile(config.profiles[0])
+                            await app.loadCertificatePreviews()
+                            if (!testCase.manualSetup) {
+                                if (app.wrpacPreviews.value.length) await app.updateSelectedWrpac(app.wrpacPreviews.value[0].id)
+                                if (app.wrprcPreviews.value.length) await app.updateSelectedWrprc(app.wrprcPreviews.value[0].id)
+                                await app.generateQrCode()
+                                app.resetRequestChanged()
+                            }
+                            app.startPeriodicUpdate()
+                        } catch (error) {
+                            console.error('Could not prepare test case', error)
+                        }
+                    })()
+                }
+                return {
+                    ...app, testCase, flowConfig, runHere, missingCredentials,
+                    uiFlow: testCase?.flow === 'redirect' ? 'redirect' : testCase?.flow === 'annex' ? 'annex-c' : 'dcapi',
+                    profileNames: flowConfig ? [flowConfig.profileName] : [],
+                }
+            }
+        }).mount('#app')
+    </script>
+</head>
+<body id="app">
+<header-comp></header-comp>
+<main class="container px-4 py-5 position-relative">
+    <a href="index.html" class="d-inline-block mb-4"><i class="bi bi-arrow-left me-1"></i>All test cases</a>
+    <div v-if="!testCase" class="alert alert-warning" role="alert">Unknown remote presentation test case.</div>
+    <template v-else>
+        <p class="text-uppercase text-primary fw-semibold mb-1">{{ testCase.displayId || 'Remote_Presentation_' + testCase.id }}</p>
+        <h1>{{ testCase.title }}</h1>
+        <p class="lead">{{ testCase.description }}</p>
+        <p v-if="flowConfig" class="badge text-bg-primary">{{ flowConfig.label }}</p>
+        <div class="row g-3 mb-4">
+            <div class="col-lg-6"><div class="card h-100"><div class="card-body">
+                <h2 class="h5">Before starting</h2><p class="mb-0">{{ testCase.precondition }}</p>
+            </div></div></div>
+            <div class="col-lg-6"><div class="card h-100"><div class="card-body">
+                <h2 class="h5">Expected result</h2><p class="mb-0">{{ testCase.expected }}</p>
+            </div></div></div>
+        </div>
+        <div v-if="testCase.note" class="alert alert-info" role="note">{{ testCase.note }}</div>
+        <div v-if="missingCredentials.length" class="alert alert-warning" role="alert">
+            Credential metadata is unavailable for {{ missingCredentials.map(item => item.schemeType).join(', ') }}.
+            Configure the type metadata service, then reload this case.
+        </div>
+        <div v-if="unsupported" class="alert alert-warning" role="alert">
+            ISO Annex C with SD-JWT VC cannot be started by this service. Use a reader with SD-JWT VC device request/response support for this optional case.
+        </div>
+        <a v-else-if="testCase.externalUrl" :href="testCase.externalUrl" class="btn btn-primary mb-4" target="_blank" rel="noopener">
+            Open signature service <i class="bi bi-box-arrow-up-right ms-1"></i>
+        </a>
+        <template v-else-if="runHere">
+            <error-alert-comp :error="error"></error-alert-comp>
+            <login-options-comp
+                    :result="reqResult" :changed="reqChanged" :error="error"
+                    :iso-mdoc-request="isMdocRequest" :dcapi-selection="selections[activeProfileName] || {}"
+                    :profile-names="profileNames" :flow="uiFlow"
+                    @update:dcapi-selection="selections[activeProfileName] = $event"
+                    @generate-qr-code="generateQrCode" @invoke-d-c-a-p-i="invokeDCAPI"
+                    @profile-tab-changed="activeProfileName = $event"></login-options-comp>
+            <accordion-comp title="Request Details">
+                <request-details-comp
+                        :request="reqSelection" :config="config" :active-profile="activeProfile"
+                        :active-profile-name="activeProfileName" :wrpac-previews="wrpacPreviews"
+                        :wrprc-previews="wrprcPreviews" :show-certificates="true"
+                        @update-scheme-type="updateSchemeType" @update-representation="updateRepresentation"
+                        @update-selected-wrpac="updateSelectedWrpac" @update-selected-wrprc="updateSelectedWrprc"
+                        @update-attribute="updateAttribute" @add-credential="addCredential"
+                        @remove-credential="removeCredential" @generate-qr-code="generateQrCode"></request-details-comp>
+            </accordion-comp>
+        </template>
+    </template>
+</main>
+</body>
+</html>
