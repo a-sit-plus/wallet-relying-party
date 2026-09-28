@@ -262,6 +262,7 @@ app:
   public-context: "http://localhost:8080/"
   transaction-ttl: 30m
   result-ttl: 30m
+  trust-list-stages: [ACCEPTANCE]
   verifier-key:
     type: MEMORY
 ```
@@ -299,6 +300,11 @@ and expected origins.
 remain valid. `app.result-ttl` controls how long validated demo results remain
 available through `/api/items` and `/api/single/{id}`. Both default to 30
 minutes, and expired entries are removed by a scheduled cleanup task.
+
+`app.trust-list-stages` selects the stages of the European Commission's trust
+infrastructure (`DEVELOPMENT`, `ACCEPTANCE`, `PRODUCTION`) to fetch the Lists
+of Trusted Entities from, which decide the displayed issuer trust. Defaults to
+`ACCEPTANCE`.
 
 ### Optional Spring Boot Admin Client
 

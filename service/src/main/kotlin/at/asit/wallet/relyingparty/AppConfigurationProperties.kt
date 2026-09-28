@@ -1,5 +1,6 @@
 package at.asit.wallet.relyingparty
 
+import at.asitplus.wallet.lib.etsi.LoTEStage
 import org.springframework.boot.context.properties.ConfigurationProperties
 import org.springframework.web.util.UriComponentsBuilder
 import java.net.URI
@@ -18,6 +19,8 @@ data class AppConfigurationProperties(
     val resultTtl: Duration = Duration.ofMinutes(30),
     /** Wallet relying party certificate configuration */
     val wrp: WrpConfigurationProperties? = null,
+    /** Stages of the European Commission's trust infrastructure to fetch the Lists of Trusted Entities from. */
+    val trustListStages: List<LoTEStage> = listOf(LoTEStage.ACCEPTANCE),
 )
 
 fun URL.appendPath(path: String): String = UriComponentsBuilder.fromUri(toURI()).path(path).toUriString()

@@ -4,9 +4,8 @@ import at.asitplus.etsi.TrustListPayload
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.wallet.lib.etsi.LoTEFilterCriteria
 import at.asitplus.wallet.lib.etsi.LoTEFilterService
-import at.asitplus.wallet.lib.etsi.LoTEServiceType
+import at.asitplus.wallet.lib.etsi.LoteProfile
 import at.asitplus.wallet.lib.etsi.isTrustedBy
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectJades
 import io.github.aakira.napier.Napier
@@ -26,8 +25,12 @@ import org.springframework.scheduling.annotation.Scheduled
 
 @Service
 class TrustListService(
-    private val trustListCache: TrustListCache
+    private val trustListCache: TrustListCache,
+    configuration: AppConfigurationProperties,
 ) {
+    /** Every list of every configured trust infrastructure stage. */
+    val trustListUrls: List<String> = LoteProfile.fetchUrls(configuration.trustListStages)
+
     private val httpClient = HttpClient {
         install(ContentNegotiation) {
             json(joseCompliantSerializer)
@@ -66,7 +69,7 @@ class TrustListService(
     }
 
     suspend fun refreshAll() {
-        LoTEServiceType.defaultUrls.forEach { url ->
+        trustListUrls.forEach { url ->
             syncSingleUrl(url)
         }
     }
@@ -85,20 +88,19 @@ class TrustListService(
 
     /**
      * Evaluates if a given issuer is trusted based on the internal root cert and LoTEs.
+     *
+     * Lists not matching [profile] contribute no certificates, so evaluating against every cached list is fine.
      */
     fun evaluateIssuer(
         issuer: X509Certificate,
-        serviceType: LoTEServiceType
+        profile: LoteProfile,
     ): TrustState = try {
         if (issuer.isTrustedBy(listOf(asitIssuerCert)).isSuccess) {
             return TrustState.TRUSTED
         }
 
-        val criteria = LoTEFilterCriteria(expectedServiceType = serviceType)
-        val allLoTes = trustListCache.getAll()
-
-        val certificateList: List<X509Certificate> = allLoTes
-            .flatMap { lote -> loTeFilterService.extractTrustedCertificates(lote.key, lote.value.loTe, criteria) }
+        val certificateList: List<X509Certificate> = trustListCache.getAll().values
+            .flatMap { payload -> loTeFilterService.extractIssuanceCertificates(payload.loTe, profile) }
             .mapNotNull { it.certificate }
 
         if (certificateList.isEmpty()) {
@@ -114,7 +116,7 @@ class TrustListService(
 
     fun evaluateCredentialIssuerTrust(credential: ApiItemCredential): TrustState =
         credential.issuerCertificate?.let {
-            evaluateIssuer(it, LoTEServiceType.fromSchemeIdentifier(credential.credentialType))
+            evaluateIssuer(it, LoteProfile.fromSchemeIdentifier(credential.credentialType))
         } ?: TrustState.UNKNOWN
 }
 

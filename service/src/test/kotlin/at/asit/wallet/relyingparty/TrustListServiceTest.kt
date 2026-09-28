@@ -1,6 +1,8 @@
 package at.asit.wallet.relyingparty
 
 import at.asitplus.signum.indispensable.pki.X509Certificate
+import at.asitplus.wallet.lib.etsi.LoTEStage
+import at.asitplus.wallet.lib.etsi.LoteProfile
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.jsonArray
 import kotlinx.serialization.json.jsonObject
@@ -11,7 +13,17 @@ import org.junit.jupiter.api.Test
 
 class TrustListServiceTest {
 
-    private val service = TrustListService(TrustListCache())
+    private val service = TrustListService(TrustListCache(), AppConfigurationProperties())
+
+    @Test
+    fun `lists are fetched from the configured stages`() {
+        assertEquals(LoteProfile.fetchUrls(LoTEStage.ACCEPTANCE), service.trustListUrls)
+        val stages = listOf(LoTEStage.ACCEPTANCE, LoTEStage.DEVELOPMENT)
+        assertEquals(
+            LoteProfile.fetchUrls(stages),
+            TrustListService(TrustListCache(), AppConfigurationProperties(trustListStages = stages)).trustListUrls,
+        )
+    }
 
     @Test
     fun `trust is evaluated for each credential`() {
