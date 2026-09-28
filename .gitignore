@@ -36,6 +36,7 @@ out/
 ### VS Code ###
 .vscode/
 /local.properties
+/local/
 .kotlin/
 metrics/
 
