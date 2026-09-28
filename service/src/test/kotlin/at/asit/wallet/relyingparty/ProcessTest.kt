@@ -139,11 +139,11 @@ class ProcessTest {
     }
 
     @Test
-    fun `empty issuer trust list marks a valid presented mdoc untrusted`() = runTest {
+    fun `mdoc from an issuer outside the trust lists is untrusted`() = runTest {
         runProcess(
             representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
             profileName = "MDOCd23",
-            emptyIssuerTrustList = true,
+            expectedTrustState = TrustState.UNTRUSTED,
         )
     }
 
@@ -354,7 +354,6 @@ class ProcessTest {
         selectedWrpacId: Int? = null,
         selectedWrprcId: Int? = null,
         profileName: String? = null,
-        emptyIssuerTrustList: Boolean = false,
     ): TransactionResponse {
         val requestBuilder = CredentialPresentationRequestBuilder(
             listOf(
@@ -374,7 +373,6 @@ class ProcessTest {
                     selectedWrpacId = selectedWrpacId,
                     selectedWrprcId = selectedWrprcId,
                     profileName = profileName,
-                    emptyIssuerTrustList = emptyIssuerTrustList,
                 )
             )
             contentType = MediaType.APPLICATION_JSON
@@ -396,14 +394,13 @@ class ProcessTest {
         profileName: String? = null,
         selectedWrpacId: Int? = null,
         selectedWrprcId: Int? = null,
-        emptyIssuerTrustList: Boolean = false,
+        expectedTrustState: TrustState? = null,
     ) {
         val givenName = uuid4().toString()
         val transactionResponse = createTransaction(
             representation,
             selectedWrpacId = selectedWrpacId,
             selectedWrprcId = selectedWrprcId,
-            emptyIssuerTrustList = emptyIssuerTrustList,
         )
 
         val holderKey = EphemeralKeyWithoutCert()
@@ -442,7 +439,7 @@ class ProcessTest {
             givenName,
             user!!.credentials.firstNotNullOfOrNull { it.getClaim(AtomicAttribute2023.CLAIM_GIVEN_NAME) })
         assertTrue(user.credentials.all { it.trustState != null })
-        if (emptyIssuerTrustList) assertTrue(user.credentials.all { it.trustState == TrustState.UNTRUSTED })
+        expectedTrustState?.let { expected -> assertTrue(user.credentials.all { it.trustState == expected }) }
         if (representation == ConstantIndex.CredentialRepresentation.ISO_MDOC) {
             // the mdoc really was presented as one, and its issuerAuth was verified against the certificate
             // transported in the COSE headers

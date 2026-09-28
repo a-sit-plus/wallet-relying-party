@@ -14,7 +14,6 @@ data class TransactionRequest(
     val selectedWrpacId: Int? = null,
     val selectedWrprcId: Int? = null,
     val profileName: String? = null,
-    val emptyIssuerTrustList: Boolean = false,
 )
 
 @Serializable

@@ -54,11 +54,10 @@ export const remoteCases = [
         {id: 16, credentials: [pidMdoc], title: 'Untrusted mdoc issuer anchor'},
         {id: 17, credentials: [pidSd], title: 'Untrusted SD-JWT issuer anchor'},
     ].map(item => ({
-        ...item, flow: 'redirect', emptyIssuerTrustList: true,
-        description: 'Present a valid credential while the reader evaluates issuer trust against an empty issuer trust list.',
-        precondition: 'First confirm the credential works in a happy flow. The wallet trusts the reader certificates.',
+        ...item, flow: 'redirect',
+        description: 'Present a valid credential whose issuer anchor is not on the reader’s PID/mDL provider LoTE.',
+        precondition: 'First confirm the credential type works in a happy flow. Use a credential from an issuer that is not listed in the LoTE. The wallet trusts the reader certificates.',
         expected: 'The reader reports the PID/mDL provider anchor as untrusted. Credential data may still be shown.',
-        note: 'The empty trust list applies only to this transaction’s displayed issuer trust result.',
     })),
     {
         id: 18, title: 'Revoked mdoc: MSO identifier list', flow: 'redirect', credentials: [pidMdoc],

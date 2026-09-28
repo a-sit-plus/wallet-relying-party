@@ -53,10 +53,7 @@
                 const flowConfig = testCase && caseFlow(testCase)
                 const runHere = testCase && !unsupported && !testCase.externalUrl && missingCredentials.length === 0
                 const app = runHere ? createBasicSetup(config, {
-                    transactionFields: {
-                        profileName: flowConfig.profileName,
-                        emptyIssuerTrustList: testCase.emptyIssuerTrustList === true,
-                    },
+                    transactionFields: {profileName: flowConfig.profileName},
                     defaultDcApiSelection: flowConfig.selection || undefined,
                     onAuthenticationCompleted(transactionId) {
                         if (nativeAuth) window.location.assign(nativeAuth.callbackForTransaction(transactionId))

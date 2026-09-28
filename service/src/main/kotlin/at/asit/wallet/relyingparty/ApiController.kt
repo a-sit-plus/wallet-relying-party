@@ -258,13 +258,7 @@ class ApiController(
             } else {
                 error("Unsupported response for transaction $id")
             }
-            validationResult.convertToUser { credential ->
-                if (transaction.request.emptyIssuerTrustList) {
-                    TrustState.UNTRUSTED
-                } else {
-                    trustListService.evaluateCredentialIssuerTrust(credential)
-                }
-            }
+            validationResult.convertToUser(trustListService::evaluateCredentialIssuerTrust)
         }.getOrElse {
             Napier.w("${Paths.Transaction.ResultUrl}/$id extracted got error", it)
             statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})", it)
