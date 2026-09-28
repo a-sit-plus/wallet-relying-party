@@ -70,7 +70,8 @@ class MainActivity : ComponentActivity() {
     private fun browserLogin() {
         val state = UUID.randomUUID()
         expectedState = state
-        val loginUrl = Uri.parse("$SERVICE_URL/pidmdoc.html").buildUpon()
+        val loginUrl = Uri.parse("$SERVICE_URL/remote-case.html").buildUpon()
+            .appendQueryParameter("id", "6")
             .appendQueryParameter("client", "android")
             .appendQueryParameter("state", state.toString())
             .build()

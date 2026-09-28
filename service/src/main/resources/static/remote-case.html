@@ -15,7 +15,8 @@
             "login":"./js/login.js","vue":"https://unpkg.com/vue@3/dist/vue.esm-browser.js",
             "header-comp":"./js/templates/header-comp.js","error-alert-comp":"./js/templates/error-alert-comp.js",
             "accordion-comp":"./js/templates/accordion-comp.js","login-options-comp":"./js/templates/login-options-comp.js",
-            "request-details-comp":"./js/templates/request-details-comp.js","main-config":"./js/login-config.js"
+            "request-details-comp":"./js/templates/request-details-comp.js","native-auth":"./js/native-auth.mjs",
+            "main-config":"./js/login-config.js"
         }}
     </script>
     <script type="module">
@@ -28,9 +29,11 @@
         import RequestDetailsComp from 'request-details-comp'
         import config from 'main-config'
         import {caseById, caseFlow, verifierCaseById} from './js/remote-cases.js'
+        import {nativeAuthConfiguration} from 'native-auth'
 
         const params = new URLSearchParams(location.search)
         const testCase = params.has('pre') ? verifierCaseById(params.get('pre')) : caseById(params.get('id'))
+        const nativeAuth = params.has('pre') ? null : nativeAuthConfiguration(location.search)
         const unsupported = testCase && !testCase.displayId && testCase.id === 5
         const missingCredentials = testCase?.credentials.filter(credential =>
             !config.schemeTypes.some(type => type.value === credential.schemeType)) || []
@@ -55,6 +58,9 @@
                         emptyIssuerTrustList: testCase.emptyIssuerTrustList === true,
                     },
                     defaultDcApiSelection: flowConfig.selection || undefined,
+                    onAuthenticationCompleted(transactionId) {
+                        if (nativeAuth) window.location.assign(nativeAuth.callbackForTransaction(transactionId))
+                    },
                 }) : {}
                 if (runHere) {
                     ;(async () => {
@@ -67,7 +73,7 @@
                                 await app.generateQrCode()
                                 app.resetRequestChanged()
                             }
-                            app.startPeriodicUpdate()
+                            if (!nativeAuth) app.startPeriodicUpdate()
                         } catch (error) {
                             console.error('Could not prepare test case', error)
                         }

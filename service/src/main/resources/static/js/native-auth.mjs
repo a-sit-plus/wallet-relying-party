@@ -4,12 +4,11 @@ export function nativeAuthConfiguration(search) {
     const parameters = new URLSearchParams(search)
     const state = parameters.get('state')
 
-    if (!['android', 'ios'].includes(parameters.get('client')) || !UUID_PATTERN.test(state || '')) {
+    if (parameters.get('id') !== '6' || !['android', 'ios'].includes(parameters.get('client')) || !UUID_PATTERN.test(state || '')) {
         return null
     }
 
     return {
-        profileNames: ['MDOCISO'],
         callbackForTransaction(transactionId) {
             const callback = new URL('wallet-rp://auth/callback')
             callback.searchParams.set('transaction_id', transactionId)
