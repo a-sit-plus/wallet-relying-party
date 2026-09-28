@@ -11,7 +11,7 @@
     <script type="module">
         import {createApp} from 'vue'
         import HeaderComp from 'header-comp'
-        import {remoteCases, remoteVerifierCases} from './js/remote-cases.js'
+        import {remoteCases} from './js/remote-cases.js'
         createApp({
             components: {HeaderComp},
             setup() {
@@ -22,7 +22,6 @@
                     {title: 'Reader and issuer trust', description: 'Negative presentation cases', cases: remoteCases.filter(c => c.id >= 13 && c.id <= 17)},
                     {title: 'Revocation', description: 'Identifier and status lists', cases: remoteCases.filter(c => c.id >= 18 && c.id <= 20)},
                     {title: 'Qualified signature', description: 'External signing service', cases: remoteCases.filter(c => c.id === 21)},
-                    {title: 'ITB remote verifier cases', description: 'Reference verifier scenarios PRE-01 to PRE-14', cases: remoteVerifierCases},
                 ]}
             }
         }).mount('#app')
@@ -43,9 +42,9 @@
         </div>
         <div class="row g-3">
             <div v-for="item in group.cases" :key="item.id" class="col-md-6 col-xl-4">
-                <a :href="'remote-case.html?' + (item.displayId ? 'pre=' : 'id=') + item.id" class="card h-100 text-decoration-none text-body shadow-sm">
+                <a :href="'remote-case.html?id=' + item.id" class="card h-100 text-decoration-none text-body shadow-sm">
                     <div class="card-body">
-                        <span class="small text-primary fw-semibold">{{ item.displayId || 'Remote_Presentation_' + item.id }}</span>
+                        <span class="small text-primary fw-semibold">Remote_Presentation_{{ item.id }}</span>
                         <h3 class="h5 mt-2">{{ item.title }}</h3>
                         <p class="card-text text-muted small mb-2">{{ item.description }}</p>
                         <span v-if="item.id === 5" class="badge text-bg-warning">Optional · service limitation</span>

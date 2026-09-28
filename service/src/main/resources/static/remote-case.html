@@ -28,22 +28,22 @@
         import LoginOptionsComp from 'login-options-comp'
         import RequestDetailsComp from 'request-details-comp'
         import config from 'main-config'
-        import {caseById, caseFlow, verifierCaseById} from './js/remote-cases.js'
+        import {caseById, caseFlow} from './js/remote-cases.js'
         import {nativeAuthConfiguration} from 'native-auth'
 
         const params = new URLSearchParams(location.search)
-        const testCase = params.has('pre') ? verifierCaseById(params.get('pre')) : caseById(params.get('id'))
+        const testCase = caseById(params.get('id'))
         const nativeAuth = params.has('pre') ? null : nativeAuthConfiguration(location.search)
-        const unsupported = testCase && !testCase.displayId && testCase.id === 5
+        const unsupported = testCase?.id === 5
         const missingCredentials = testCase?.credentials.filter(credential =>
             !config.schemeTypes.some(type => type.value === credential.schemeType)) || []
-        if (testCase) document.title = `${testCase.displayId || 'Remote_Presentation_' + testCase.id} · EUDI.Wallet 2026`
+        if (testCase) document.title = `Remote_Presentation_${testCase.id} · EUDI.Wallet 2026`
         if (testCase && testCase.credentials.length && !unsupported) {
             config.profiles = [{
-                label: testCase.displayId || `Remote_Presentation_${testCase.id}`,
+                label: `Remote_Presentation_${testCase.id}`,
                 credentials: testCase.credentials.map(credential => {
                     const scheme = config.schemeTypes.find(type => type.value === credential.schemeType)
-                    return {...credential, attributes: scheme?.attributes.filter(attribute => testCase.allClaims || attribute.isSelected) || []}
+                    return {...credential, attributes: scheme?.attributes.filter(attribute => attribute.isSelected) || []}
                 })
             }]
         }
@@ -67,12 +67,10 @@
                         try {
                             await app.updateProfile(config.profiles[0])
                             await app.loadCertificatePreviews()
-                            if (!testCase.manualSetup) {
-                                if (app.wrpacPreviews.value.length) await app.updateSelectedWrpac(app.wrpacPreviews.value[0].id)
-                                if (app.wrprcPreviews.value.length) await app.updateSelectedWrprc(app.wrprcPreviews.value[0].id)
-                                await app.generateQrCode()
-                                app.resetRequestChanged()
-                            }
+                            if (app.wrpacPreviews.value.length) await app.updateSelectedWrpac(app.wrpacPreviews.value[0].id)
+                            if (app.wrprcPreviews.value.length) await app.updateSelectedWrprc(app.wrprcPreviews.value[0].id)
+                            await app.generateQrCode()
+                            app.resetRequestChanged()
                             if (!nativeAuth) app.startPeriodicUpdate()
                         } catch (error) {
                             console.error('Could not prepare test case', error)
@@ -94,7 +92,7 @@
     <a href="index.html" class="d-inline-block mb-4"><i class="bi bi-arrow-left me-1"></i>All test cases</a>
     <div v-if="!testCase" class="alert alert-warning" role="alert">Unknown remote presentation test case.</div>
     <template v-else>
-        <p class="text-uppercase text-primary fw-semibold mb-1">{{ testCase.displayId || 'Remote_Presentation_' + testCase.id }}</p>
+        <p class="text-uppercase text-primary fw-semibold mb-1">Remote_Presentation_{{ testCase.id }}</p>
         <h1>{{ testCase.title }}</h1>
         <p class="lead">{{ testCase.description }}</p>
         <p v-if="flowConfig" class="badge text-bg-primary">{{ flowConfig.label }}</p>
