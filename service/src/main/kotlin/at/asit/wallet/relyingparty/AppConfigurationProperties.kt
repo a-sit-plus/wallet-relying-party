@@ -43,7 +43,10 @@ data class KeyStoreConfiguration(
     val password: String? = null,
     val alias: String,
     val aliasPassword: String? = null,
-)
+) {
+    override fun toString() = "KeyStoreConfiguration(path=$path, type=$type, provider=$provider, " +
+            "password=${password.redacted()}, alias=$alias, aliasPassword=${aliasPassword.redacted()})"
+}
 
 enum class KeyType {
     FILE,
@@ -80,3 +83,6 @@ data class WrprcConfiguration(
     val label: String,
     val path: URI,
 )
+
+/** Keeps secrets out of logs, while still showing whether one is configured. */
+private fun String?.redacted() = if (this == null) "null" else "***"

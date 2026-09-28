@@ -8,6 +8,7 @@ Version 8.0.0 (unreleased):
  - Sign DC API requests with each configured WRPAC as a `wrpac-<id>` signer, including its full certificate chain, and choose a registration certificate per signer; registration certificates on signers other than a WRPAC are rejected unless mismatched combinations are allowed for testing
  - Omit the `response_uri` parameter from OpenID4VP Digital Credentials API requests
  - Fix verifier identity selection when switching between signed and multisigned requests
+ - Do not print key store passwords, e.g. of WRPACs, as part of the configuration
  - Remove support for Presentation Exchange
  - Update the Gradle conventions plugin to 20260828 and the Gradle wrapper to 9.7.1
 
