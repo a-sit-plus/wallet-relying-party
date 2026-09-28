@@ -124,6 +124,8 @@ class ApiController(
                     png = qrCodeBytes.toDataUrl(),
                     url = qrCodeUrl,
                     dcApiUrl = transactionContext.dcApiUrl,
+                    dcApiSigners = profiles.dcApiSigners(),
+                    dcApiRegistrationCertificates = profiles.dcApiRegistrationCertificates(),
                     supportedOptions = preparedProfile.supportedOptions
                 )
             }.getOrElse { throwable ->
@@ -175,10 +177,19 @@ class ApiController(
         @RequestParam(name = "oid4vpMode", required = false, defaultValue = "SIGNED") oid4vpMode: Oid4vpDcApiMode,
         @RequestParam(name = "isoMdoc", required = false, defaultValue = "false") isoMdoc: Boolean,
         @RequestParam(name = "encrypt", required = false, defaultValue = "true") encrypt: Boolean,
+        @RequestParam(name = "signerId", required = false) signerIds: List<String>?,
+        @RequestParam(name = "signerVerifierInfo", required = false) signerVerifierInfo: List<String>?,
+        @RequestParam(name = "forgedSignerId", required = false) forgedSignerIds: List<String>?,
+        @RequestParam(name = "allowMismatchedVerifierInfo", required = false, defaultValue = "false")
+        allowMismatchedVerifierInfo: Boolean,
         request: HttpServletRequest,
     ): ResponseEntity<String> {
         MDC.put(MDC_REQUEST_ID, id)
-        Napier.i("/transaction/get/dcapi/$id called (oid4vpMode=$oid4vpMode, isoMdoc=$isoMdoc, encrypt=$encrypt)")
+        Napier.i(
+            "/transaction/get/dcapi/$id called " +
+                    "(oid4vpMode=$oid4vpMode, isoMdoc=$isoMdoc, encrypt=$encrypt, signerIds=$signerIds, " +
+                    "forgedSignerIds=$forgedSignerIds)"
+        )
         statisticLogger.info("$id get-dcapi (${request.getHeader(HttpHeaders.USER_AGENT)})")
         val transaction = getTransaction(id)
             ?: throw ResponseStatusException(HttpStatus.NOT_FOUND)
@@ -189,15 +200,36 @@ class ApiController(
 
         return catching {
             check(transaction.profile.supportedOptions.any { it.isDcApi }) { "Profile does not support DC API flow" }
+            val responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}")
             val body = transaction.transactionGetDcApi(
-                responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}"),
-                oid4vpMode = oid4vpMode,
-                isoMdoc = isoMdoc,
-                encrypt = encrypt,
-                verifierInfo = profiles.buildVerifierInfo(
-                    selectedWrprcId = transaction.request.selectedWrprcId,
+                responseUrl,
+                oid4vpMode,
+                isoMdoc,
+                encrypt,
+                DcApiSignerSelection(
+                    signerIds = signerIds.orEmpty(),
+                    verifierInfo = signerVerifierInfo.orEmpty().associate { value ->
+                        val separator = value.lastIndexOf(':')
+                        if (separator <= 0 || separator == value.lastIndex) {
+                            throw ClientFacingException(
+                                "signerVerifierInfo must have the form <signer-id>:<wrprc-id|none>"
+                            )
+                        }
+                        val signerId = value.substring(0, separator)
+                        val wrprcId = value.substring(separator + 1).let { id ->
+                            if (id == "none") null
+                            else id.toIntOrNull()
+                                ?: throw ClientFacingException("Invalid WRPRC id in signerVerifierInfo '$value'")
+                        }
+                        signerId to wrprcId
+                    },
+                    forgedSignerIds = forgedSignerIds.orEmpty().filter { it.isNotBlank() }.toSet(),
+                    preferredWrpacId = transaction.request.selectedWrpacId,
+                    wrpacRegistrationCertificateId = transaction.request.selectedWrprcId,
+                    allowMismatchedVerifierInfo = allowMismatchedVerifierInfo,
                 ),
-            ).also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
+            )
+                .also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
             ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)

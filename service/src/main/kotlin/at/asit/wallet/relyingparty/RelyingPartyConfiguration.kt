@@ -4,6 +4,9 @@ import at.asitplus.signum.indispensable.asn1.*
 import at.asitplus.signum.indispensable.asn1.encoding.Asn1
 import at.asitplus.signum.indispensable.pki.SubjectAltNameImplicitTags
 import at.asitplus.signum.indispensable.pki.X509CertificateExtension
+import at.asitplus.signum.indispensable.josef.JsonWebToken
+import at.asitplus.signum.indispensable.pki.CertificateChain
+import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.wallet.eupid.EuPidItemValueSerializerMap
 import at.asitplus.wallet.eupid.EuPidJsonValueEncoder
 import at.asitplus.wallet.lib.LibraryInitializer
@@ -104,9 +107,40 @@ class RelyingPartyConfiguration {
     }
 
     @Bean("verifierKeyMaterial")
-    fun verifierKeyMaterial(): KeyMaterial = when (configuration.verifierKey.type) {
-        KeyType.FILE -> loadKeyFile(configuration.verifierKey.file!!, resourceLoader)
-        KeyType.KEYSTORE -> loadKeyStore(configuration.verifierKey.keystore!!)
+    fun verifierKeyMaterial(): KeyMaterial = loadKeyMaterial(configuration.verifierKey)
+
+    @Bean
+    fun dcApiSignerRegistry(): DcApiSignerRegistry {
+        require(configuration.dcApiSigners.isNotEmpty()) {
+            "app.dc-api-signers must configure at least one verifier identity"
+        }
+        require(configuration.dcApiSigners.map { it.id }.distinct().size == configuration.dcApiSigners.size) {
+            "app.dc-api-signers ids must be distinct"
+        }
+        require(configuration.dcApiSigners.none { it.id.startsWith(WRPAC_SIGNER_ID_PREFIX) }) {
+            "app.dc-api-signers ids starting with '$WRPAC_SIGNER_ID_PREFIX' are reserved for the WRPAC signers"
+        }
+        return DcApiSignerRegistry(configuration.dcApiSigners.map { signer ->
+            require(signer.id.isNotBlank()) { "app.dc-api-signers id must not be blank" }
+            require(signer.label.isNotBlank()) { "app.dc-api-signers '${signer.id}' label must not be blank" }
+            if (signer.scheme == DcApiSignerScheme.VERIFIER_ATTESTATION) {
+                requireNotNull(signer.verifierAttestation) {
+                    "app.dc-api-signers '${signer.id}' requires verifier-attestation"
+                }
+            }
+            DcApiSignerMaterial(
+                configuration = signer,
+                keyMaterial = loadKeyMaterial(signer.key),
+                verifierAttestation = signer.verifierAttestation?.let {
+                    JwsCompactTyped<JsonWebToken>(loadResource(resourceLoader, it.toString()).trim())
+                },
+            )
+        })
+    }
+
+    private fun loadKeyMaterial(config: KeyConfiguration): KeyMaterial = when (config.type) {
+        KeyType.FILE -> loadKeyFile(requireNotNull(config.file) { "FILE key configuration is missing file" }, resourceLoader)
+        KeyType.KEYSTORE -> loadKeyStore(requireNotNull(config.keystore) { "KEYSTORE key configuration is missing keystore" })
         KeyType.MEMORY -> EphemeralKeyWithSelfSignedCert(extensions = listOf(
             X509CertificateExtension(
                 KnownOIDs.subjectAltName_2_5_29_17,
@@ -175,3 +209,13 @@ class RelyingPartyConfiguration {
         )
 
 }
+
+data class DcApiSignerMaterial(
+    val configuration: DcApiSignerConfiguration,
+    val keyMaterial: KeyMaterial,
+    val verifierAttestation: JwsCompactTyped<JsonWebToken>?,
+    /** Chain for `x5c`, if known apart from [keyMaterial], e.g. of a WRPAC. */
+    val certificateChain: CertificateChain? = null,
+)
+
+data class DcApiSignerRegistry(val signers: List<DcApiSignerMaterial>)

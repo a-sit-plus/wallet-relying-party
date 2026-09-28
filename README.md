@@ -34,7 +34,7 @@ Digital Credentials API.
 - **Cross-device and same-device wallet handover** with QR codes and wallet deep links.
 - **Digital Credentials API support** for OpenID4VP and ISO mDoc requests.
 - **DCQL request generation** from selected credential attributes.
-- **Signed authorization requests** using X.509 based client identifier schemes.
+- **Single- and multi-identity signed authorization requests** using X.509 and verifier-attestation client identifier schemes.
 - **Response validation** for OpenID4VP, SD-JWT VC, and ISO mDoc presentations.
 - **Status list resolution** for token status checks.
 - **Verifier key configuration** with ephemeral, PEM file, or Java KeyStore backed keys.
@@ -122,7 +122,7 @@ Important endpoints:
 | --- | --- |
 | `POST /transaction/create` | Creates transactions for all supported profiles and returns QR codes, wallet URLs, and DC API URLs. |
 | `GET /transaction/get/{id}` | Returns the signed or unsigned authorization request for device handover flows. |
-| `GET /transaction/get/dcapi/{id}` | Returns Digital Credentials API request options. The optional `dcApiSignedOid4vp` query parameter (boolean, default `true`) controls whether the DC API request expects signed or unsigned OpenID4VP responses. |
+| `GET /transaction/get/dcapi/{id}` | Returns Digital Credentials API request options. `oid4vpMode` selects `NONE`, `UNSIGNED`, `SIGNED`, or `MULTISIGNED`; repeat `signerId` to select verifier identities. Repeat `signerVerifierInfo=<signer-id>:<wrprc-id|none>` to choose each signer's registration certificate. For testing wallets, repeat `forgedSignerId` to replace the signature value of selected identities of a `SIGNED` or `MULTISIGNED` request with random bytes, keeping their protected header, and pass `allowMismatchedVerifierInfo=true` to attach a registration certificate to a signer without a WRPAC. |
 | `POST /transaction/result/{id}` | Receives wallet responses and validates them with VC-K. |
 | `POST /utilities/buildCredentialQueries` | Builds a DCQL query from credential selections. |
 | `GET /api/items` | Returns validated presentation results stored by the demo. |
@@ -267,7 +267,34 @@ app:
   result-ttl: 30m
   verifier-key:
     type: MEMORY
+  dc-api-signers:
+    - id: dns-verifier
+      label: DNS certificate verifier (x509_san_dns)
+      scheme: X509_SAN_DNS
+      key:
+        type: MEMORY
+    - id: certificate-hash-verifier
+      label: Certificate hash verifier (x509_hash)
+      scheme: X509_HASH
+      key:
+        type: MEMORY
 ```
+
+`app.dc-api-signers` is required. Each entry defines an independently authenticated verifier identity used for
+OpenID4VP DC API request signing. `SIGNED` accepts exactly one selected signer and emits compact JWS;
+`MULTISIGNED` accepts at least two distinct signer IDs and emits JWS General JSON Serialization over one shared
+request payload. Supported schemes are `X509_SAN_DNS`, `X509_HASH`, and `VERIFIER_ATTESTATION`. For the latter,
+set `verifier-attestation` to a resource containing the compact attestation JWT.
+
+Every configured access certificate (see [WRPAC/WRPRC](#wrpacwrprc)) is offered as an additional signer with the
+reserved id `wrpac-<id>`, using `x509_hash` and the full WRPAC chain in `x5c`. Registration certificates are issued to
+the relying party identified by a WRPAC, so they are only carried by WRPAC signers: in the payload of a `SIGNED`
+request, and in the signer's own protected header of a `MULTISIGNED` request. A transaction created with
+`selectedWrpacId` defaults to that WRPAC's signer, and `selectedWrprcId` becomes its default registration certificate.
+Callers can choose one per signer by repeating `signerVerifierInfo=<signer-id>:<wrprc-id|none>`. Attaching a
+registration certificate to a signer without a WRPAC is rejected unless `allowMismatchedVerifierInfo=true` is passed, a
+test option for checking that wallets reject the mismatched binding. Which WRPAC a registration certificate belongs to
+is not configured, so a registration certificate on another WRPAC's signer is not detected as mismatched.
 
 ### Optional Spring Cloud Config Client
 

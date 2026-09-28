@@ -6,17 +6,24 @@ import at.asitplus.catching
 import at.asitplus.data.NonEmptyList
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
+import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest
 import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ResponseMode
 import at.asitplus.openid.VerifierInfo
 import at.asitplus.openid.encodeToParameters
+import at.asitplus.signum.indispensable.io.Base64UrlStrict
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.JwsCompactTyped
+import at.asitplus.signum.indispensable.josef.JwsFlattened
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.signum.indispensable.josef.toJwsFlattened
+import at.asitplus.signum.indispensable.josef.toJwsGeneral
+import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.KeyStoreMaterial
 import at.asitplus.wallet.lib.agent.Validator
 import at.asitplus.wallet.lib.agent.ValidatorMdoc
 import at.asitplus.wallet.lib.agent.ValidatorSdJwt
@@ -36,6 +43,7 @@ import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.ClientIdScheme.*
 import at.asitplus.wallet.lib.openid.CreationOptions
 import at.asitplus.wallet.lib.openid.DcApiCreationOptions
+import at.asitplus.wallet.lib.openid.DcApiRequestSigner
 import at.asitplus.wallet.lib.openid.DcApiVerifier
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
@@ -48,10 +56,14 @@ import io.ktor.client.plugins.logging.*
 import io.ktor.client.request.*
 import io.ktor.http.*
 import io.ktor.serialization.kotlinx.json.*
+import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
+import kotlinx.serialization.Serializable
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.jsonObject
 import org.springframework.stereotype.Component
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
+import kotlin.random.Random
 import kotlin.time.Clock
 
 
@@ -70,7 +82,49 @@ enum class SupportedOptions {
 
 // Which OpenID4VP DC API request to offer in a single navigator.credentials.get call.
 // Signed and Unsigned are mutually exclusive (they'd overwrite each other's stored request).
-enum class Oid4vpDcApiMode { NONE, SIGNED, UNSIGNED }
+enum class Oid4vpDcApiMode { NONE, SIGNED, MULTISIGNED, UNSIGNED }
+
+/** Verifier identities for [Oid4vpDcApiMode.SIGNED] and [Oid4vpDcApiMode.MULTISIGNED] requests. */
+data class DcApiSignerSelection(
+    /** Configured signer ids, defaulting to the first configured signer. */
+    val signerIds: List<String> = emptyList(),
+    /**
+     * WRPRC id per signer id to carry as that signature's `verifier_info`, or `null` for none. Signers not listed
+     * default to none, except the WRPAC signer of [preferredWrpacId], which defaults to
+     * [wrpacRegistrationCertificateId].
+     */
+    val verifierInfo: Map<String, Int?> = emptyMap(),
+    /**
+     * Test option: selected signers whose signature value is replaced by random bytes, keeping their protected header
+     * as if copied from a genuine request. Wallets must neither accept nor present these identities, and must reject
+     * the request with `invalid_request` if every signature is forged.
+     */
+    val forgedSignerIds: Set<String> = emptySet(),
+    /** Access certificate whose WRPAC signer to default to rather than the first configured one, see `selectedWrpacId`. */
+    val preferredWrpacId: Int? = null,
+    /** Default WRPRC of the preferred WRPAC signer, see `selectedWrprcId`. */
+    val wrpacRegistrationCertificateId: Int? = null,
+    /**
+     * Test option: allow a WRPRC in the `verifier_info` of a signer that does not use a WRPAC. Registration
+     * certificates are issued to the relying party identified by its WRPAC, so wallets should reject such a binding.
+     */
+    val allowMismatchedVerifierInfo: Boolean = false,
+)
+
+@Serializable
+data class DcApiSignerDescriptor(
+    val id: String,
+    val label: String,
+    val scheme: DcApiSignerScheme,
+    /** Signs with the WRPAC, i.e. the identity the configured registration certificates were issued to. */
+    val wrpac: Boolean = false,
+)
+
+@Serializable
+data class RegistrationCertificateDescriptor(
+    val id: Int,
+    val label: String,
+)
 
 // --- Declarative profile configuration types ---
 
@@ -116,7 +170,46 @@ class VerifierProfiles(
     private val configuration: AppConfigurationProperties,
     private val verifierKeyMaterial: KeyMaterial,
     private val wrpCertificateStore: WrpCertificateStore,
+    dcApiSignerRegistry: DcApiSignerRegistry,
 ) {
+
+    private val dcApiSignerMaterials = dcApiSignerRegistry.signers
+
+    /** Configured signers, followed by one WRPAC signer per available access certificate. */
+    fun dcApiSigners(): List<DcApiSignerDescriptor> =
+        (dcApiSignerMaterials + wrpacSignerMaterials()).map {
+            DcApiSignerDescriptor(
+                id = it.configuration.id,
+                label = it.configuration.label,
+                scheme = it.configuration.scheme,
+                wrpac = it.configuration.id.isWrpacSignerId(),
+            )
+        }
+
+    fun dcApiRegistrationCertificates(): List<RegistrationCertificateDescriptor> =
+        wrpCertificateStore.registrationCertificates.orEmpty().map { (id, certificate) ->
+            RegistrationCertificateDescriptor(id, certificate.first.label)
+        }
+
+    /** Resolved per request, as the access certificates are managed by [WrpCertificateStore]. */
+    private fun wrpacSignerMaterials(): List<DcApiSignerMaterial> =
+        wrpCertificateStore.accessCertificates.mapNotNull { (id, wrpac) ->
+            val chain = wrpac.certificateChain?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+            DcApiSignerMaterial(
+                configuration = DcApiSignerConfiguration(
+                    id = wrpacSignerId(id),
+                    label = "${wrpac.label} (WRPAC, x509_hash)",
+                    scheme = DcApiSignerScheme.X509_HASH,
+                ),
+                keyMaterial = wrpac.keyMaterial,
+                verifierAttestation = null,
+                certificateChain = chain,
+            )
+        }
+
+    private fun dcApiSignerMaterial(id: String): DcApiSignerMaterial =
+        (dcApiSignerMaterials + wrpacSignerMaterials()).firstOrNull { it.configuration.id == id }
+            ?: throw ClientFacingException("Unknown DC API signer '$id'")
 
     private val httpClient = HttpClient {
         install(ContentNegotiation) {
@@ -256,10 +349,9 @@ class VerifierProfiles(
             selectVerifier(selectedWrpacId, clientIdScheme, defaultOid4vpVerifier)
         }
 
-        override val dcApiVerifier: DcApiVerifier by lazy {
-            if (selectedWrpacId == null) defaultDcApiVerifier
-            else selectOid4vpDcApiVerifier(selectedWrpacId, clientIdScheme)
-        }
+        // Signed DC API requests are signed by the selected DC API signers, including WRPACs, see
+        // resolveDcApiSigners, so this verifier only creates the payload and validates the response
+        override val dcApiVerifier: DcApiVerifier get() = defaultDcApiVerifier
 
         override fun buildQrCodeUrl(requestUrl: String): String =
             buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme)
@@ -304,30 +396,17 @@ class VerifierProfiles(
             oid4vpMode: Oid4vpDcApiMode,
             isoMdoc: Boolean,
             encrypt: Boolean,
-            verifierInfo: NonEmptyList<VerifierInfo>?,
-        ): String = dcApiVerifier.let { verifier ->
-            joseCompliantSerializer.encodeToString<CredentialRequestOptions>(
-                verifier.createAuthnRequest(
-                    requestOptions = OpenId4VpRequestOptions(
-                        state = transactionId,
-                        // Encryption toggle governs the OpenID4VP part; ISO Annex C is HPKE-encrypted internally regardless.
-                        responseMode = if (encrypt) ResponseMode.DcApiJwt else ResponseMode.DcApi,
-                        responseUrl = responseUrl,
-                        presentationRequest = dcqlRequest,
-                        expectedOrigins = listOf(element = context.dcApiOrigin),
-                        verifierInfo = verifierInfo,
-                    ),
-                    creationOptions = listOfNotNull(
-                        when (oid4vpMode) {
-                            Oid4vpDcApiMode.SIGNED -> DcApiCreationOptions.OpenId4VpSigned
-                            Oid4vpDcApiMode.UNSIGNED -> DcApiCreationOptions.OpenId4VpUnsigned
-                            Oid4vpDcApiMode.NONE -> null
-                        },
-                        if (isoMdoc) DcApiCreationOptions.Iso180137AnnexC else null,
-                    ).toTypedArray<DcApiCreationOptions>()
-                ).getOrThrow()
-            )
-        }
+            signerSelection: DcApiSignerSelection,
+        ): String = buildDcApiResponse(
+            transactionId = transactionId,
+            dcqlRequest = dcqlRequest,
+            oid4vpMode = oid4vpMode,
+            isoMdoc = isoMdoc,
+            encrypt = encrypt,
+            dcApiVerifier = dcApiVerifier,
+            expectedOrigin = context.dcApiOrigin,
+            signerSelection = signerSelection,
+        )
     }
 
     private fun buildQrCodeUrlByReference(
@@ -422,6 +501,119 @@ class VerifierProfiles(
         else -> this
     }
 
+    private suspend fun buildDcApiResponse(
+        transactionId: String,
+        dcqlRequest: CredentialPresentationRequest.DCQLRequest,
+        oid4vpMode: Oid4vpDcApiMode,
+        isoMdoc: Boolean,
+        encrypt: Boolean,
+        dcApiVerifier: DcApiVerifier,
+        expectedOrigin: String,
+        signerSelection: DcApiSignerSelection,
+    ): String {
+        if (signerSelection.forgedSignerIds.isNotEmpty() &&
+            oid4vpMode != Oid4vpDcApiMode.SIGNED && oid4vpMode != Oid4vpDcApiMode.MULTISIGNED
+        ) {
+            throw ClientFacingException("forgedSignerId is only supported for signed and multisigned OpenID4VP")
+        }
+        val signerIds = selectedDcApiSignerIds(signerSelection)
+        val requestOptions = dcApiVerifier.createAuthnRequest(
+            requestOptions = OpenId4VpRequestOptions(
+                state = transactionId,
+                // Encryption toggle governs the OpenID4VP part; ISO Annex C is HPKE-encrypted internally regardless.
+                responseMode = if (encrypt) ResponseMode.DcApiJwt else ResponseMode.DcApi,
+                presentationRequest = dcqlRequest,
+                expectedOrigins = listOf(expectedOrigin),
+                verifierInfo = null,
+            ),
+            creationOptions = listOfNotNull(
+                when (oid4vpMode) {
+                    Oid4vpDcApiMode.SIGNED -> DcApiCreationOptions.OpenId4VpSignedBy(
+                        resolveDcApiSigners(signerSelection, requiredCount = 1).single()
+                    )
+                    Oid4vpDcApiMode.MULTISIGNED -> DcApiCreationOptions.OpenId4VpMultiSigned(
+                        resolveDcApiSigners(signerSelection, requiredCount = 2)
+                    )
+                    Oid4vpDcApiMode.UNSIGNED -> DcApiCreationOptions.OpenId4VpUnsigned
+                    Oid4vpDcApiMode.NONE -> null
+                },
+                if (isoMdoc) DcApiCreationOptions.Iso180137AnnexC else null,
+            ).toTypedArray()
+        ).getOrThrow()
+        if (signerSelection.forgedSignerIds.isEmpty()) {
+            return joseCompliantSerializer.encodeToString(requestOptions)
+        }
+        // VC-K keeps the order of the signers, so signature i belongs to signerIds[i]
+        val forgedIndices = signerIds.indices.filter { signerIds[it] in signerSelection.forgedSignerIds }.toSet()
+        return joseCompliantSerializer.encodeToString(
+            CredentialRequestOptions.create(requestOptions.digital.requests.map {
+                when (it) {
+                    is DigitalCredentialGetRequest.OpenId4VpSigned -> it.withForgedSignature()
+                    is DigitalCredentialGetRequest.OpenId4VpMultiSigned -> it.withForgedSignatures(forgedIndices)
+                    else -> it
+                }
+            })
+        )
+    }
+
+    private fun selectedDcApiSignerIds(signerSelection: DcApiSignerSelection): List<String> {
+        val ids = signerSelection.signerIds.ifEmpty {
+            val signer = signerSelection.preferredWrpacId?.let { wrpacId ->
+                wrpacSignerMaterials().firstOrNull { it.configuration.id == wrpacSignerId(wrpacId) }
+                    ?: throw ClientFacingException("Selected WRPAC '$wrpacId' is not available")
+            } ?: dcApiSignerMaterials.first()
+            listOf(signer.configuration.id)
+        }
+        if (ids.distinct().size != ids.size) {
+            throw ClientFacingException("DC API signer ids must be distinct")
+        }
+        if (signerSelection.forgedSignerIds.any { it !in ids }) {
+            throw ClientFacingException("forgedSignerId may only reference selected signer ids")
+        }
+        return ids
+    }
+
+    private suspend fun resolveDcApiSigners(
+        signerSelection: DcApiSignerSelection,
+        requiredCount: Int,
+    ): List<DcApiRequestSigner> {
+        val ids = selectedDcApiSignerIds(signerSelection)
+        if (signerSelection.verifierInfo.keys.any { it !in ids }) {
+            throw ClientFacingException("signerVerifierInfo may only reference selected signer ids")
+        }
+        if (!(ids.size == requiredCount || requiredCount > 1 && ids.size >= requiredCount)) {
+            throw ClientFacingException(
+                if (requiredCount == 1) "Signed OpenID4VP requires exactly one signer"
+                else "Multisigned OpenID4VP requires at least two signers"
+            )
+        }
+        return ids.map { id ->
+            val material = dcApiSignerMaterial(id)
+            val config = material.configuration
+            val certificateChain = suspend { material.certificateChain ?: material.keyMaterial.certificateChainForX5c() }
+            val clientIdScheme = when (config.scheme) {
+                DcApiSignerScheme.X509_SAN_DNS -> ClientIdScheme.CertificateSanDns(
+                    chain = certificateChain() ?: throw ClientFacingException("Signer '$id' has no certificate chain"),
+                    clientIdDnsName = configuration.publicContext.host,
+                    redirectUri = configuration.publicContext.toString(),
+                )
+                DcApiSignerScheme.X509_HASH -> ClientIdScheme.CertificateHash(
+                    chain = certificateChain() ?: throw ClientFacingException("Signer '$id' has no certificate chain"),
+                    redirectUri = configuration.publicContext.toString(),
+                )
+                DcApiSignerScheme.VERIFIER_ATTESTATION -> ClientIdScheme.VerifierAttestation(
+                    attestationJwt = requireNotNull(material.verifierAttestation),
+                    redirectUri = configuration.publicContext.toString(),
+                )
+            }
+            DcApiRequestSigner(
+                clientIdScheme = clientIdScheme,
+                keyMaterial = material.keyMaterial,
+                verifierInfo = buildVerifierInfo(signerSelection.registrationCertificateIdFor(id)),
+            )
+        }
+    }
+
     fun buildVerifierInfo(
         selectedWrprcId: Int?,
     ): NonEmptyList<VerifierInfo>? {
@@ -456,23 +648,6 @@ class VerifierProfiles(
         )
     } else {
         oid4vpVerifier!!
-    }
-
-    private fun selectOid4vpDcApiVerifier(
-        selectedWrpacId: Int,
-        defaultClientIdScheme: ClientIdScheme,
-    ): DcApiVerifier {
-        val wrpac = wrpCertificateStore.accessCertificates[selectedWrpacId]
-            ?: throw ClientFacingException("Selected WRPAC '$selectedWrpacId' is not available")
-        val wrpacChain = wrpac.certificateChain
-            ?: throw ClientFacingException("Selected WRPAC '$selectedWrpacId' has no certificate chain")
-        val wrpacClientIdScheme = buildWrpacClientIdScheme(wrpacChain, defaultClientIdScheme)
-
-        return DcApiVerifier(
-            keyMaterial = wrpac.keyMaterial,
-            clientIdScheme = wrpacClientIdScheme,
-            verifier = buildVerifierAgent(wrpacClientIdScheme),
-        )
     }
 
     private fun buildVerifierAgent(clientIdScheme: ClientIdScheme): VerifierAgent = VerifierAgent(
@@ -518,7 +693,7 @@ suspend fun Transaction.transactionGetDcApi(
     oid4vpMode: Oid4vpDcApiMode,
     isoMdoc: Boolean,
     encrypt: Boolean,
-    verifierInfo: NonEmptyList<VerifierInfo>? = null,
+    signerSelection: DcApiSignerSelection = DcApiSignerSelection(),
 ): String = profile.transactionGetDcApi(
     transactionId = id,
     responseUrl = responseUrl,
@@ -526,7 +701,7 @@ suspend fun Transaction.transactionGetDcApi(
     oid4vpMode = oid4vpMode,
     isoMdoc = isoMdoc,
     encrypt = encrypt,
-    verifierInfo = verifierInfo,
+    signerSelection = signerSelection,
 )
 
 data class TransactionContext(
@@ -568,7 +743,7 @@ interface PreparedProfile {
         oid4vpMode: Oid4vpDcApiMode,
         isoMdoc: Boolean,
         encrypt: Boolean,
-        verifierInfo: NonEmptyList<VerifierInfo>? = null,
+        signerSelection: DcApiSignerSelection = DcApiSignerSelection(),
     ): String
 }
 
@@ -577,3 +752,64 @@ fun ClientIdScheme.canBuildCertificateHash() = when (this) {
     is CertificateHash -> true
     else -> false
 }
+
+/** DC API signer ids `wrpac-<id>` are reserved for the access certificates of [WrpCertificateStore]. */
+const val WRPAC_SIGNER_ID_PREFIX = "wrpac-"
+
+fun wrpacSignerId(accessCertificateId: Int) = "$WRPAC_SIGNER_ID_PREFIX$accessCertificateId"
+
+private fun String.isWrpacSignerId() = startsWith(WRPAC_SIGNER_ID_PREFIX)
+
+/*
+ * Forging replaces a signature value with random bytes of the same length, keeping the protected header bytes
+ * unchanged, as if the header had been copied from a genuine request of that verifier.
+ */
+
+private fun forgedSignatureValue(length: Int) = Random.nextBytes(length).encodeToString(Base64UrlStrict)
+
+private fun DigitalCredentialGetRequest.OpenId4VpSigned.withForgedSignature(): DigitalCredentialGetRequest.OpenId4VpSigned {
+    val jws = data.request
+    val forged = JwsCompact(
+        jws.toString().substringBeforeLast('.') + "." + forgedSignatureValue(jws.plainSignature.size)
+    )
+    return copy(data = DigitalCredentialGetRequest.OpenId4Vp.SignedDataElement(forged))
+}
+
+private fun DigitalCredentialGetRequest.OpenId4VpMultiSigned.withForgedSignatures(
+    indices: Set<Int>,
+): DigitalCredentialGetRequest.OpenId4VpMultiSigned {
+    val signatures = data.request.toJwsFlattened().mapIndexed { index, signature ->
+        if (index !in indices) return@mapIndexed signature
+        // JwsFlattened has no public constructor from raw parts, so swap the value in its JSON representation
+        joseCompliantSerializer.decodeFromJsonElement(
+            JwsFlattened.serializer(),
+            JsonObject(
+                joseCompliantSerializer.encodeToJsonElement(JwsFlattened.serializer(), signature).jsonObject +
+                        ("signature" to JsonPrimitive(forgedSignatureValue(signature.plainSignature.size)))
+            ),
+        )
+    }
+    return copy(data = DigitalCredentialGetRequest.OpenId4Vp.MultiSignedDataElement(signatures.toJwsGeneral()))
+}
+
+/**
+ * The WRPRC for signer [id], rejecting one bound to a signer that does not use a WRPAC unless
+ * [DcApiSignerSelection.allowMismatchedVerifierInfo] is set.
+ */
+private fun DcApiSignerSelection.registrationCertificateIdFor(id: String): Int? {
+    val preferred = preferredWrpacId?.let(::wrpacSignerId) == id
+    val wrprcId = if (id in verifierInfo) verifierInfo[id] else wrpacRegistrationCertificateId.takeIf { preferred }
+    // Which access certificate a WRPRC belongs to is not configured, so only the binding to a WRPAC is enforced
+    if (wrprcId != null && !id.isWrpacSignerId() && !allowMismatchedVerifierInfo) {
+        throw ClientFacingException(
+            "Registration certificates are issued to the relying party of a WRPAC, so signer '$id' cannot carry " +
+                    "one; allow mismatched verifier_info to test this"
+        )
+    }
+    return wrprcId
+}
+
+/** The full chain for `x5c` if the key material has one, e.g. a WRPAC issued by a registrar, else the leaf. */
+private suspend fun KeyMaterial.certificateChainForX5c(): List<X509Certificate>? =
+    (this as? KeyStoreMaterial)?.getCertificateChain()?.takeIf { it.isNotEmpty() }
+        ?: getCertificate()?.let(::listOf)
