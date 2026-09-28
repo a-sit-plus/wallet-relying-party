@@ -12,3 +12,14 @@ spring:
       enabled: true
 app:
   public-context: http://localhost:8080
+  dc-api-signers:
+    - id: dns-verifier
+      label: DNS certificate verifier (x509_san_dns)
+      scheme: X509_SAN_DNS
+      key:
+        type: MEMORY
+    - id: certificate-hash-verifier
+      label: Certificate hash verifier (x509_hash)
+      scheme: X509_HASH
+      key:
+        type: MEMORY

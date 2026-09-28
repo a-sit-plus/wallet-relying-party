@@ -1,3 +1,15 @@
+import {
+    effectiveForgedSignerIds,
+    effectiveSignerIds,
+    mismatchedVerifierInfoSignerIds,
+    selectAllowMismatchedVerifierInfo as selectionForAllowMismatchedVerifierInfo,
+    selectForgedSigner as selectionForForgedSigner,
+    selectSignerVerifierInfo as selectionForSignerVerifierInfo,
+    selectOid4vpMode as selectionForOid4vpMode,
+    selectSigner as selectionForSigner,
+    validateDcApiSelection,
+} from '../dc-api-selection.mjs'
+
 export default {
     props: [
         'result',
@@ -33,6 +45,48 @@ export default {
         'update:dcapiSelection'
     ],
     methods: {
+        effectiveSignerIds() {
+            return effectiveSignerIds(this.dcapiSelection)
+        },
+        selectOid4vpMode(mode, profile) {
+            this.$emit(
+                'update:dcapiSelection',
+                selectionForOid4vpMode(profile, this.dcapiSelection, mode),
+            )
+        },
+        selectSigner(signerId, checked) {
+            this.$emit('update:dcapiSelection', selectionForSigner(this.dcapiSelection, signerId, checked))
+        },
+        isForged(signerId) {
+            return effectiveForgedSignerIds(this.dcapiSelection).includes(signerId)
+        },
+        selectForgedSigner(signerId, forged) {
+            this.$emit('update:dcapiSelection', selectionForForgedSigner(this.dcapiSelection, signerId, forged))
+        },
+        signerWrprcId(signerId) {
+            return this.dcapiSelection.signerVerifierInfo?.[signerId] ?? ''
+        },
+        selectSignerWrprc(signerId, value) {
+            this.$emit(
+                'update:dcapiSelection',
+                selectionForSignerVerifierInfo(this.dcapiSelection, signerId, value === '' ? null : Number(value)),
+            )
+        },
+        isMismatchedWrprc(profile, signerId) {
+            return mismatchedVerifierInfoSignerIds(this.dcapiSelection, profile.dcApiSigners).includes(signerId)
+        },
+        selectAllowMismatchedVerifierInfo(allowed) {
+            this.$emit(
+                'update:dcapiSelection',
+                selectionForAllowMismatchedVerifierInfo(this.dcapiSelection, allowed),
+            )
+        },
+        dcApiSelectionErrors(profile) {
+            return validateDcApiSelection(this.dcapiSelection, this.isoMdocRequest, profile.dcApiSigners)
+        },
+        canStartDcApi(profile) {
+            return this.dcApiSelectionErrors(profile).length === 0
+        },
         activateProfile(profileName) {
             this.activeProfileName = profileName
             this.$emit('profileTabChanged', profileName)
@@ -149,23 +203,87 @@ export default {
                             <input class="form-check-input" type="radio" :id="'dcapi-oid4vp-none-' + profile.name"
                                    :name="'dcapi-oid4vp-' + profile.name"
                                    :checked="dcapiSelection.oid4vpMode === 'NONE'"
-                                   @change="$emit('update:dcapiSelection', { ...dcapiSelection, oid4vpMode: 'NONE' })">
+                                   @change="selectOid4vpMode('NONE', profile)">
                             <label class="form-check-label" :for="'dcapi-oid4vp-none-' + profile.name">None</label>
                         </div>
                         <div class="form-check">
                             <input class="form-check-input" type="radio" :id="'dcapi-oid4vp-signed-' + profile.name"
                                    :name="'dcapi-oid4vp-' + profile.name"
                                    :checked="dcapiSelection.oid4vpMode === 'SIGNED'"
-                                   @change="$emit('update:dcapiSelection', { ...dcapiSelection, oid4vpMode: 'SIGNED' })">
+                                   @change="selectOid4vpMode('SIGNED', profile)">
                             <label class="form-check-label" :for="'dcapi-oid4vp-signed-' + profile.name">Signed OpenID4VP</label>
+                        </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" :id="'dcapi-oid4vp-multisigned-' + profile.name"
+                                   :name="'dcapi-oid4vp-' + profile.name"
+                                   :checked="dcapiSelection.oid4vpMode === 'MULTISIGNED'"
+                                   @change="selectOid4vpMode('MULTISIGNED', profile)">
+                            <label class="form-check-label" :for="'dcapi-oid4vp-multisigned-' + profile.name">Multisigned OpenID4VP</label>
                         </div>
                         <div class="form-check">
                             <input class="form-check-input" type="radio" :id="'dcapi-oid4vp-unsigned-' + profile.name"
                                    :name="'dcapi-oid4vp-' + profile.name"
                                    :checked="dcapiSelection.oid4vpMode === 'UNSIGNED'"
-                                   @change="$emit('update:dcapiSelection', { ...dcapiSelection, oid4vpMode: 'UNSIGNED' })">
+                                   @change="selectOid4vpMode('UNSIGNED', profile)">
                             <label class="form-check-label" :for="'dcapi-oid4vp-unsigned-' + profile.name">Unsigned OpenID4VP</label>
                         </div>
+                    </fieldset>
+                    <fieldset v-if="dcapiSelection.oid4vpMode === 'SIGNED' || dcapiSelection.oid4vpMode === 'MULTISIGNED'"
+                              class="text-start mb-2">
+                        <legend class="fs-6 fw-bold">Verifier identities</legend>
+                        <p class="small text-muted mb-1">Every selected identity signs the same OpenID4VP transaction.</p>
+                        <div class="form-check" v-for="signer in profile.dcApiSigners"
+                             :key="dcapiSelection.oid4vpMode + '-' + signer.id">
+                            <input class="form-check-input"
+                                   :type="dcapiSelection.oid4vpMode === 'SIGNED' ? 'radio' : 'checkbox'"
+                                   :id="'dcapi-signer-' + profile.name + '-' + signer.id"
+                                   :name="dcapiSelection.oid4vpMode === 'SIGNED' ? 'dcapi-signer-' + profile.name : null"
+                                   :checked="effectiveSignerIds().includes(signer.id)"
+                                   @change="selectSigner(signer.id, $event.target.checked)">
+                            <label class="form-check-label" :for="'dcapi-signer-' + profile.name + '-' + signer.id">
+                                {{ signer.label }} <code>{{ signer.scheme }}</code>
+                                <span v-if="signer.wrpac" class="badge text-bg-secondary ms-1">WRPAC</span>
+                            </label>
+                            <div v-if="effectiveSignerIds().includes(signer.id)" class="form-check form-check-inline ms-2">
+                                <input class="form-check-input" type="checkbox"
+                                       :id="'dcapi-forge-' + profile.name + '-' + signer.id"
+                                       :checked="isForged(signer.id)"
+                                       @change="selectForgedSigner(signer.id, $event.target.checked)">
+                                <label class="form-check-label small text-danger"
+                                       :for="'dcapi-forge-' + profile.name + '-' + signer.id">Forge signature</label>
+                            </div>
+                            <div v-if="effectiveSignerIds().includes(signer.id) && profile.dcApiRegistrationCertificates?.length"
+                                 class="d-flex align-items-center gap-2 mt-1 mb-2">
+                                <label class="small text-nowrap" :for="'dcapi-wrprc-' + profile.name + '-' + signer.id">
+                                    Registration certificate
+                                </label>
+                                <select class="form-select form-select-sm"
+                                        :id="'dcapi-wrprc-' + profile.name + '-' + signer.id"
+                                        :value="signerWrprcId(signer.id)"
+                                        @change="selectSignerWrprc(signer.id, $event.target.value)">
+                                    <option value="">None</option>
+                                    <option v-for="wrprc in profile.dcApiRegistrationCertificates"
+                                            :key="wrprc.id" :value="wrprc.id">{{ wrprc.label }}</option>
+                                </select>
+                                <span v-if="isMismatchedWrprc(profile, signer.id)"
+                                      class="small text-danger text-nowrap">Mismatched</span>
+                            </div>
+                        </div>
+                        <div v-if="profile.dcApiRegistrationCertificates?.length" class="form-check mt-1">
+                            <input class="form-check-input" type="checkbox"
+                                   :id="'dcapi-allow-mismatch-' + profile.name"
+                                   :checked="dcapiSelection.allowMismatchedVerifierInfo === true"
+                                   @change="selectAllowMismatchedVerifierInfo($event.target.checked)">
+                            <label class="form-check-label small text-danger" :for="'dcapi-allow-mismatch-' + profile.name">
+                                Allow mismatched registration certificates (for testing)
+                            </label>
+                        </div>
+                        <p class="small text-muted mb-0">
+                            Testing only: a forged signature keeps the identity's protected header, but its value does
+                            not verify.
+                        </p>
+                        <div v-for="message in dcApiSelectionErrors(profile)" :key="message"
+                             class="small text-danger">{{ message }}</div>
                     </fieldset>
                     <div v-if="isoMdocRequest" class="form-check text-start">
                         <input class="form-check-input" type="checkbox" :id="'dcapi-iso-' + profile.name"
@@ -181,7 +299,7 @@ export default {
                     </div>
                     <div class="text-center mt-3">
                         <button @click="$emit('invokeDCAPI', profile.dcApiUrl || profile.url, dcapiSelection)"
-                                :disabled="dcapiSelection.oid4vpMode === 'NONE' && !(isoMdocRequest && dcapiSelection.isoMdoc)"
+                                :disabled="!canStartDcApi(profile)"
                                 class="btn btn-primary">Start Request</button>
                     </div>
                     </template>

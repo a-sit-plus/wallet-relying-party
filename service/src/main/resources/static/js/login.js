@@ -1,4 +1,10 @@
 import {createApp, ref, watch, computed, nextTick} from 'vue'
+import {
+    effectiveForgedSignerIds,
+    effectiveSignerIds,
+    effectiveSignerVerifierInfo,
+    validateDcApiSelection as dcApiSelectionErrors,
+} from './dc-api-selection.mjs'
 
 // --- STATIC --------------------------------------------------------
 
@@ -131,16 +137,28 @@ const createBasicSetup = function (config, options = {}) {
         return response.statusText
     }
 
-    function validateDcApiSelection(selection) {
-        const errors = [];
+    function validateDcApiSelection(selection, profile) {
         // ISO Annex C only counts as a selection when the current request is actually mdoc.
-        const isoSelected = selection?.isoMdoc === true && isMdocRequest.value
-        if (!selection || !['NONE', 'SIGNED', 'UNSIGNED'].includes(selection.oid4vpMode)) {
-            errors.push("Please choose an OpenID4VP mode for the Digital Credentials API request.");
-        } else if (selection.oid4vpMode === 'NONE' && !isoSelected) {
-            errors.push("Please select at least one Digital Credentials API request type.");
+        return dcApiSelectionErrors(selection, isMdocRequest.value, profile?.dcApiSigners)
+    }
+
+    // Signed OpenID4VP by default. A selected WRPAC preselects its identity, which carries the selected WRPRC.
+    function initialDcApiSelection(profile, currentSelection = {}) {
+        const selectedWrpacId = reqSelection.value.selectedWrpacId
+        const wrpacSigner = selectedWrpacId == null
+            ? null
+            : profile.dcApiSigners?.find(signer => signer.wrpac && signer.id === `wrpac-${selectedWrpacId}`)
+        const defaultSigner = wrpacSigner || profile.dcApiSigners?.[0]
+        const selectedWrprcId = reqSelection.value.selectedWrprcId
+        return {
+            ...currentSelection,
+            oid4vpMode: 'SIGNED',
+            isoMdoc: currentSelection.isoMdoc === true,
+            encrypt: currentSelection.encrypt !== false,
+            signerIds: defaultSigner ? [defaultSigner.id] : [],
+            signedSignerId: defaultSigner?.id,
+            signerVerifierInfo: wrpacSigner && selectedWrprcId != null ? {[wrpacSigner.id]: selectedWrprcId} : {},
         }
-        return errors;
     }
 
     async function prefetchCredentialRequestOptions(profile, selection) {
@@ -155,7 +173,7 @@ const createBasicSetup = function (config, options = {}) {
             clearError()
             const requestUrl = new URL(profile.dcApiUrl || profile.url)
 
-            const validationErrors = validateDcApiSelection(selection);
+            const validationErrors = validateDcApiSelection(selection, profile);
             if (validationErrors.length > 0) {
                 credentialRequestOptions.value[profile.name] = null;
                 // Nothing selected yet is a normal idle state, not an error to surface.
@@ -165,6 +183,19 @@ const createBasicSetup = function (config, options = {}) {
             requestUrl.searchParams.set('oid4vpMode', selection.oid4vpMode)
             requestUrl.searchParams.set('isoMdoc', String(selection.isoMdoc === true && isMdocRequest.value))
             requestUrl.searchParams.set('encrypt', String(selection.encrypt !== false))
+            requestUrl.searchParams.delete('signerId')
+            for (const signerId of effectiveSignerIds(selection)) {
+                requestUrl.searchParams.append('signerId', signerId)
+            }
+            requestUrl.searchParams.delete('forgedSignerId')
+            for (const signerId of effectiveForgedSignerIds(selection)) {
+                requestUrl.searchParams.append('forgedSignerId', signerId)
+            }
+            requestUrl.searchParams.delete('signerVerifierInfo')
+            for (const [signerId, wrprcId] of effectiveSignerVerifierInfo(selection)) {
+                requestUrl.searchParams.append('signerVerifierInfo', `${signerId}:${wrprcId ?? 'none'}`)
+            }
+            requestUrl.searchParams.set('allowMismatchedVerifierInfo', String(selection.allowMismatchedVerifierInfo === true))
             console.log("Going to pre-fetch from requestUri", requestUrl.toString())
 
             const response = await fetch(requestUrl);
@@ -371,12 +402,6 @@ const createBasicSetup = function (config, options = {}) {
         try {
             clearError()
 
-            const validationErrors = validateDcApiSelection(selection);
-            if (validationErrors.length > 0) {
-                setError("GENERIC", validationErrors.join(" "));
-                return;
-            }
-
             if (reqResult.value == null || reqResult.value.profiles == null)
                 return;
 
@@ -387,6 +412,12 @@ const createBasicSetup = function (config, options = {}) {
             const profile = reqResult.value.profiles.find(p => p.url === url || p.dcApiUrl === url);
             if (!profile) {
                 throw new Error("Profile not found for url: " + url);
+            }
+
+            const validationErrors = validateDcApiSelection(selection, profile);
+            if (validationErrors.length > 0) {
+                setError("GENERIC", validationErrors.join(" "));
+                return;
             }
 
             const credentialRequestOptionsToUse = credentialRequestOptions.value[profile.name];
@@ -470,11 +501,8 @@ const createBasicSetup = function (config, options = {}) {
                 const newSelections = {}
                 const newCredentialRequestOptions = {}
                 for (const profile of data.profiles) {
-                    newSelections[profile.name] = {
-                        oid4vpMode: 'SIGNED', // Default: signed OpenID4VP, encrypted, no ISO
-                        isoMdoc: false,
-                        encrypt: true,
-                    }
+                    // Default: signed OpenID4VP, encrypted, no ISO
+                    newSelections[profile.name] = initialDcApiSelection(profile)
                     newCredentialRequestOptions[profile.name] = null
                 }
                 selections.value = newSelections
@@ -616,13 +644,8 @@ const createBasicSetup = function (config, options = {}) {
             return
         }
         const currentSelection = selections.value[profile.name] || {}
-        if (!['NONE', 'SIGNED', 'UNSIGNED'].includes(currentSelection.oid4vpMode)) {
-            selections.value[profile.name] = {
-                ...currentSelection,
-                oid4vpMode: 'SIGNED',
-                isoMdoc: currentSelection.isoMdoc === true,
-                encrypt: currentSelection.encrypt !== false,
-            }
+        if (!['NONE', 'SIGNED', 'MULTISIGNED', 'UNSIGNED'].includes(currentSelection.oid4vpMode)) {
+            selections.value[profile.name] = initialDcApiSelection(profile, currentSelection)
         }
     })
 

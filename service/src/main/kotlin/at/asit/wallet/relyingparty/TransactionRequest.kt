@@ -63,6 +63,9 @@ data class TransactionProfile(
     val png: String,
     val url: String,
     val dcApiUrl: String? = null,
+    val dcApiSigners: List<DcApiSignerDescriptor> = emptyList(),
+    /** Registration certificates a signed DC API request may carry, see [DcApiSignerDescriptor.wrpac]. */
+    val dcApiRegistrationCertificates: List<RegistrationCertificateDescriptor> = emptyList(),
     val supportedOptions: Set<SupportedOptions>,
 ) {
     override fun toString(): String {
@@ -74,6 +77,8 @@ data class TransactionProfile(
                 " png='${png.take(16)}...'," +
                 " url='$url'," +
                 " dcApiUrl='$dcApiUrl'," +
+                " dcApiSigners='$dcApiSigners'," +
+                " dcApiRegistrationCertificates='$dcApiRegistrationCertificates'," +
                 " supportedOptions='$supportedOptions')"
     }
 }

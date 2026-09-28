@@ -18,6 +18,8 @@ data class AppConfigurationProperties(
     val resultTtl: Duration = Duration.ofMinutes(30),
     /** Wallet relying party certificate configuration */
     val wrp: WrpConfigurationProperties? = null,
+    /** Verifier identities available for signed OpenID4VP requests over the Digital Credentials API. */
+    val dcApiSigners: List<DcApiSignerConfiguration> = emptyList(),
 )
 
 fun URL.appendPath(path: String): String = UriComponentsBuilder.fromUri(toURI()).path(path).toUriString()
@@ -53,6 +55,21 @@ data class WrpConfigurationProperties(
     val ac: List<WrpacConfiguration> = listOf(),
     val rc: List<WrprcConfiguration> = listOf(),
 )
+
+data class DcApiSignerConfiguration(
+    val id: String,
+    val label: String,
+    val scheme: DcApiSignerScheme,
+    val key: KeyConfiguration = KeyConfiguration(),
+    /** Compact verifier-attestation JWT, required for VERIFIER_ATTESTATION. */
+    val verifierAttestation: URI? = null,
+)
+
+enum class DcApiSignerScheme {
+    X509_SAN_DNS,
+    X509_HASH,
+    VERIFIER_ATTESTATION,
+}
 
 data class WrpacConfiguration(
     val label: String,
