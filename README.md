@@ -63,20 +63,15 @@ The main integration points are:
 
 ## Supported Presentation Profiles
 
-The demo currently creates requests for these verifier profiles:
+The service defines the following verifier profiles in `VerifierProfiles.kt`. The 2026 test-case pages select `EUDIW2026` explicitly; the custom request page uses the default profiles. Every profile supports cross-device QR, same-device links, and Digital Credentials API requests. For DC API, the request selects OpenID4VP, ISO mdoc, or a combination independently of the verifier profile.
 
-// TODO remove that, not correct
-
-| Profile | Purpose | Supported modes |
+| Profile | Request style | Offered by default |
 | --- | --- | --- |
-| `HAIPd05` | HAIP-style OpenID4VP with `x509_hash` and `direct_post.jwt` | Cross-device, same-device, OpenID4VP DC API |
-| `AV` | Age verification profile with `redirect_uri` and `direct_post` | Cross-device, same-device, ISO mDoc DC API |
-| `UOID4VP` | Unencrypted OpenID4VP over DC API | OpenID4VP DC API |
-| `MDOCd23` | ISO 18013-7 draft 23 style OpenID4VP | Cross-device, same-device |
-| `MDOCISO` | ISO 18013-7 Annex C | ISO mDoc DC API |
-| `EUDIW` | EUDI Wallet reference profile | Cross-device, same-device |
-| `DC_API_COMBINED` | Combined unencrypted OpenID4VP and ISO mDoc DC API request | OpenID4VP DC API, ISO mDoc DC API |
-| `DC_API_COMBINED_ENCRYPTED` | Combined encrypted OpenID4VP and ISO mDoc DC API request | OpenID4VP DC API, ISO mDoc DC API |
+| `EUDIW2026` | EUDI.Wallet 2026: `eu-eaap://`, `x509_hash`, `direct_post.jwt` | No; selected by the 2026 test cases |
+| `HAIPd05` | HAIP d05: `x509_hash`, `direct_post.jwt` | Yes |
+| `AV` | Age verification: `redirect_uri`, inline request, `direct_post` | Yes |
+| `MDOCd23` | ISO 18013-7 draft 23: `x509_san_dns`, `direct_post.jwt` | Yes |
+| `EUDIW` | EUDI Wallet reference: `x509_san_dns`, `direct_post.jwt` | Yes |
 
 Supported credential examples include:
 
