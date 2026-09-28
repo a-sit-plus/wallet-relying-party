@@ -16,20 +16,14 @@ import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsCompact
-import at.asitplus.signum.indispensable.josef.JwsCompactTyped
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.Validator
 import at.asitplus.wallet.lib.agent.ValidatorMdoc
 import at.asitplus.wallet.lib.agent.ValidatorSdJwt
 import at.asitplus.wallet.lib.agent.VerifierAgent
-import at.asitplus.wallet.lib.agent.validation.StatusListTokenResolver
 import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.data.StatusListCwt
-import at.asitplus.wallet.lib.data.StatusListJwt
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.MediaTypes
-import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListTokenPayload
 import at.asitplus.wallet.lib.jws.PublicJsonWebKeyLookup
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
@@ -57,7 +51,6 @@ import kotlinx.serialization.json.JsonPrimitive
 import org.springframework.stereotype.Component
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import kotlin.io.encoding.Base64
-import kotlin.time.Clock
 
 
 // Supported options for verifier interactions
@@ -400,7 +393,7 @@ class VerifierProfiles(
 
     fun buildValidator(): Validator = Validator(
         tokenStatusResolver = TokenStatusResolverImpl(
-            resolveStatusListToken = buildStatusListTokenResolver(),
+            resolveStatusListToken = StatusListTokenFetcher(httpClient),
         ),
     )
 
@@ -419,32 +412,6 @@ class VerifierProfiles(
     fun buildValidatorMdoc(): ValidatorMdoc = ValidatorMdoc(
         validator = buildValidator(),
     )
-
-    private fun buildStatusListTokenResolver() = StatusListTokenResolver {
-        Napier.i("Resolving token status for from $it")
-        val response = httpClient.get(it.string) {
-            header(
-                HttpHeaders.Accept,
-                listOf(
-                    MediaTypes.Application.STATUSLIST_JWT,
-                    MediaTypes.Application.STATUSLIST_CWT,
-                    MediaTypes.Application.IDENTIFIERLIST_CWT,
-                ).joinToString(", ")
-            )
-        }
-        val bytes = response.body<ByteArray>()
-        when (response.contentType()?.withoutParameters()?.toString()?.lowercase()) {
-            MediaTypes.Application.STATUSLIST_CWT,
-            MediaTypes.Application.IDENTIFIERLIST_CWT -> StatusListCwt(
-                coseCompliantSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(bytes),
-                Clock.System.now(),
-            )
-            else -> StatusListJwt(
-                JwsCompactTyped<StatusListTokenPayload>(bytes.decodeToString()),
-                Clock.System.now(),
-            )
-        }
-    }
 
     private fun String.normalizeAvWalletUrl(): String = when {
         startsWith("av://localhost/?") -> "av://?" + removePrefix("av://localhost/?")
