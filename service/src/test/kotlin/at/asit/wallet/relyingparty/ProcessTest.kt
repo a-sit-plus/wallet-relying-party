@@ -4,8 +4,10 @@ import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
 import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.OidcUserInfoExtended
+import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.asn1.encodeToPEM
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.leaf
@@ -17,15 +19,20 @@ import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
 import at.asitplus.wallet.lib.agent.IssuerAgent
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
+import at.asitplus.wallet.lib.agent.validation.relyingParty.ReaderAuthenticationVerifier
+import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
 import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
+import at.asitplus.wallet.lib.openid.IsoMdocDcapiResponseBuilder
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.builtins.ByteArraySerializer
+import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
@@ -45,6 +52,7 @@ import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import java.net.URLDecoder
 import java.net.URI
+import kotlin.io.encoding.Base64
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
@@ -330,6 +338,42 @@ class ProcessTest {
             dcApiBody(profile.id, "?oid4vpMode=SIGNED&isoMdoc=false&encrypt=true")
         ).digital.requests.single() as DigitalCredentialGetRequest.OpenId4VpSigned
         assertEquals(second.getCertificate(), dcApiRequest.data.request.jwsHeader.certificateChain?.leaf)
+    }
+
+    @Test
+    fun `DC API Annex C request carries readerAuth of the selected WRPAC and the CWT WRPRC`() = runTest {
+        val wrpac = EphemeralKeyWithSelfSignedCert()
+        val euWrprc = coseCompliantSerializer.encodeToByteArray(
+            SignCose<ByteArray>(wrpac)(null, null, byteArrayOf(1, 2, 3), ByteArraySerializer()).getOrThrow()
+        )
+        Mockito.`when`(wrpCertificateStore.accessCertificates).thenReturn(
+            mapOf(0 to AccessCertificateData("Selected", wrpac, listOf(wrpac.getCertificate()!!)))
+        )
+        Mockito.`when`(wrpCertificateStore.registrationCertificates).thenReturn(
+            mapOf(0 to (WrprcConfiguration("Selected", URI("file:/unused.cwt")) to Base64.UrlSafe.encode(euWrprc)))
+        )
+        val profile = createTransaction(
+            ConstantIndex.CredentialRepresentation.ISO_MDOC,
+            selectedWrpacId = 0,
+            selectedWrprcId = 0,
+            profileName = "EUDIW2026",
+        ).profiles.single()
+
+        val isoMdocRequest = joseCompliantSerializer.decodeFromString<CredentialRequestOptions>(
+            dcApiBody(profile.id, "?oid4vpMode=NONE&isoMdoc=true&encrypt=true")
+        ).digital.requests.single().let { it as DigitalCredentialGetRequest.IsoMdoc }.data
+        isoMdocRequest.deviceRequest.docRequests.forEach {
+            assertArrayEquals(euWrprc, it.itemsRequest.value.requestInfo?.euWrprc)
+        }
+        val transcript = IsoMdocDcapiResponseBuilder.sessionTranscriptFor(
+            RequestParametersFrom.IsoMdocDcApi(
+                parameters = RequestParametersFrom.IsoMdocDcApi.IsoMdocRequestWrapper(isoMdocRequest),
+                jsonString = "",
+                callingOrigin = configuration.publicContext.toString(),
+            )
+        )
+        val chain = ReaderAuthenticationVerifier()(isoMdocRequest.deviceRequest, transcript).getOrThrow()
+        assertEquals(wrpac.getCertificate(), chain.leaf)
     }
 
     @Test

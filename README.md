@@ -439,7 +439,9 @@ Each keystore must contain the key as well as the certificate chain provided thr
 
 Registration certificates: List to load one or multiple registration certificates:
 - `rc.label`: Human readable text describing the registration certificate
-- `rc.path`: Path to the registration certificate as JWS, see below
+- `rc.path`: Path to the registration certificate, either as JWS (see below) or as base64-encoded CWT (COSE_Sign1)
+
+A JWS registration certificate is sent in OpenID4VP requests (`verifier_info`), a CWT registration certificate in ISO 18013-7 Annex C requests (`euWrprc` of each document request). Annex C requests carry `readerAuth`, signed with the selected access certificate.
 
 #### Example jws file content
 

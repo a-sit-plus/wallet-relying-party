@@ -56,6 +56,7 @@ import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.springframework.stereotype.Component
 import org.springframework.web.servlet.support.ServletUriComponentsBuilder
+import kotlin.io.encoding.Base64
 import kotlin.time.Clock
 
 
@@ -319,6 +320,7 @@ class VerifierProfiles(
             isoMdoc: Boolean,
             encrypt: Boolean,
             verifierInfo: NonEmptyList<VerifierInfo>?,
+            euWrprc: ByteArray?,
         ): String = dcApiVerifier.let { verifier ->
             joseCompliantSerializer.encodeToString<CredentialRequestOptions>(
                 verifier.createAuthnRequest(
@@ -330,6 +332,7 @@ class VerifierProfiles(
                         presentationRequest = dcqlRequest,
                         expectedOrigins = listOf(element = context.dcApiOrigin),
                         verifierInfo = verifierInfo,
+                        euWrprc = euWrprc,
                     ),
                     creationOptions = listOfNotNull(
                         when (oid4vpMode) {
@@ -449,13 +452,15 @@ class VerifierProfiles(
         else -> this
     }
 
+    /** The selected WRPRC for OpenID4VP `verifier_info`, unless it is a CWT, see [buildEuWrprc]. */
     fun buildVerifierInfo(
         selectedWrprcId: Int?,
     ): NonEmptyList<VerifierInfo>? {
-        val effectiveWrprcId = selectedWrprcId ?: return null
-        val wrprc = wrpCertificateStore.registrationCertificates?.get(effectiveWrprcId)?.let { (_, content) ->
-            content.trim().takeIf { it.isNotBlank() }
-        } ?: throw ClientFacingException("Selected WRPRC '$effectiveWrprcId' is not available")
+        val wrprc = selectedWrprc(selectedWrprcId) ?: return null
+        if (wrprc.decodeCwtOrNull() != null) {
+            Napier.i("Selected WRPRC '$selectedWrprcId' is a CWT, not usable for OpenID4VP")
+            return null
+        }
 
         return listOf(
             VerifierInfo(
@@ -465,6 +470,28 @@ class VerifierProfiles(
             )
         ).toNonEmptyList()
     }
+
+    /** The selected WRPRC for ISO mdoc `euWrprc`, if it is a CWT, i.e. a base64-encoded COSE_Sign1. */
+    fun buildEuWrprc(
+        selectedWrprcId: Int?,
+    ): ByteArray? {
+        val wrprc = selectedWrprc(selectedWrprcId) ?: return null
+        return wrprc.decodeCwtOrNull()
+            ?: null.also { Napier.i("Selected WRPRC '$selectedWrprcId' is not a CWT, not usable for ISO mdoc") }
+    }
+
+    private fun selectedWrprc(selectedWrprcId: Int?): String? {
+        val effectiveWrprcId = selectedWrprcId ?: return null
+        return wrpCertificateStore.registrationCertificates?.get(effectiveWrprcId)?.let { (_, content) ->
+            content.trim().takeIf { it.isNotBlank() }
+        } ?: throw ClientFacingException("Selected WRPRC '$effectiveWrprcId' is not available")
+    }
+
+    private fun String.decodeCwtOrNull(): ByteArray? = listOf(
+        Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL),
+        Base64.Default.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL),
+    ).firstNotNullOfOrNull { runCatching { it.decode(this) }.getOrNull() }
+        ?.takeIf { runCatching { coseCompliantSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(it) }.isSuccess }
 
     private fun selectVerifier(
         selectedWrpacId: Int?,
@@ -546,6 +573,7 @@ suspend fun Transaction.transactionGetDcApi(
     isoMdoc: Boolean,
     encrypt: Boolean,
     verifierInfo: NonEmptyList<VerifierInfo>? = null,
+    euWrprc: ByteArray? = null,
 ): String = profile.transactionGetDcApi(
     transactionId = id,
     responseUrl = responseUrl,
@@ -554,6 +582,7 @@ suspend fun Transaction.transactionGetDcApi(
     isoMdoc = isoMdoc,
     encrypt = encrypt,
     verifierInfo = verifierInfo,
+    euWrprc = euWrprc,
 )
 
 data class TransactionContext(
@@ -596,6 +625,7 @@ interface PreparedProfile {
         isoMdoc: Boolean,
         encrypt: Boolean,
         verifierInfo: NonEmptyList<VerifierInfo>? = null,
+        euWrprc: ByteArray? = null,
     ): String
 }
 

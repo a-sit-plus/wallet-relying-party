@@ -203,6 +203,9 @@ class ApiController(
                 verifierInfo = profiles.buildVerifierInfo(
                     selectedWrprcId = transaction.request.selectedWrprcId,
                 ),
+                euWrprc = profiles.buildEuWrprc(
+                    selectedWrprcId = transaction.request.selectedWrprcId,
+                ),
             ).also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
             ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_JSON)
