@@ -5,6 +5,8 @@ Version 8.0.0 (unreleased):
  - Allow configuring and selecting multiple WRP access certificates per transaction
  - Remove support for Presentation Exchange
  - Update the Gradle conventions plugin to 20260828 and the Gradle wrapper to 9.7.1
+ - Implement test cases for EUDI Launchpad 2026
+ - Update to VC-K 8.0.0
 
 Version 7.0.0:
  - Update to VC-K 7.0.0
