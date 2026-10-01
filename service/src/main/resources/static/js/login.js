@@ -142,7 +142,8 @@ const createBasicSetup = function (config, options = {}) {
         return dcApiSelectionErrors(selection, isMdocRequest.value, profile?.dcApiSigners)
     }
 
-    // Signed OpenID4VP by default. A selected WRPAC preselects its identity, which carries the selected WRPRC.
+    // Signed OpenID4VP by default. A selected WRPAC preselects its identity, which carries the selected WRPRC, or the
+    // first available one if none is selected.
     function initialDcApiSelection(profile, currentSelection = {}) {
         const selectedWrpacId = reqSelection.value.selectedWrpacId
         const wrpacSigner = selectedWrpacId == null
@@ -157,7 +158,9 @@ const createBasicSetup = function (config, options = {}) {
             encrypt: currentSelection.encrypt !== false,
             signerIds: defaultSigner ? [defaultSigner.id] : [],
             signedSignerId: defaultSigner?.id,
-            signerVerifierInfo: wrpacSigner && selectedWrprcId != null ? {[wrpacSigner.id]: selectedWrprcId} : {},
+            // WRPAC signers carry this WRPRC by default, or the first available one, see defaultSignerWrprcId
+            defaultWrprcId: selectedWrprcId ?? null,
+            signerVerifierInfo: {},
         }
     }
 
@@ -192,7 +195,10 @@ const createBasicSetup = function (config, options = {}) {
                 requestUrl.searchParams.append('forgedSignerId', signerId)
             }
             requestUrl.searchParams.delete('signerVerifierInfo')
-            for (const [signerId, wrprcId] of effectiveSignerVerifierInfo(selection)) {
+            const signerVerifierInfo = effectiveSignerVerifierInfo(
+                selection, profile.dcApiSigners, profile.dcApiRegistrationCertificates,
+            )
+            for (const [signerId, wrprcId] of signerVerifierInfo) {
                 requestUrl.searchParams.append('signerVerifierInfo', `${signerId}:${wrprcId ?? 'none'}`)
             }
             requestUrl.searchParams.set('allowMismatchedVerifierInfo', String(selection.allowMismatchedVerifierInfo === true))

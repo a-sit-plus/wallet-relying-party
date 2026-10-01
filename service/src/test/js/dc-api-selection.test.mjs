@@ -6,6 +6,7 @@ import {
     mismatchedVerifierInfoSignerIds,
     selectAllowMismatchedVerifierInfo,
     selectSignerVerifierInfo,
+    signerWrprcId,
     effectiveSignerIds,
     selectForgedSigner,
     selectOid4vpMode,
@@ -132,4 +133,42 @@ test('explicitly no registration certificate is sent, unselected signers are not
 
     assert.deepEqual(effectiveSignerVerifierInfo(selection), [['wrpac', null]])
     assert.deepEqual(effectiveSignerVerifierInfo({...selection, oid4vpMode: 'UNSIGNED'}), [])
+})
+
+const registrationCertificates = [{id: 3, label: 'Identity'}, {id: 5, label: 'Age'}]
+
+test('the WRPAC signer carries a registration certificate by default, other signers none', () => {
+    const selection = {oid4vpMode: 'MULTISIGNED', signerIds: ['wrpac', 'dns-verifier']}
+
+    assert.equal(signerWrprcId(selection, signersWithWrpac[1], registrationCertificates), 3)
+    assert.equal(signerWrprcId(selection, signersWithWrpac[0], registrationCertificates), null)
+    assert.deepEqual(
+        effectiveSignerVerifierInfo(selection, signersWithWrpac, registrationCertificates),
+        [['wrpac', 3]],
+    )
+    assert.deepEqual(mismatchedVerifierInfoSignerIds(selection, signersWithWrpac), [])
+})
+
+test('the default registration certificate of the WRPAC signer is the preferred one, if available', () => {
+    const preferred = {oid4vpMode: 'SIGNED', signerIds: ['wrpac'], defaultWrprcId: 5}
+    const unavailable = {...preferred, defaultWrprcId: 7}
+
+    assert.equal(signerWrprcId(preferred, signersWithWrpac[1], registrationCertificates), 5)
+    assert.equal(signerWrprcId(unavailable, signersWithWrpac[1], registrationCertificates), 3)
+    assert.equal(signerWrprcId(preferred, signersWithWrpac[1], []), null)
+})
+
+test('a chosen registration certificate, also none, replaces the default of the WRPAC signer', () => {
+    const none = selectSignerVerifierInfo({oid4vpMode: 'SIGNED', signerIds: ['wrpac']}, 'wrpac', null)
+    const other = selectSignerVerifierInfo(none, 'wrpac', 5)
+
+    assert.equal(signerWrprcId(none, signersWithWrpac[1], registrationCertificates), null)
+    assert.deepEqual(
+        effectiveSignerVerifierInfo(none, signersWithWrpac, registrationCertificates),
+        [['wrpac', null]],
+    )
+    assert.deepEqual(
+        effectiveSignerVerifierInfo(other, signersWithWrpac, registrationCertificates),
+        [['wrpac', 5]],
+    )
 })

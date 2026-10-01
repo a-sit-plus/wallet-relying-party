@@ -58,14 +58,35 @@ export function selectForgedSigner(selection, signerId, forged) {
     return {...selection, forgedSignerIds}
 }
 
-// Registration certificate (WRPRC) per selected signer: an id, or null for none. Signers without an entry use the
-// server default, which is the transaction's selected WRPRC for the WRPAC signer and none for any other.
-export function effectiveSignerVerifierInfo(selection) {
+// Registration certificates are issued to the WRPAC's relying party, so a WRPAC signer carries one by default: the
+// preferred one, e.g. the transaction's selected WRPRC, otherwise the first available one. Others carry none.
+export function defaultSignerWrprcId(signer, registrationCertificates, preferredWrprcId = null) {
+    if (!signer?.wrpac) return null
+    const ids = (registrationCertificates || []).map(certificate => certificate.id)
+    if (preferredWrprcId != null && ids.includes(preferredWrprcId)) return preferredWrprcId
+    return ids[0] ?? null
+}
+
+// Registration certificate of a signer: the one chosen for it, which may be null for none, otherwise its default.
+export function signerWrprcId(selection, signer, registrationCertificates) {
+    const verifierInfo = selection?.signerVerifierInfo || {}
+    if (Object.prototype.hasOwnProperty.call(verifierInfo, signer.id)) return verifierInfo[signer.id]
+    return defaultSignerWrprcId(signer, registrationCertificates, selection?.defaultWrprcId ?? null)
+}
+
+// Registration certificate (WRPRC) per selected signer: an id, or null for none. Given the signers and the available
+// registration certificates, WRPAC signers without an entry get their default, see defaultSignerWrprcId. Signers
+// still without an entry use the server default, which is the transaction's selected WRPRC for the WRPAC signer and
+// none for any other.
+export function effectiveSignerVerifierInfo(selection, signers = [], registrationCertificates = []) {
     if (selection?.oid4vpMode !== 'SIGNED' && selection?.oid4vpMode !== 'MULTISIGNED') return []
     const verifierInfo = selection?.signerVerifierInfo || {}
-    return effectiveSignerIds(selection)
-        .filter(id => Object.prototype.hasOwnProperty.call(verifierInfo, id))
-        .map(id => [id, verifierInfo[id]])
+    return effectiveSignerIds(selection).flatMap(id => {
+        if (Object.prototype.hasOwnProperty.call(verifierInfo, id)) return [[id, verifierInfo[id]]]
+        const signer = (signers || []).find(candidate => candidate.id === id)
+        const wrprcId = signer ? signerWrprcId(selection, signer, registrationCertificates) : null
+        return wrprcId == null ? [] : [[id, wrprcId]]
+    })
 }
 
 export function selectSignerVerifierInfo(selection, signerId, wrprcId) {

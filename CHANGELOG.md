@@ -5,7 +5,7 @@ Version 8.0.0 (unreleased):
  - Allow configuring and selecting multiple WRP access certificates per transaction
  - Implement single- and multisigned OpenID4VP requests over the Digital Credentials API
  - Optionally forge the signatures of selected verifier identities in signed and multisigned OpenID4VP requests to test wallet signature validation
- - Sign DC API requests with each configured WRPAC as a `wrpac-<id>` signer, including its full certificate chain, and choose a registration certificate per signer; registration certificates on signers other than a WRPAC are rejected unless mismatched combinations are allowed for testing
+ - Sign DC API requests with each configured WRPAC as a `wrpac-<id>` signer, including its full certificate chain, and choose a registration certificate per signer; registration certificates on signers other than a WRPAC are rejected unless mismatched combinations are allowed for testing. A WRPAC signer carries the selected registration certificate, or the first available one, by default
  - Omit the `response_uri` parameter from OpenID4VP Digital Credentials API requests
  - Fix verifier identity selection when switching between signed and multisigned requests
  - Do not print key store passwords, e.g. of WRPACs, as part of the configuration

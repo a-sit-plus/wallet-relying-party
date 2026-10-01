@@ -5,6 +5,7 @@ import {
     selectAllowMismatchedVerifierInfo as selectionForAllowMismatchedVerifierInfo,
     selectForgedSigner as selectionForForgedSigner,
     selectSignerVerifierInfo as selectionForSignerVerifierInfo,
+    signerWrprcId as resolveSignerWrprcId,
     selectOid4vpMode as selectionForOid4vpMode,
     selectSigner as selectionForSigner,
     validateDcApiSelection,
@@ -63,8 +64,8 @@ export default {
         selectForgedSigner(signerId, forged) {
             this.$emit('update:dcapiSelection', selectionForForgedSigner(this.dcapiSelection, signerId, forged))
         },
-        signerWrprcId(signerId) {
-            return this.dcapiSelection.signerVerifierInfo?.[signerId] ?? ''
+        signerWrprcId(profile, signer) {
+            return resolveSignerWrprcId(this.dcapiSelection, signer, profile.dcApiRegistrationCertificates) ?? ''
         },
         selectSignerWrprc(signerId, value) {
             this.$emit(
@@ -259,7 +260,7 @@ export default {
                                 </label>
                                 <select class="form-select form-select-sm"
                                         :id="'dcapi-wrprc-' + profile.name + '-' + signer.id"
-                                        :value="signerWrprcId(signer.id)"
+                                        :value="signerWrprcId(profile, signer)"
                                         @change="selectSignerWrprc(signer.id, $event.target.value)">
                                     <option value="">None</option>
                                     <option v-for="wrprc in profile.dcApiRegistrationCertificates"
