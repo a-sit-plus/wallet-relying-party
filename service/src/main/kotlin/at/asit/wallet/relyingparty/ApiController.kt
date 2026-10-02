@@ -246,29 +246,37 @@ class ApiController(
             val isDcApiResponse = catching {
                 joseCompliantSerializer.decodeFromString<DigitalCredentialInterface>(requestBody)
             }.getOrNull() != null
-            val validationResult = if (isDcApiResponse && transaction.profile.supportedOptions.any { it.isDcApi }) {
-                checkNotNull(transaction.profile.dcApiVerifier) { "Missing verifier" }
-                    .validateAuthnResponse(
-                        input = requestBody,
-                        externalId = id,
-                        expectedOrigin = transaction.dcApiOrigin,
-                    ).getOrThrow()
-            } else if (transaction.profile.supportedOptions.any { it.isUrlOrQrCode }) {
-                checkNotNull(transaction.profile.oid4vpVerifier) { "Missing verifier" }
-                    .validateAuthnResponse(
-                        input = requestBody,
-                    ).getOrThrow()
+            // A processed authorization error is still an acknowledged direct_post response.
+            val authorizationError = if (!isDcApiResponse && transaction.profile.supportedOptions.any { it.isUrlOrQrCode }) {
+                transaction.profile.authorizationError(requestBody, id)
+            } else null
+            if (authorizationError != null) {
+                User(credentials = null, presentationError = authorizationError.errorDescription ?: authorizationError.error)
             } else {
-                error("Unsupported response for transaction $id")
+                val validationResult = if (isDcApiResponse && transaction.profile.supportedOptions.any { it.isDcApi }) {
+                    checkNotNull(transaction.profile.dcApiVerifier) { "Missing verifier" }
+                        .validateAuthnResponse(
+                            input = requestBody,
+                            externalId = id,
+                            expectedOrigin = transaction.dcApiOrigin,
+                        ).getOrThrow()
+                } else if (transaction.profile.supportedOptions.any { it.isUrlOrQrCode }) {
+                    checkNotNull(transaction.profile.oid4vpVerifier) { "Missing verifier" }
+                        .validateAuthnResponse(
+                            input = requestBody,
+                        ).getOrThrow()
+                } else {
+                    error("Unsupported response for transaction $id")
+                }
+                validationResult.convertToUser(trustListService::evaluateCredentialIssuerTrust)
             }
-            validationResult.convertToUser(trustListService::evaluateCredentialIssuerTrust)
         }.getOrElse {
             Napier.w("${Paths.Transaction.ResultUrl}/$id extracted got error", it)
             statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})", it)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.clientReason(HttpStatus.BAD_REQUEST), it)
         }
         Napier.i("${Paths.Transaction.ResultUrl}/$id extracted result $user")
-        statisticLogger.info("$id success $user (${request.getHeader(HttpHeaders.USER_AGENT)})")
+        statisticLogger.info("$id result $user (${request.getHeader(HttpHeaders.USER_AGENT)})")
         transactionStore.put(id, user)
         val redirectUrlWithId = ServletUriComponentsBuilder
             .fromUriString(customerSuccessUrl)

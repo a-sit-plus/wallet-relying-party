@@ -11,13 +11,17 @@ import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ResponseMode
 import at.asitplus.openid.VerifierInfo
+import at.asitplus.openid.decodeFromFormUrlEncoded
 import at.asitplus.openid.encodeToParameters
+import at.asitplus.openid.toFormParameters
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKey
+import at.asitplus.signum.indispensable.josef.JweEncrypted
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.agent.KeyMaterial
+import at.asitplus.wallet.lib.agent.EphemeralEncryptionKeyService
 import at.asitplus.wallet.lib.agent.Validator
 import at.asitplus.wallet.lib.agent.ValidatorMdoc
 import at.asitplus.wallet.lib.agent.ValidatorSdJwt
@@ -28,7 +32,9 @@ import at.asitplus.wallet.lib.jws.PublicJsonWebKeyLookup
 import at.asitplus.wallet.lib.jws.VerifyJwsObject
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrusted
+import at.asitplus.wallet.lib.jws.DecryptJweWithEphemeralKey
 import at.asitplus.wallet.lib.oauth2.OAuth2Utils
+import at.asitplus.wallet.lib.oidvci.OAuth2Error
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.ClientIdScheme.*
 import at.asitplus.wallet.lib.openid.CreationOptions
@@ -37,6 +43,7 @@ import at.asitplus.wallet.lib.openid.DcApiVerifier
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.VerifierMetadataMode
+import at.asitplus.wallet.lib.utils.DefaultMapStore
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
 import io.ktor.client.call.*
@@ -246,10 +253,14 @@ class VerifierProfiles(
         override val urlPrefix: String get() = profile.urlPrefix
         override val supportedOptions: Set<SupportedOptions> get() = profile.supportedOptions
 
+        private val responseKeyStore = DefaultMapStore<String, String>()
+        private val responseKeys = EphemeralEncryptionKeyService(responseKeyStore)
+
         private val defaultOid4vpVerifier = OpenId4VpVerifier(
             keyMaterial = verifierKeyMaterial,
             clientIdScheme = clientIdScheme,
             verifier = buildVerifierAgent(clientIdScheme),
+            ephemeralEncryptionKeyService = responseKeys,
         )
 
         private val defaultDcApiVerifier = DcApiVerifier(
@@ -261,7 +272,42 @@ class VerifierProfiles(
         // Request creation stores an ephemeral response-decryption key in the verifier.
         // Keep the selected WRPAC verifier on this transaction for response validation.
         override val oid4vpVerifier: OpenId4VpVerifier by lazy {
-            selectVerifier(selectedWrpacId, clientIdScheme, defaultOid4vpVerifier)
+            selectVerifier(selectedWrpacId, clientIdScheme, defaultOid4vpVerifier, responseKeys)
+        }
+
+        override suspend fun authorizationError(body: String, expectedState: String): OAuth2Error? {
+            val parameters = body.toFormParameters()
+            val (error, encryptedKeyId) = if ("error" in parameters) {
+                require(profile.deviceFlowConfig.responseMode == DeviceResponseMode.DirectPost) {
+                    "Expected an encrypted authorization response"
+                }
+                require("response" !in parameters && "vp_token" !in parameters) {
+                    "An authorization error must not include a presentation"
+                }
+                body.decodeFromFormUrlEncoded<OAuth2Error>() to null
+            } else {
+                val encodedResponse = parameters["response"] ?: return null
+                require(profile.deviceFlowConfig.responseMode == DeviceResponseMode.DirectPostJwt) {
+                    "Unexpected encrypted authorization response"
+                }
+                require("vp_token" !in parameters) { "An authorization response must not include both response and vp_token" }
+                val jwe = JweEncrypted.deserialize(encodedResponse).getOrThrow()
+                val keyId = requireNotNull(jwe.header.keyId) { "Missing response encryption key id" }
+                val key = requireNotNull(responseKeyStore.get(keyId)) { "Unknown response encryption key id" }
+                // Inspect with a copy; a successful presentation still needs the original one-use key for validation.
+                val inspectionStore = DefaultMapStore<String, String>().also { it.put(keyId, key) }
+                val payload = DecryptJweWithEphemeralKey(EphemeralEncryptionKeyService(inspectionStore))(jwe)
+                    .getOrThrow().payload
+                val json = joseCompliantSerializer.parseToJsonElement(payload) as? JsonObject
+                    ?: throw IllegalArgumentException("Invalid authorization response")
+                if ("error" !in json) return null
+                require("vp_token" !in json) { "An authorization error must not include a presentation" }
+                joseCompliantSerializer.decodeFromString<OAuth2Error>(payload) to keyId
+            }
+            require(error.error.isNotBlank()) { "Missing authorization error code" }
+            require(error.state == expectedState) { "Authorization error state does not match transaction" }
+            encryptedKeyId?.let { responseKeys.consumeKey(it) }
+            return error
         }
 
         override val dcApiVerifier: DcApiVerifier by lazy {
@@ -464,6 +510,7 @@ class VerifierProfiles(
         selectedWrpacId: Int?,
         clientIdScheme: ClientIdScheme,
         oid4vpVerifier: OpenId4VpVerifier?,
+        responseKeys: EphemeralEncryptionKeyService,
     ): OpenId4VpVerifier = if (selectedWrpacId != null) {
         val wrpac = wrpCertificateStore.accessCertificates[selectedWrpacId]
             ?: throw ClientFacingException("Selected WRPAC '$selectedWrpacId' is not available")
@@ -474,6 +521,7 @@ class VerifierProfiles(
             keyMaterial = wrpac.keyMaterial,
             clientIdScheme = wrpacClientIdScheme,
             verifier = buildVerifierAgent(wrpacClientIdScheme),
+            ephemeralEncryptionKeyService = responseKeys,
         )
     } else {
         oid4vpVerifier!!
@@ -569,6 +617,8 @@ interface PreparedProfile {
     val oid4vpVerifier: OpenId4VpVerifier?
     val dcApiVerifier: DcApiVerifier?
     val supportedOptions: Set<SupportedOptions>
+
+    suspend fun authorizationError(body: String, expectedState: String): OAuth2Error?
 
     fun buildQrCodeUrl(requestUrl: String): String
 

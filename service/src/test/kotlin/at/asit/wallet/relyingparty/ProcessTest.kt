@@ -88,6 +88,62 @@ class ProcessTest {
     }
 
     @Test
+    fun `authorization error is acknowledged for direct post`() = runTest {
+        assertAuthorizationErrorAcknowledged("AV")
+    }
+
+    @Test
+    fun `authorization error is acknowledged for encrypted direct post`() = runTest {
+        assertAuthorizationErrorAcknowledged("HAIPd05")
+    }
+
+    @Test
+    fun `authorization error with wrong state is rejected`() = runTest {
+        val profile = createTransaction(
+            ConstantIndex.CredentialRepresentation.SD_JWT,
+            profileName = "AV",
+        ).profiles.single()
+        val result = mockMvc.post("/transaction/result/${profile.id}") {
+            contentType = MediaType.APPLICATION_FORM_URLENCODED
+            param("error", "access_denied")
+            param("state", "another-transaction")
+        }.andReturn().awaitAsync()
+
+        assertEquals(400, result.response.status)
+        assertNull(transactionStore.getApiItem(profile.id))
+    }
+
+    private suspend fun assertAuthorizationErrorAcknowledged(profileName: String) {
+        val profile = createTransaction(
+            ConstantIndex.CredentialRepresentation.SD_JWT,
+            profileName = profileName,
+        ).profiles.single()
+        val wallet = OpenId4VpHolder(
+            holder = HolderAgent(keyMaterial = EphemeralKeyWithoutCert()),
+            remoteResourceRetriever = { request ->
+                mockMvc.get(request.url).andReturn().awaitAsync().response.contentAsString
+            },
+        )
+        val state = wallet.startAuthorizationResponsePreparation(profile.url).getOrThrow()
+        val error = wallet.createAuthnErrorResponse(IllegalArgumentException("User cancelled"), state).getOrThrow()
+        assertInstanceOf(AuthenticationResponseResult.Post::class.java, error)
+        error as AuthenticationResponseResult.Post
+
+        val result = mockMvc.post(error.url) {
+            contentType = MediaType.APPLICATION_FORM_URLENCODED
+            error.params.forEach { (name, value) -> param(name, value) }
+        }.andReturn().awaitAsync()
+
+        assertEquals(200, result.response.status, result.response.contentAsString)
+        assertEquals(MediaType.APPLICATION_JSON, MediaType.parseMediaType(result.response.contentType!!))
+        assertTrue(result.response.contentAsString.contains("\"redirect_uri\""))
+        val user = transactionStore.getApiItem(profile.id)
+        assertNotNull(user)
+        assertTrue(user!!.credentials.isEmpty())
+        assertEquals("User cancelled", user.presentationError)
+    }
+
+    @Test
     fun `selected WRPAC and WRPRC decrypt wallet response`() = runTest {
         val wrpacKey = EphemeralKeyWithSelfSignedCert()
         Mockito.`when`(wrpCertificateStore.accessCertificates).thenReturn(
