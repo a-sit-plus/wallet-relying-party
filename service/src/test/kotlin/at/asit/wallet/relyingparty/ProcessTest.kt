@@ -27,6 +27,7 @@ import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.IsoMdocDcapiResponseBuilder
+import at.asitplus.wallet.lib.openid.OpenId4VpSuccess
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
@@ -462,7 +463,11 @@ class ProcessTest {
         val wallet = OpenId4VpHolder(
             holder = holder,
             remoteResourceRetriever = { data ->
-                mockMvc.get(data.url).andReturn().awaitAsync().response.contentAsString
+                mockMvc.get(data.url).andReturn().awaitAsync().response.let { response ->
+                    assertEquals(200, response.status)
+                    assertEquals("application/oauth-authz-req+jwt", response.contentType)
+                    response.contentAsString
+                }
             })
         val selectedProfile = profileName?.let { expectedProfileName ->
             transactionResponse.profiles.first { it.name == expectedProfileName }
@@ -470,12 +475,21 @@ class ProcessTest {
         val authenticationResponseResult = wallet.createAuthnResponse(selectedProfile.url).getOrThrow()
 
         authenticationResponseResult as AuthenticationResponseResult.Post
-        mockMvc.post(authenticationResponseResult.url) {
+        val acknowledgement = mockMvc.post(authenticationResponseResult.url) {
             contentType = MediaType.APPLICATION_FORM_URLENCODED
             authenticationResponseResult.params.forEach {
                 param(it.key, it.value)
             }
         }.andReturn().awaitAsync()
+
+        assertEquals(200, acknowledgement.response.status)
+        assertEquals("application/json", acknowledgement.response.contentType)
+        assertEquals("no-store", acknowledgement.response.getHeader("Cache-Control"))
+        val success = joseCompliantSerializer.decodeFromString<OpenId4VpSuccess>(acknowledgement.response.contentAsString)
+        assertEquals(
+            configuration.publicContext.appendPath(Paths.CustomerSuccessUrl) + "?id=${selectedProfile.id}",
+            success.redirectUri,
+        )
 
         val user = transactionStore.getApiItem(selectedProfile.id)
         assertNotNull(user)

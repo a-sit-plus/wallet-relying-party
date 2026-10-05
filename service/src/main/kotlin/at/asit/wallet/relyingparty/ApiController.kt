@@ -4,8 +4,8 @@ import at.asitplus.catching
 import at.asitplus.dcapi.DigitalCredentialInterface
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.jws.JwsContentTypeConstants
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
+import at.asitplus.wallet.lib.openid.directPostHttpResponse
 import io.github.aakira.napier.Napier
 import io.matthewnelson.encoding.base64.Base64
 import io.matthewnelson.encoding.core.Encoder.Companion.encodeToString
@@ -159,15 +159,13 @@ class ApiController(
 
         return catching {
             check(transaction.profile.supportedOptions.any { it.isUrlOrQrCode }) { "Profile does not device flow" }
-            val body = transaction.transactionGet(
+            val response = transaction.transactionGet(
                 responseUrl = configuration.publicContext.appendPath("${Paths.Transaction.ResultUrl}/${transaction.id}"),
                 verifierInfo = profiles.buildVerifierInfo(
                     selectedWrprcId = transaction.request.selectedWrprcId,
                 ),
             ).also { Napier.i("${Paths.Transaction.GetUrl}/$id returns $it") }
-            ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType("application/" + JwsContentTypeConstants.OAUTH_AUTHZ_REQUEST))
-                .body(body)
+            response.toResponseEntity()
         }.getOrElse {
             Napier.w("${Paths.Transaction.GetUrl}/$id error", it)
             throw ResponseStatusException(HttpStatus.BAD_REQUEST, it.clientReason(HttpStatus.BAD_REQUEST))
@@ -236,7 +234,7 @@ class ApiController(
         @PathVariable id: String,
         @RequestBody requestBody: String,
         request: HttpServletRequest,
-    ): ResponseEntity<OpenId4VpSuccess> {
+    ): ResponseEntity<String> {
         MDC.put(MDC_REQUEST_ID, id)
         Napier.i("${Paths.Transaction.ResultUrl}/$id called with $requestBody")
         val transaction = removeTransaction(id)
@@ -274,9 +272,7 @@ class ApiController(
             .fromUriString(customerSuccessUrl)
             .queryParam("id", id)
             .toUriString()
-        return ResponseEntity.ok()
-            .contentType(MediaType.APPLICATION_JSON)
-            .body(OpenId4VpSuccess(redirectUrlWithId))
+        return directPostHttpResponse(redirectUrlWithId).toResponseEntity()
     }
 
     private fun buildTransactionContext(

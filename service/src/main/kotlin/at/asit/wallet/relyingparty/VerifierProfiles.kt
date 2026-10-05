@@ -17,6 +17,8 @@ import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKey
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.wallet.lib.PreparedHttpResponse
+import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.Validator
 import at.asitplus.wallet.lib.agent.ValidatorMdoc
@@ -36,6 +38,7 @@ import at.asitplus.wallet.lib.openid.DcApiCreationOptions
 import at.asitplus.wallet.lib.openid.DcApiVerifier
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
+import at.asitplus.wallet.lib.openid.loadRequestObjectHttpResponse
 import at.asitplus.wallet.lib.openid.VerifierMetadataMode
 import io.github.aakira.napier.Napier
 import io.ktor.client.*
@@ -280,7 +283,7 @@ class VerifierProfiles(
                 require(transaction.request.selectedWrpacId == null && transaction.request.selectedWrprcId == null) {
                     "VerifierProfile($name) cannot include a WRPAC or WRPRC"
                 }
-                transaction.transactionGet(context.responseUrl)
+                transaction.transactionGet(context.responseUrl).body
             }
 
             WalletUrlStyle.ByReference -> buildQrCodeUrl(context.transactionGetUrl)
@@ -291,14 +294,19 @@ class VerifierProfiles(
             responseUrl: String,
             dcqlRequest: CredentialPresentationRequest.DCQLRequest,
             verifierInfo: NonEmptyList<VerifierInfo>?,
-        ): String = oid4vpVerifier.let { verifier ->
+        ): PreparedHttpResponse = oid4vpVerifier.let { verifier ->
             when (profile.deviceFlowConfig.responseMode) {
-                DeviceResponseMode.DirectPost -> verifier.directPost(
-                    transactionId = transactionId,
-                    responseUrl = responseUrl,
-                    dcqlRequest = dcqlRequest,
-                    verifierMetadataMode = profile.deviceFlowConfig.verifierMetadataMode,
-                    verifierInfo = verifierInfo
+                DeviceResponseMode.DirectPost -> PreparedHttpResponse(
+                    status = HttpStatusCode.OK,
+                    headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.AUTHZ_REQ_JWT),
+                    // The AV profile serves an inline wallet URL rather than a signed request object.
+                    body = verifier.directPost(
+                        transactionId = transactionId,
+                        responseUrl = responseUrl,
+                        dcqlRequest = dcqlRequest,
+                        verifierMetadataMode = profile.deviceFlowConfig.verifierMetadataMode,
+                        verifierInfo = verifierInfo,
+                    ),
                 )
 
                 DeviceResponseMode.DirectPostJwt -> verifier.directPostJwt(transactionId, responseUrl, dcqlRequest, verifierInfo, urlPrefix)
@@ -376,7 +384,7 @@ class VerifierProfiles(
         presentationRequest: CredentialPresentationRequest.DCQLRequest,
         verifierInfo: NonEmptyList<VerifierInfo>? = null,
         urlPrefix: String,
-    ): String = createAuthnRequest(
+    ): PreparedHttpResponse = createAuthnRequest(
         requestOptions = OpenId4VpRequestOptions(
             state = transactionId,
             responseMode = ResponseMode.DirectPostJwt,
@@ -389,7 +397,7 @@ class VerifierProfiles(
             requestUrl = configuration.publicContext.appendPath("${Paths.Transaction.GetUrl}/$transactionId"),
         ),
         // wallet URL was already delivered as QR code, only the request object content is needed here
-    ).getOrThrow().loadRequestObject!!.invoke(null).getOrThrow()
+    ).getOrThrow().loadRequestObjectHttpResponse(null).getOrThrow()
 
     fun buildValidator(): Validator = Validator(
         tokenStatusResolver = TokenStatusResolverImpl(
@@ -527,7 +535,7 @@ class VerifierProfiles(
 suspend fun Transaction.transactionGet(
     responseUrl: String,
     verifierInfo: NonEmptyList<VerifierInfo>? = null,
-): String = profile.transactionGet(
+): PreparedHttpResponse = profile.transactionGet(
     transactionId = id,
     responseUrl = responseUrl,
     dcqlRequest = dcqlRequest,
@@ -582,7 +590,7 @@ interface PreparedProfile {
         responseUrl: String,
         dcqlRequest: CredentialPresentationRequest.DCQLRequest,
         verifierInfo: NonEmptyList<VerifierInfo>? = null,
-    ): String
+    ): PreparedHttpResponse
 
     suspend fun transactionGetDcApi(
         transactionId: String,
