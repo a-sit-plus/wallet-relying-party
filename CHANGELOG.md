@@ -1,5 +1,10 @@
 # Changelog
 
+Version 9.0.0-SNAPSHOT (unreleased):
+ - Update to VC-K 9.0.0-SNAPSHOT
+ - Use VC-K prepared HTTP responses for signed OpenID4VP request objects and response acknowledgements
+ - Preserve prepared response status, headers and encoded body through the Spring adapter, including `Cache-Control: no-store` on acknowledgements
+
 Version 8.0.0 (unreleased):
  - Add WRPAC and WRPRC support, see Readme
  - Allow configuring and selecting multiple WRP access certificates per transaction

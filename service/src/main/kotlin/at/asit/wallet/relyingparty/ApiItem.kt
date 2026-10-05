@@ -1,7 +1,6 @@
 package at.asit.wallet.relyingparty
 
 import at.asitplus.signum.indispensable.pki.X509Certificate
-import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
 import kotlinx.serialization.json.JsonElement
@@ -25,10 +24,4 @@ data class ApiItemCredential(
     val trustState: TrustState? = null,
     @Transient
     val issuerCertificate: X509Certificate? = null,
-)
-
-@Serializable
-data class OpenId4VpSuccess(
-    @SerialName("redirect_uri")
-    val redirectUri: String,
 )
