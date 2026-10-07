@@ -193,9 +193,9 @@ class VerifierProfiles(
             ),
         ),
         VerifierProfile(
-            name = "MDOCd23",
-            label = "OpenID4VP: ISO 18013-7 (d23)",
-            description = "x509_san_dns, OpenID4VP d23, direct_post.jwt",
+            name = "MDOC10",
+            label = "OpenID4VP 1.0: ISO 18013-7",
+            description = "x509_san_dns, OpenID4VP 1.0, direct_post.jwt",
             urlPrefix = Paths.Schemes.MdocOpenId4Vp,
             clientIdSchemeType = ClientIdSchemeType.X509SanDns,
             deviceFlowConfig = DeviceFlowConfig(DeviceResponseMode.DirectPostJwt),
@@ -203,7 +203,7 @@ class VerifierProfiles(
         VerifierProfile(
             name = "EUDIW",
             label = "OpenID4VP: EUDIW Ref.",
-            description = "x509_san_dns, OpenID4VP d23, direct_post.jwt",
+            description = "x509_san_dns, OpenID4VP 1.0, direct_post.jwt",
             urlPrefix = Paths.Schemes.OpenId4Vp,
             clientIdSchemeType = ClientIdSchemeType.X509SanDns,
             deviceFlowConfig = DeviceFlowConfig(DeviceResponseMode.DirectPostJwt),

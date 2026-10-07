@@ -146,7 +146,7 @@ class ProcessTest {
     fun `mdoc transaction roundtrip, DCQL`() = runTest {
         runProcess(
             representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-            profileName = "MDOCd23",
+            profileName = "MDOC10",
         )
     }
 
@@ -154,7 +154,7 @@ class ProcessTest {
     fun `mdoc from an issuer outside the trust lists is untrusted`() = runTest {
         runProcess(
             representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
-            profileName = "MDOCd23",
+            profileName = "MDOC10",
             expectedTrustState = TrustState.UNTRUSTED,
         )
     }
@@ -212,7 +212,7 @@ class ProcessTest {
     fun `DC API is offered for every profile with a dcApiUrl`() = runTest {
         val response = createTransaction(ConstantIndex.CredentialRepresentation.SD_JWT)
         assertEquals(
-            setOf("HAIPd05", "AV", "MDOCd23", "EUDIW"),
+            setOf("HAIPd05", "AV", "MDOC10", "EUDIW"),
             response.profiles.map { it.name }.toSet(),
         )
         response.profiles.forEach {
@@ -268,7 +268,7 @@ class ProcessTest {
     @Test
     fun `DC API offers ISO Annex C, with and without OpenID4VP encryption`() = runTest {
         val mdoc =
-            createTransaction(ConstantIndex.CredentialRepresentation.ISO_MDOC).profiles.first { it.name == "MDOCd23" }
+            createTransaction(ConstantIndex.CredentialRepresentation.ISO_MDOC).profiles.first { it.name == "MDOC10" }
 
         // ISO alone, encrypt off (R1: ISO is HPKE-encrypted internally regardless of responseMode).
         assertTrue(dcApiBody(mdoc.id, "?oid4vpMode=NONE&isoMdoc=true&encrypt=false").contains("org-iso-mdoc"))
@@ -329,7 +329,7 @@ class ProcessTest {
             )
         )
         for (selectedWrpacId in listOf(null, 0, 1)) {
-            for (profileName in listOf("EUDIW2026", "HAIPd05", "MDOCd23", "EUDIW")) {
+            for (profileName in listOf("EUDIW2026", "HAIPd05", "MDOC10", "EUDIW")) {
                 val profile = createTransaction(
                     ConstantIndex.CredentialRepresentation.SD_JWT,
                     selectedWrpacId = selectedWrpacId,
