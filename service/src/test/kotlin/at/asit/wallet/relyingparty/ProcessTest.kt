@@ -31,10 +31,13 @@ import at.asitplus.wallet.lib.openid.OpenId4VpSuccess
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
+import io.ktor.http.Url
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.builtins.ByteArraySerializer
 import kotlinx.serialization.encodeToByteArray
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.*
@@ -316,6 +319,41 @@ class ProcessTest {
     }
 
     @Test
+    fun `QR URL and fetched request object have the same client identifier`() = runTest {
+        val first = EphemeralKeyWithSelfSignedCert()
+        val second = EphemeralKeyWithSelfSignedCert()
+        Mockito.`when`(wrpCertificateStore.accessCertificates).thenReturn(
+            mapOf(
+                0 to AccessCertificateData("First", first, listOf(first.getCertificate()!!)),
+                1 to AccessCertificateData("Second", second, listOf(second.getCertificate()!!)),
+            )
+        )
+        for (selectedWrpacId in listOf(null, 0, 1)) {
+            for (profileName in listOf("EUDIW2026", "HAIPd05", "MDOCd23", "EUDIW")) {
+                val profile = createTransaction(
+                    ConstantIndex.CredentialRepresentation.SD_JWT,
+                    selectedWrpacId = selectedWrpacId,
+                    profileName = profileName,
+                ).profiles.single()
+                val parameters = Url(profile.url).parameters
+                val clientId = checkNotNull(parameters["client_id"])
+                val requestUri = checkNotNull(parameters["request_uri"])
+                // Follow the URI actually encoded in the QR URL, rather than reconstructing it.
+                repeat(2) {
+                    val response = mockMvc.get(requestUri).andReturn().awaitAsync().response
+                    assertEquals(200, response.status, response.contentAsString)
+                    assertEquals("application/oauth-authz-req+jwt", response.contentType)
+                    val payload = JwsCompact(response.contentAsString).getPayload<JsonObject>().getOrThrow()
+                    assertEquals(
+                        clientId, payload.getValue("client_id").jsonPrimitive.content,
+                        "$profileName, WRPAC=$selectedWrpacId",
+                    )
+                }
+            }
+        }
+    }
+
+    @Test
     fun `selected WRPAC determines device and DC API request signing certificate`() = runTest {
         val first = EphemeralKeyWithSelfSignedCert()
         val second = EphemeralKeyWithSelfSignedCert()
@@ -378,19 +416,16 @@ class ProcessTest {
     }
 
     @Test
-    fun `unknown WRPAC selection is rejected when the request is resolved`() = runTest {
+    fun `unknown WRPAC selection is rejected before publishing a wallet URL`() = runTest {
         Mockito.`when`(wrpCertificateStore.accessCertificates).thenReturn(emptyMap())
 
-        val profile = createTransaction(
+        val response = createTransaction(
             ConstantIndex.CredentialRepresentation.SD_JWT,
             selectedWrpacId = 42,
-        ).profiles.first { it.name == "HAIPd05" }
-
-        assertEquals(
-            400,
-            mockMvc.get("/transaction/get/${profile.id}") { accept = MediaType.ALL }
-                .andReturn().awaitAsync().response.status,
+            profileName = "HAIPd05",
         )
+
+        assertTrue(response.profiles.isEmpty())
     }
 
     private suspend fun createTransaction(

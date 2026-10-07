@@ -73,6 +73,9 @@ The service defines the following verifier profiles in `VerifierProfiles.kt`. Th
 | `MDOCd23` | ISO 18013-7 draft 23: `x509_san_dns`, `direct_post.jwt` | Yes |
 | `EUDIW` | EUDI Wallet reference: `x509_san_dns`, `direct_post.jwt` | Yes |
 
+Selecting a WRPAC uses its signing key and certificate chain with the `x509_hash` client identifier defined in OpenID4VP 1.0.
+For requests by reference, the transaction retains VC-K's generated wallet URL and request-object loader alongside the verifier used to validate the response.
+
 Supported credential examples include:
 
 - Personal Identification Data in ISO mDoc and SD-JWT VC form
