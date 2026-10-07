@@ -6,12 +6,10 @@ import at.asitplus.catching
 import at.asitplus.data.NonEmptyList
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
-import at.asitplus.openid.JarRequestParameters
 import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ResponseMode
 import at.asitplus.openid.VerifierInfo
-import at.asitplus.openid.encodeToParameters
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.JsonWebKey
@@ -34,6 +32,7 @@ import at.asitplus.wallet.lib.oauth2.OAuth2Utils
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.ClientIdScheme.*
 import at.asitplus.wallet.lib.openid.CreationOptions
+import at.asitplus.wallet.lib.openid.CreatedRequest
 import at.asitplus.wallet.lib.openid.DcApiCreationOptions
 import at.asitplus.wallet.lib.openid.DcApiVerifier
 import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
@@ -52,7 +51,6 @@ import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import org.springframework.stereotype.Component
-import org.springframework.web.servlet.support.ServletUriComponentsBuilder
 import kotlin.io.encoding.Base64
 
 
@@ -195,9 +193,9 @@ class VerifierProfiles(
             ),
         ),
         VerifierProfile(
-            name = "MDOCd23",
-            label = "OpenID4VP: ISO 18013-7 (d23)",
-            description = "x509_san_dns, OpenID4VP d23, direct_post.jwt",
+            name = "MDOC10",
+            label = "OpenID4VP 1.0: ISO 18013-7",
+            description = "x509_san_dns, OpenID4VP 1.0, direct_post.jwt",
             urlPrefix = Paths.Schemes.MdocOpenId4Vp,
             clientIdSchemeType = ClientIdSchemeType.X509SanDns,
             deviceFlowConfig = DeviceFlowConfig(DeviceResponseMode.DirectPostJwt),
@@ -205,7 +203,7 @@ class VerifierProfiles(
         VerifierProfile(
             name = "EUDIW",
             label = "OpenID4VP: EUDIW Ref.",
-            description = "x509_san_dns, OpenID4VP d23, direct_post.jwt",
+            description = "x509_san_dns, OpenID4VP 1.0, direct_post.jwt",
             urlPrefix = Paths.Schemes.OpenId4Vp,
             clientIdSchemeType = ClientIdSchemeType.X509SanDns,
             deviceFlowConfig = DeviceFlowConfig(DeviceResponseMode.DirectPostJwt),
@@ -272,8 +270,9 @@ class VerifierProfiles(
             else selectOid4vpDcApiVerifier(selectedWrpacId, clientIdScheme)
         }
 
-        override fun buildQrCodeUrl(requestUrl: String): String =
-            buildQrCodeUrlByReference(urlPrefix, requestUrl, clientIdScheme)
+        // Created before publishing the transaction. Its URL and request loader use the same
+        // selected verifier identity; retain that verifier for response decryption as well.
+        private var deviceRequest: CreatedRequest? = null
 
         override suspend fun buildWalletUrl(
             transaction: Transaction,
@@ -286,7 +285,17 @@ class VerifierProfiles(
                 transaction.transactionGet(context.responseUrl).body
             }
 
-            WalletUrlStyle.ByReference -> buildQrCodeUrl(context.transactionGetUrl)
+            WalletUrlStyle.ByReference -> {
+                val createdRequest = deviceRequest ?: oid4vpVerifier.createDirectPostJwtRequest(
+                    transactionId = transaction.id,
+                    responseUrl = context.responseUrl,
+                    presentationRequest = transaction.dcqlRequest,
+                    verifierInfo = buildVerifierInfo(transaction.request.selectedWrprcId),
+                    urlPrefix = urlPrefix,
+                    requestUrl = context.transactionGetUrl,
+                ).also { deviceRequest = it }
+                createdRequest.url
+            }
         }
 
         override suspend fun transactionGet(
@@ -309,7 +318,9 @@ class VerifierProfiles(
                     ),
                 )
 
-                DeviceResponseMode.DirectPostJwt -> verifier.directPostJwt(transactionId, responseUrl, dcqlRequest, verifierInfo, urlPrefix)
+                DeviceResponseMode.DirectPostJwt -> checkNotNull(deviceRequest) {
+                    "Device request must be created before publishing the transaction"
+                }.loadRequestObjectHttpResponse(null).getOrThrow()
             }
         }
 
@@ -348,18 +359,6 @@ class VerifierProfiles(
         }
     }
 
-    private fun buildQrCodeUrlByReference(
-        urlPrefix: String,
-        requestUrl: String,
-        clientIdScheme: ClientIdScheme,
-    ): String = ServletUriComponentsBuilder.fromUriString(urlPrefix).apply {
-        JarRequestParameters(
-            clientId = clientIdScheme.clientId,
-            requestUri = requestUrl,
-        ).encodeToParameters()
-            .forEach { queryParam(it.key, it.value) }
-    }.toUriString()
-
     private suspend fun OpenId4VpVerifier.directPost(
         transactionId: String,
         responseUrl: String,
@@ -378,13 +377,14 @@ class VerifierProfiles(
         creationOptions = CreationOptions.Query("av://"),
     ).getOrThrow().url.normalizeAvWalletUrl()
 
-    private suspend fun OpenId4VpVerifier.directPostJwt(
+    private suspend fun OpenId4VpVerifier.createDirectPostJwtRequest(
         transactionId: String,
         responseUrl: String,
         presentationRequest: CredentialPresentationRequest.DCQLRequest,
         verifierInfo: NonEmptyList<VerifierInfo>? = null,
         urlPrefix: String,
-    ): PreparedHttpResponse = createAuthnRequest(
+        requestUrl: String,
+    ): CreatedRequest = createAuthnRequest(
         requestOptions = OpenId4VpRequestOptions(
             state = transactionId,
             responseMode = ResponseMode.DirectPostJwt,
@@ -394,10 +394,9 @@ class VerifierProfiles(
         ),
         creationOptions = CreationOptions.SignedRequestByReference(
             walletUrl = urlPrefix,
-            requestUrl = configuration.publicContext.appendPath("${Paths.Transaction.GetUrl}/$transactionId"),
+            requestUrl = requestUrl,
         ),
-        // wallet URL was already delivered as QR code, only the request object content is needed here
-    ).getOrThrow().loadRequestObjectHttpResponse(null).getOrThrow()
+    ).getOrThrow()
 
     fun buildValidator(): Validator = Validator(
         tokenStatusResolver = TokenStatusResolverImpl(
@@ -578,12 +577,10 @@ interface PreparedProfile {
     val dcApiVerifier: DcApiVerifier?
     val supportedOptions: Set<SupportedOptions>
 
-    fun buildQrCodeUrl(requestUrl: String): String
-
     suspend fun buildWalletUrl(
         transaction: Transaction,
         context: TransactionContext,
-    ): String = buildQrCodeUrl(context.transactionGetUrl)
+    ): String
 
     suspend fun transactionGet(
         transactionId: String,
