@@ -41,7 +41,6 @@ class ApiController(
     private val configuration: AppConfigurationProperties,
     private val transactionStore: TransactionStore,
     private val profiles: VerifierProfiles,
-    private val trustListService: TrustListService,
 ) {
     private val statisticLogger = LoggerFactory.getLogger("statistic")
     private val transactionMutex = Mutex()
@@ -259,7 +258,7 @@ class ApiController(
             } else {
                 error("Unsupported response for transaction $id")
             }
-            validationResult.convertToUser(trustListService::evaluateCredentialIssuerTrust)
+            validationResult.convertToUser()
         }.getOrElse {
             Napier.w("${Paths.Transaction.ResultUrl}/$id extracted got error", it)
             statisticLogger.error("$id error (${request.getHeader(HttpHeaders.USER_AGENT)})", it)

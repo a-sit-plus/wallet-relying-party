@@ -1,4 +1,9 @@
+import ValidationReportComp from './validation-report-comp.js'
+
 export default {
+    components: {
+        ValidationReportComp,
+    },
     props: {
         loginList: {},
         config: { default: () => ({ schemeTypes: [] }) },
@@ -27,9 +32,13 @@ export default {
             return schemeFor(credential)?.attributes?.find(a => a.value === key)?.label || key
         }
 
-        // The reconstructed credential body: SD-JWT/ISO expose allFields, plain VC-JWS the credentialSubject.
+        // The claims of an accepted credential; a rejected one has none.
         function claimsOf(credential) {
-            return credential.allFields || credential.jwtCredential || {}
+            return credential.allFields || {}
+        }
+
+        function isAccepted(credential) {
+            return credential.decision === 'ACCEPTED'
         }
 
         function hasClaims(credential) {
@@ -45,6 +54,7 @@ export default {
             schemeLabel,
             claimLabel,
             claimsOf,
+            isAccepted,
             hasClaims,
             credentialJson,
         }
@@ -55,7 +65,7 @@ export default {
 
   <transition-group tag="div" name="fade" class="row mb-2">
 
-      <div v-for="item in loginList" :key="item.timestamp" class="col-md-6">
+      <div v-for="item in loginList" :key="item.timestamp" class="col-12">
           <div class="row g-0 border rounded overflow-hidden flex-md-row mb-4 shadow-sm bg-white">
            <div v-if="item.presentationError != null">
                 <p><span class="row alert alert-danger" role="alert">
@@ -87,19 +97,20 @@ export default {
                       <div v-for="(credential, key) in item.credentials" :key="key"
                            class="border rounded p-2 bg-light my-3">
                           <h4>{{ schemeLabel(credential) }}</h4>
-                          <div v-if="credential.trustState === 'TRUSTED'"
+                          <div v-if="credential.queryId" class="text-body-secondary small mb-2">
+                              Answers credential query '{{ credential.queryId }}'
+                          </div>
+                          <div v-if="isAccepted(credential)"
                                class="alert alert-success d-flex align-items-center" role="alert">
                               <i class="bi bi-shield-check fs-3 me-3"></i>
-                              <strong>Trusted Issuer</strong>
+                              <strong>Accepted: every required check passed</strong>
                           </div>
-                          <div v-else-if="credential.trustState === 'UNTRUSTED'"
-                               class="alert alert-danger d-flex align-items-center" role="alert">
+                          <div v-else class="alert alert-danger d-flex align-items-center" role="alert">
                               <i class="bi bi-shield-x fs-3 me-3"></i>
-                              <strong>Untrusted Issuer</strong>
-                          </div>
-                          <div v-else class="alert alert-warning d-flex align-items-center" role="alert">
-                              <i class="bi bi-exclamation-triangle fs-3 me-3"></i>
-                              <strong>Trust Status Unknown</strong>
+                              <div>
+                                  <strong>Rejected, so no claims are shown</strong>
+                                  <div v-if="credential.error" class="text-break">{{ credential.error }}</div>
+                              </div>
                           </div>
                           <p v-for="(value, claimKey) in claimsOf(credential)" :key="claimKey"
                              class="text-break mb-1">
@@ -113,10 +124,14 @@ export default {
                               <pre class="border rounded bg-body-tertiary p-2 mt-2 mb-0"
                                    style="white-space: pre-wrap; word-break: break-word">{{ credentialJson(credential) }}</pre>
                           </details>
-                          <div v-if="credential.error != null">
-                              <h4>Error</h4>
-                              <p><span class="row alert alert-danger" role="alert">{{ credential.error }}</span></p>
-                          </div>
+                      </div>
+                      <div v-if="item.validation" class="my-3">
+                          <h4>Validation of the Wallet response</h4>
+                          <p class="text-body-secondary small">
+                              Every check of the response, its presentations, their credentials, and the status lists
+                              of those, under the policy of this relying party.
+                          </p>
+                          <validation-report-comp :node="item.validation"></validation-report-comp>
                       </div>
                       <div class="foldout-fade"></div>
                   </div>

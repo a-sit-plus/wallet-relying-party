@@ -2,33 +2,19 @@ package at.asit.wallet.relyingparty
 
 
 import at.asit.wallet.relyingparty.ApiController.Transaction
-import at.asitplus.catching
 import at.asitplus.data.NonEmptyList
 import at.asitplus.data.NonEmptyList.Companion.toNonEmptyList
 import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
-import at.asitplus.openid.JwtVcIssuerMetadata
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ResponseMode
 import at.asitplus.openid.VerifierInfo
 import at.asitplus.signum.indispensable.cosef.CoseSigned
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
-import at.asitplus.signum.indispensable.josef.JsonWebKey
-import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
 import at.asitplus.wallet.lib.PreparedHttpResponse
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.agent.KeyMaterial
-import at.asitplus.wallet.lib.agent.Validator
-import at.asitplus.wallet.lib.agent.ValidatorMdoc
-import at.asitplus.wallet.lib.agent.ValidatorSdJwt
-import at.asitplus.wallet.lib.agent.VerifierAgent
-import at.asitplus.wallet.lib.agent.validation.TokenStatusResolverImpl
 import at.asitplus.wallet.lib.data.CredentialPresentationRequest
-import at.asitplus.wallet.lib.jws.PublicJsonWebKeyLookup
-import at.asitplus.wallet.lib.jws.VerifyJwsObject
-import at.asitplus.wallet.lib.jws.VerifyJwsObjectFun
-import at.asitplus.wallet.lib.jws.VerifyJwsObjectTrusted
-import at.asitplus.wallet.lib.oauth2.OAuth2Utils
 import at.asitplus.wallet.lib.openid.ClientIdScheme
 import at.asitplus.wallet.lib.openid.ClientIdScheme.*
 import at.asitplus.wallet.lib.openid.CreationOptions
@@ -39,17 +25,11 @@ import at.asitplus.wallet.lib.openid.OpenId4VpRequestOptions
 import at.asitplus.wallet.lib.openid.OpenId4VpVerifier
 import at.asitplus.wallet.lib.openid.loadRequestObjectHttpResponse
 import at.asitplus.wallet.lib.openid.VerifierMetadataMode
+import at.asitplus.wallet.lib.validation.CredentialValidator
+import at.asitplus.wallet.lib.validation.ValidationPolicy
 import io.github.aakira.napier.Napier
-import io.ktor.client.*
-import io.ktor.client.call.*
-import io.ktor.client.plugins.contentnegotiation.*
-import io.ktor.client.plugins.logging.*
-import io.ktor.client.request.*
 import io.ktor.http.*
-import io.ktor.serialization.kotlinx.json.*
 import kotlinx.serialization.decodeFromByteArray
-import kotlinx.serialization.json.JsonObject
-import kotlinx.serialization.json.JsonPrimitive
 import org.springframework.stereotype.Component
 import kotlin.io.encoding.Base64
 
@@ -116,51 +96,9 @@ class VerifierProfiles(
     private val configuration: AppConfigurationProperties,
     private val verifierKeyMaterial: KeyMaterial,
     private val wrpCertificateStore: WrpCertificateStore,
+    private val credentialValidator: CredentialValidator,
+    private val presentationPolicy: ValidationPolicy,
 ) {
-
-    private val httpClient = HttpClient {
-        install(ContentNegotiation) {
-            json(joseCompliantSerializer)
-        }
-        install(Logging) {
-            logger = object : Logger {
-                override fun log(message: String) {
-                    Napier.i(message = message, tag = "at.asitplus.http")
-                }
-            }
-            level = LogLevel.ALL
-        }
-    }
-
-    private suspend fun remoteKeyLookup(jwsCompact: JwsCompact): Set<JsonWebKey>? =
-        (jwsCompact.getPayload<JsonObject>().getOrNull()?.get("iss") as? JsonPrimitive?)?.content?.let { iss ->
-            val url = OAuth2Utils.insertWellKnownPath(iss, OpenIdConstants.WellKnownPaths.JwtVcIssuer)
-            Napier.i("Resolving Key for $iss from $url")
-            catching {
-                httpClient.get(url).body<JwtVcIssuerMetadata>().jsonWebKeySet?.keys?.toSet()
-            }.getOrElse {
-                Napier.w("Could not resolve issuer metadata from $url", it)
-                null
-            }
-        }
-
-    /**
-     * Verifies issuer signatures against the key the JWS asserts itself, and consults the issuer's
-     * `jwt-vc-issuer` metadata only when the JWS names no key at all (e.g. a bare `kid`).
-     *
-     * This is what `VerifyJwsObject(publicKeyLookup = ...)` used to do; passing the lookup there now turns it
-     * into a trust list that is the *only* accepted signer, which rejects every credential whose issuer
-     * publishes no such metadata. Trust is decided separately, see [TrustListService].
-     */
-    private val verifyIssuerJws = VerifyJwsObjectFun { jwsObject ->
-        when (jwsObject.jwsHeader.publicKey) {
-            null -> VerifyJwsObjectTrusted(
-                trustedKeys = PublicJsonWebKeyLookup { remoteKeyLookup(it) },
-            )(jwsObject)
-
-            else -> VerifyJwsObject()(jwsObject)
-        }
-    }
 
     val knownProfiles: List<VerifierProfile> = listOf(
         VerifierProfile(
@@ -247,17 +185,9 @@ class VerifierProfiles(
         override val urlPrefix: String get() = profile.urlPrefix
         override val supportedOptions: Set<SupportedOptions> get() = profile.supportedOptions
 
-        private val defaultOid4vpVerifier = OpenId4VpVerifier(
-            keyMaterial = verifierKeyMaterial,
-            clientIdScheme = clientIdScheme,
-            verifier = buildVerifierAgent(clientIdScheme),
-        )
+        private val defaultOid4vpVerifier = openId4VpVerifier(verifierKeyMaterial, clientIdScheme)
 
-        private val defaultDcApiVerifier = DcApiVerifier(
-            keyMaterial = verifierKeyMaterial,
-            clientIdScheme = clientIdScheme,
-            verifier = buildVerifierAgent(clientIdScheme),
-        )
+        private val defaultDcApiVerifier = dcApiVerifier(verifierKeyMaterial, clientIdScheme)
 
         // Request creation stores an ephemeral response-decryption key in the verifier.
         // Keep the selected WRPAC verifier on this transaction for response validation.
@@ -398,28 +328,6 @@ class VerifierProfiles(
         ),
     ).getOrThrow()
 
-    fun buildValidator(): Validator = Validator(
-        tokenStatusResolver = TokenStatusResolverImpl(
-            resolveStatusListToken = StatusListTokenFetcher(httpClient),
-        ),
-    )
-
-    fun buildValidatorSdJwt(): ValidatorSdJwt = ValidatorSdJwt(
-        verifyJwsObject = verifyIssuerJws,
-        validator = buildValidator(),
-    )
-
-    /**
-     * The default [at.asitplus.wallet.lib.cbor.VerifyCoseSignature] verifies `issuerAuth` against the
-     * certificate transported in its COSE headers, the mdoc counterpart to [verifyIssuerJws]. Do not pass a
-     * `publicKeyLookup` here: it turns signature verification into a trust list
-     * ([at.asitplus.wallet.lib.cbor.VerifyCoseSignatureTrusted]), and trust is decided separately, see
-     * [TrustListService].
-     */
-    fun buildValidatorMdoc(): ValidatorMdoc = ValidatorMdoc(
-        validator = buildValidator(),
-    )
-
     private fun String.normalizeAvWalletUrl(): String = when {
         startsWith("av://localhost/?") -> "av://?" + removePrefix("av://localhost/?")
         startsWith("av://localhost?") -> "av://?" + removePrefix("av://localhost?")
@@ -477,11 +385,7 @@ class VerifierProfiles(
         val wrpacChain = wrpac.certificateChain
             ?: throw ClientFacingException("Selected WRPAC '$selectedWrpacId' has no certificate chain")
         val wrpacClientIdScheme = buildWrpacClientIdScheme(wrpacChain, clientIdScheme)
-        OpenId4VpVerifier(
-            keyMaterial = wrpac.keyMaterial,
-            clientIdScheme = wrpacClientIdScheme,
-            verifier = buildVerifierAgent(wrpacClientIdScheme),
-        )
+        openId4VpVerifier(wrpac.keyMaterial, wrpacClientIdScheme)
     } else {
         oid4vpVerifier!!
     }
@@ -496,17 +400,23 @@ class VerifierProfiles(
             ?: throw ClientFacingException("Selected WRPAC '$selectedWrpacId' has no certificate chain")
         val wrpacClientIdScheme = buildWrpacClientIdScheme(wrpacChain, defaultClientIdScheme)
 
-        return DcApiVerifier(
-            keyMaterial = wrpac.keyMaterial,
-            clientIdScheme = wrpacClientIdScheme,
-            verifier = buildVerifierAgent(wrpacClientIdScheme),
-        )
+        return dcApiVerifier(wrpac.keyMaterial, wrpacClientIdScheme)
     }
 
-    private fun buildVerifierAgent(clientIdScheme: ClientIdScheme): VerifierAgent = VerifierAgent(
-        identifier = clientIdScheme.clientId,
-        validatorSdJwt = buildValidatorSdJwt(),
-        validatorMdoc = buildValidatorMdoc()
+    /** Validates presentations with [credentialValidator] under [presentationPolicy]. */
+    private fun openId4VpVerifier(keyMaterial: KeyMaterial, clientIdScheme: ClientIdScheme) = OpenId4VpVerifier(
+        keyMaterial = keyMaterial,
+        clientIdScheme = clientIdScheme,
+        credentialValidator = credentialValidator,
+        presentationPolicy = presentationPolicy,
+    )
+
+    /** Validates presentations with [credentialValidator] under [presentationPolicy]. */
+    private fun dcApiVerifier(keyMaterial: KeyMaterial, clientIdScheme: ClientIdScheme) = DcApiVerifier(
+        keyMaterial = keyMaterial,
+        clientIdScheme = clientIdScheme,
+        credentialValidator = credentialValidator,
+        presentationPolicy = presentationPolicy,
     )
 
     private fun buildWrpacClientIdScheme(
