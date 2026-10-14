@@ -17,6 +17,7 @@ import at.asitplus.wallet.lib.validation.ValidationPolicy
 import at.asitplus.wallet.lib.validation.credentialTrustScope
 import io.github.aakira.napier.Napier
 import io.ktor.client.HttpClient
+import io.ktor.client.plugins.HttpTimeout
 import io.ktor.client.plugins.contentnegotiation.ContentNegotiation
 import io.ktor.client.plugins.logging.LogLevel
 import io.ktor.client.plugins.logging.Logger
@@ -57,9 +58,17 @@ class CredentialValidationConfiguration {
         )
     )
 
+    /**
+     * Status lists are fetched while the wallet waits for its response to be acknowledged, so a slow server must not
+     * hold it for long: its status is then reported as not determined.
+     */
     @Bean
     fun statusListTokenResolver(): StatusListTokenResolver = StatusListTokenFetcher(
         HttpClient {
+            install(HttpTimeout) {
+                connectTimeoutMillis = 3_000
+                requestTimeoutMillis = 5_000
+            }
             install(ContentNegotiation) {
                 json(joseCompliantSerializer)
             }

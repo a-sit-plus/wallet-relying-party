@@ -17,6 +17,7 @@ import at.asitplus.wallet.lib.data.rfc.tokenStatusList.RevocationListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.TokenStatusInfo
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.primitives.TokenStatus
+import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
 import at.asitplus.wallet.lib.etsi.LoTEStage
 import at.asitplus.wallet.lib.etsi.LoteProfile
 import at.asitplus.wallet.lib.validation.CheckOutcome
@@ -31,6 +32,9 @@ import at.asitplus.wallet.lib.validation.ValidationDecision
 import io.ktor.client.*
 import io.ktor.client.engine.mock.*
 import io.ktor.http.*
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.test.runTest
 import kotlinx.serialization.encodeToByteArray
@@ -38,14 +42,17 @@ import kotlinx.serialization.json.buildJsonObject
 import kotlinx.serialization.json.put
 import org.junit.jupiter.api.Assertions.assertEquals
 import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertSame
 import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
 import java.util.Base64
+import java.util.concurrent.atomic.AtomicInteger
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 /**
  * Resolves status lists with [StatusListTokenFetcher] and validates them with [StatusValidator], as the verifiers do:
@@ -150,6 +157,62 @@ class StatusListTokenFetcherTest {
         assertTrue(signerTrust.outcome is CheckOutcome.Failed, signerTrust.toString())
     }
 
+    @Test
+    fun `a fetched status list is reused until the maximum cache age`() = runTest {
+        val clock = MutableClock()
+        val requests = AtomicInteger()
+        val body = cwt(RevocationList.Kind.STATUS_LIST)
+        val fetcher = StatusListTokenFetcher(countingClient(requests, body), clock, maxCacheAge = 5.minutes)
+
+        val first = fetcher(STATUS_LIST_URI)
+        clock.now += 4.minutes
+        assertSame(first, fetcher(STATUS_LIST_URI))
+        assertEquals(1, requests.get())
+
+        clock.now += 2.minutes
+        val refetched = fetcher(STATUS_LIST_URI)
+        assertEquals(2, requests.get())
+        assertEquals(clock.now, refetched.resolvedAt)
+    }
+
+    @Test
+    fun `concurrent requests for a status list share one fetch`() = runTest {
+        val requests = AtomicInteger()
+        val fetcher = StatusListTokenFetcher(
+            countingClient(requests, cwt(RevocationList.Kind.STATUS_LIST), delayMillis = 200)
+        )
+
+        val tokens = List(5) { async { fetcher(STATUS_LIST_URI) } }.awaitAll()
+
+        assertEquals(1, requests.get())
+        assertTrue(tokens.all { it === tokens.first() })
+    }
+
+    @Test
+    fun `a failed fetch is not cached`() = runTest {
+        val requests = AtomicInteger()
+        val body = cwt(RevocationList.Kind.STATUS_LIST)
+        val fetcher = StatusListTokenFetcher(HttpClient(MockEngine {
+            if (requests.incrementAndGet() == 1) respondError(HttpStatusCode.ServiceUnavailable)
+            else respond(body, headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.STATUSLIST_CWT))
+        }))
+
+        assertTrue(runCatching { fetcher(STATUS_LIST_URI) }.isFailure)
+        fetcher(STATUS_LIST_URI)
+        assertEquals(2, requests.get())
+    }
+
+    private fun countingClient(requests: AtomicInteger, body: ByteArray, delayMillis: Long = 0) =
+        HttpClient(MockEngine {
+            requests.incrementAndGet()
+            delay(delayMillis)
+            respond(body, headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.STATUSLIST_CWT))
+        })
+
+    private class MutableClock(var now: Instant = Clock.System.now()) : Clock {
+        override fun now() = now
+    }
+
     /**
      * Validates the status of a credential of [CREDENTIAL_TYPE] referencing [reference], with the status list signer
      * trusted as the production trust scopes do, for a Pub-EAA list on which [provider] offers a [serviceType].
@@ -233,6 +296,7 @@ class StatusListTokenFetcherTest {
     }
 
     private companion object {
+        val STATUS_LIST_URI = UniformResourceIdentifier("https://status.example.com/statuslists/1")
         const val PROVIDER = "Test EAA Provider"
         const val CREDENTIAL_TYPE = "urn:eudi:ehic:1"
         const val PUB_EAA_REVOCATION = "http://uri.etsi.org/19602/SvcType/PubEAA/Revocation"
