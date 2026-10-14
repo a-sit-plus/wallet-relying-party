@@ -5,6 +5,7 @@ Version 9.0.0-SNAPSHOT (unreleased):
  - Use VC-K prepared HTTP responses for signed OpenID4VP request objects and response acknowledgements
  - Preserve prepared response status, headers and encoded body through the Spring adapter, including `Cache-Control: no-store` on acknowledgements
  - Validate wallet responses with VC-K validation reports: trust per credential type (LoTEs and A-SIT root), status lists, and a policy configurable in `app.validation` (strict by default); show every check on the result page, and claims only of accepted credentials
+ - Trust credential types without a list of their own through the Pub-EAA providers list, and status list signers through the revocation services of the lists; fetch the lists of the development and acceptance stages by default, skipping lists a stage does not publish
 
 Version 8.0.0 (unreleased):
  - Add WRPAC and WRPRC support, see Readme

@@ -85,10 +85,11 @@ class CredentialValidationConfiguration {
 }
 
 /**
- * One trust scope per attestation type, each trusting [asitRootCertificate] for issuance and status:
- * types with a list of the European Commission (see [LoteProfile.fromSchemeIdentifier]) share one scope per list,
- * which trusts its issuance and revocation services as published on [stages] (the [lists] at a URL, verified by
- * [TrustListService]); every other type has a scope of its own.
+ * One trust scope per attestation type, trusting its issuers through the issuance services, and the signers of its
+ * status lists through the revocation services, of its list as published on [stages] (the [lists] at a URL, verified
+ * by [TrustListService]), and through [asitRootCertificate] for both. Types with a list of the European Commission
+ * (see [LoteProfile.fromSchemeIdentifier]) share one scope per list, every other type has a scope of its own on the
+ * Pub-EAA providers list ([LoteProfile.EAA]).
  */
 fun credentialTrustScopes(
     identifiers: Collection<String>,
@@ -98,31 +99,21 @@ fun credentialTrustScopes(
 ): List<CredentialTrustScope> {
     val loteFilterService = LoTEFilterService()
     return identifiers.distinct().groupBy { LoteProfile.fromSchemeIdentifier(it) }.flatMap { (profile, ids) ->
-        if (profile == null) {
-            ids.map { identifier ->
-                CredentialTrustScope(
-                    credentialIdentifiers = setOf(identifier),
-                    source = ASIT_ROOT_SOURCE,
-                    issuance = TrustedCertificates { setOf(asitRootCertificate) },
-                    status = TrustedCertificates { setOf(asitRootCertificate) },
-                )
-            }
-        } else {
-            val urls = stages.map { profile.fetchUrl(it) }
-            val lote = loteFilterService.credentialTrustScope(
-                credentialIdentifiers = ids.toSet(),
-                profile = profile,
-                source = urls.joinToString(),
-                lists = { urls.flatMap(lists) },
-            )
-            listOf(
-                lote.copy(
-                    source = "$ASIT_ROOT_SOURCE, $profile list ${lote.source}",
-                    issuance = TrustedCertificates { lote.issuance() + asitRootCertificate },
-                    status = TrustedCertificates { lote.status() + asitRootCertificate },
-                )
-            )
-        }
+        if (profile == null) ids.map { setOf(it) to LoteProfile.EAA }
+        else listOf(ids.toSet() to profile)
+    }.map { (ids, profile) ->
+        val urls = stages.map { profile.fetchUrl(it) }
+        val lote = loteFilterService.credentialTrustScope(
+            credentialIdentifiers = ids,
+            profile = profile,
+            source = urls.joinToString(),
+            lists = { urls.flatMap(lists) },
+        )
+        lote.copy(
+            source = "$ASIT_ROOT_SOURCE, $profile list ${lote.source}",
+            issuance = TrustedCertificates { lote.issuance() + asitRootCertificate },
+            status = TrustedCertificates { lote.status() + asitRootCertificate },
+        )
     }
 }
 

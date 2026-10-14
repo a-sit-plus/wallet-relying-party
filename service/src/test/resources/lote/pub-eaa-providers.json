@@ -1,0 +1,231 @@
+{
+  "LoTE": {
+    "ListAndSchemeInformation": {
+      "LoTEVersionIdentifier": 1,
+      "LoTESequenceNumber": 6,
+      "LoTEType": "http://uri.etsi.org/19602/LoTEType/EUPubEAAProvidersList",
+      "SchemeOperatorName": [
+        {
+          "lang": "en",
+          "value": "European Commission"
+        },
+        {
+          "lang": "bg",
+          "value": "Европейска комисия"
+        },
+        {
+          "lang": "es",
+          "value": "Comisión Europea"
+        },
+        {
+          "lang": "cs",
+          "value": "Evropská komise"
+        },
+        {
+          "lang": "da",
+          "value": "Europa-Kommissionen"
+        },
+        {
+          "lang": "de",
+          "value": "Europäische Kommission"
+        },
+        {
+          "lang": "et",
+          "value": "Euroopa Komisjon"
+        },
+        {
+          "lang": "el",
+          "value": "Ευρωπαϊκή Επιτροπή"
+        },
+        {
+          "lang": "fr",
+          "value": "Commission européenne"
+        },
+        {
+          "lang": "it",
+          "value": "Commissione europea"
+        },
+        {
+          "lang": "lv",
+          "value": "Eiropas Komisija"
+        },
+        {
+          "lang": "lt",
+          "value": "Europos Komisija"
+        },
+        {
+          "lang": "hu",
+          "value": "Európai Bizottság"
+        },
+        {
+          "lang": "mt",
+          "value": "Il-Kummissjoni Ewropea"
+        },
+        {
+          "lang": "nl",
+          "value": "Europese Commissie"
+        },
+        {
+          "lang": "pl",
+          "value": "Komisja Europejska"
+        },
+        {
+          "lang": "pt",
+          "value": "Comissão Europeia"
+        },
+        {
+          "lang": "ro",
+          "value": "Comisia Europeană"
+        },
+        {
+          "lang": "sk",
+          "value": "Európska komisia"
+        },
+        {
+          "lang": "sl",
+          "value": "Evropska komisija"
+        },
+        {
+          "lang": "fi",
+          "value": "Euroopan komissio"
+        },
+        {
+          "lang": "sv",
+          "value": "Europeiska kommissionen"
+        },
+        {
+          "lang": "hr",
+          "value": "Europska komisija"
+        }
+      ],
+      "SchemeOperatorAddress": {
+        "SchemeOperatorPostalAddress": [
+          {
+            "lang": "fr",
+            "StreetAddress": "Rue de la Loi 200",
+            "Locality": "Bruxelles",
+            "PostalCode": "1049",
+            "Country": "BE"
+          },
+          {
+            "lang": "nl",
+            "StreetAddress": "Wetstraat 200",
+            "Locality": "Brussel",
+            "PostalCode": "1049",
+            "Country": "BE"
+          },
+          {
+            "lang": "en",
+            "StreetAddress": "Rue de la Loi/Wetstraat 200",
+            "Locality": "Brussels",
+            "PostalCode": "1049",
+            "Country": "BE"
+          }
+        ],
+        "SchemeOperatorElectronicAddress": [
+          {
+            "lang": "en",
+            "uriValue": "mailto:EC-TL-Service@ec.europa.eu"
+          },
+          {
+            "lang": "en",
+            "uriValue": "https://digital-strategy.ec.europa.eu/en/policies/eu-trusted-lists"
+          }
+        ]
+      },
+      "SchemeName": [
+        {
+          "lang": "en",
+          "value": "The present list is a list of person identifier providers of EUDI Wallet issued in accordance with CIR 2024/2980"
+        }
+      ],
+      "SchemeInformationURI": [
+        {
+          "lang": "en",
+          "uriValue": "https://trust.tech.ec.europa.eu/lists/eudiw/pub-eaa-providers-list-scheme-information"
+        }
+      ],
+      "StatusDeterminationApproach": "http://uri.etsi.org/19602/PubEAAProvidersList/StatusDetn/EU",
+      "SchemeTypeCommunityRules": [
+        {
+          "lang": "en",
+          "uriValue": "http://uri.etsi.org/19602/PubEAAProvidersList/schemerules/EU"
+        }
+      ],
+      "SchemeTerritory": "EU",
+      "PolicyOrLegalNotice": [
+        {
+          "LoTEPolicy": {
+            "lang": "en",
+            "uriValue": "http://trust.tech.ec.europa.eu/lists/eudiw/legal-notice#EN"
+          }
+        }
+      ],
+      "HistoricalInformationPeriod": 65535,
+      "ListIssueDateTime": "2026-08-14T08:51:02Z",
+      "NextUpdate": "2027-02-13T08:51:02Z"
+    },
+    "TrustedEntitiesList": [
+      {
+        "TrustedEntityInformation": {
+          "TEName": [
+            {
+              "lang": "en",
+              "value": "Test EAA Provider"
+            }
+          ],
+          "TEAddress": {
+            "TEPostalAddress": [
+              {
+                "lang": "en",
+                "StreetAddress": "Coffee",
+                "Locality": "",
+                "StateOrProvince": "",
+                "PostalCode": "",
+                "Country": "FR"
+              }
+            ],
+            "TEElectronicAddress": [
+              {
+                "lang": "en",
+                "uriValue": "mailto:test@nowina.lu"
+              },
+              {
+                "lang": "en",
+                "uriValue": "tel:+336996369"
+              }
+            ]
+          },
+          "TEInformationURI": [
+            {
+              "lang": "en",
+              "uriValue": "http://uri.etsi.org/19602/ListOfTrustedEntities/PubEAAProvider/AT"
+            }
+          ]
+        },
+        "TrustedEntityServices": [
+          {
+            "ServiceInformation": {
+              "ServiceName": [
+                {
+                  "lang": "en",
+                  "value": "Test service"
+                }
+              ],
+              "ServiceDigitalIdentity": {
+                "X509Certificates": [
+                  {
+                    "val": "${CERTIFICATE}"
+                  }
+                ]
+              },
+              "ServiceTypeIdentifier": "${SERVICE_TYPE}",
+              "ServiceStatus": "http://uri.etsi.org/19602/PubEAAProvidersList/SvcStatus/notified",
+              "StatusStartingTime": "2026-04-28T22:00:00Z"
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

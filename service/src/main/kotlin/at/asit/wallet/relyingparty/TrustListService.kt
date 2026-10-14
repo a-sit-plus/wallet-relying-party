@@ -16,6 +16,7 @@ import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.http.*
 import jakarta.annotation.PostConstruct
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
 import org.springframework.scheduling.annotation.Scheduled
 
@@ -63,9 +64,19 @@ class TrustListService(
         refreshAll()
     }
 
-    suspend fun refreshAll() {
+    /**
+     * Fetches every list on its own: a list that can not be fetched or verified, e.g. one a stage does not publish,
+     * keeps its cached version, if any, and does not keep the other lists from being refreshed.
+     */
+    suspend fun refreshAll(sync: suspend (String) -> Unit = ::syncSingleUrl) {
         trustListUrls.forEach { url ->
-            syncSingleUrl(url)
+            try {
+                sync(url)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Napier.w("Failed to refresh Trust List from $url, keeping the cached one, if any", e)
+            }
         }
     }
 

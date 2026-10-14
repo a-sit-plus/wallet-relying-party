@@ -1,6 +1,7 @@
 package at.asit.wallet.relyingparty
 
 import at.asitplus.openid.truncateToSeconds
+import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.asn1.Asn1EncapsulatingOctetString
 import at.asitplus.signum.indispensable.asn1.Asn1String
 import at.asitplus.signum.indispensable.asn1.KnownOIDs
@@ -105,13 +106,7 @@ object TestTrust {
 
     /** A key to issue credentials and certify status list signers, like [issuerKey], but trusted by no one. */
     fun certificateAuthorityKey() = EphemeralKeyWithSelfSignedCert(
-        extensions = listOf(
-            X509CertificateExtension(
-                oid = KnownOIDs.basicConstraints_2_5_29_19,
-                critical = true,
-                value = Asn1EncapsulatingOctetString(listOf(Asn1.Sequence { +Asn1.Bool(true) })),
-            )
-        ),
+        extensions = listOf(basicConstraintsCa),
         lifetimeInSeconds = 1.hours.inWholeSeconds,
     )
 
@@ -145,28 +140,70 @@ object TestTrust {
     fun statusListAgent(url: String): StatusListAgent? =
         statusListAgents.entries.firstOrNull { url.startsWith("${it.key}/") }?.value
 
-    /** A key with a certificate issued by [issuer]. */
-    private suspend fun certifiedBy(issuer: EphemeralKeyWithSelfSignedCert): KeyMaterial {
+    /**
+     * A self-signed certificate authority of [organization], e.g. to publish as a service of [organization] on a list
+     * of trusted entities, which only lists certificates of the entity's organization.
+     */
+    suspend fun certificateAuthority(organization: String): KeyMaterial {
         val key = EphemeralKeyWithoutCert()
+        val name = listOf(
+            RelativeDistinguishedName(AttributeTypeAndValue.Organization(Asn1String.UTF8(organization))),
+            RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8("$organization CA"))),
+        )
+        return key.withCertificate(
+            certificate(subjectName = name, issuerName = name, publicKey = key.publicKey, issuer = key, ca = true)
+        )
+    }
+
+    /** A key with a certificate issued by [issuer], which has to be a certificate authority. */
+    suspend fun certifiedBy(issuer: KeyMaterial): KeyMaterial {
+        val key = EphemeralKeyWithoutCert()
+        return key.withCertificate(
+            certificate(
+                subjectName = listOf(
+                    RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8("Status list signer")))
+                ),
+                issuerName = checkNotNull(issuer.getCertificate()).tbsCertificate.subjectName,
+                publicKey = key.publicKey,
+                issuer = issuer,
+                ca = false,
+            )
+        )
+    }
+
+    private suspend fun certificate(
+        subjectName: List<RelativeDistinguishedName>,
+        issuerName: List<RelativeDistinguishedName>,
+        publicKey: CryptoPublicKey,
+        issuer: KeyMaterial,
+        ca: Boolean,
+    ): X509Certificate {
         val algorithm = issuer.signatureAlgorithm.toX509SignatureAlgorithm().getOrThrow()
         val notBefore = (Clock.System.now() - 1.hours).truncateToSeconds()
         val tbsCertificate = TbsCertificate(
             version = 2,
             serialNumber = Random.nextBytes(8),
-            issuerName = checkNotNull(issuer.getCertificate()).tbsCertificate.subjectName,
-            subjectName = listOf(
-                RelativeDistinguishedName(AttributeTypeAndValue.CommonName(Asn1String.UTF8("Status list signer")))
-            ),
+            issuerName = issuerName,
+            subjectName = subjectName,
             validFrom = Asn1Time(notBefore),
             validUntil = Asn1Time(notBefore + 2.hours),
             signatureAlgorithm = algorithm,
-            publicKey = key.publicKey,
-            extensions = listOf(),
+            publicKey = publicKey,
+            extensions = if (ca) listOf(basicConstraintsCa) else listOf(),
         )
         val signature = issuer.sign(tbsCertificate.encodeToDer()).asKmmResult().getOrThrow()
-        val certificate = X509Certificate(tbsCertificate, algorithm, signature)
-        return object : KeyMaterial by key {
+        return X509Certificate(tbsCertificate, algorithm, signature)
+    }
+
+    private fun EphemeralKeyWithoutCert.withCertificate(certificate: X509Certificate): KeyMaterial =
+        object : KeyMaterial by this {
             override suspend fun getCertificate() = certificate
         }
-    }
+
+    // A getter, as [issuerKey] is initialized before the properties declared after it
+    private val basicConstraintsCa get() = X509CertificateExtension(
+        oid = KnownOIDs.basicConstraints_2_5_29_19,
+        critical = true,
+        value = Asn1EncapsulatingOctetString(listOf(Asn1.Sequence { +Asn1.Bool(true) })),
+    )
 }

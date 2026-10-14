@@ -24,8 +24,12 @@ data class AppConfigurationProperties(
     val resultTtl: Duration = Duration.ofMinutes(30),
     /** Wallet relying party certificate configuration */
     val wrp: WrpConfigurationProperties? = null,
-    /** Stages of the European Commission's trust infrastructure to fetch the Lists of Trusted Entities from. */
-    val trustListStages: List<LoTEStage> = listOf(LoTEStage.ACCEPTANCE),
+    /**
+     * Stages of the European Commission's trust infrastructure to fetch the Lists of Trusted Entities from, combined
+     * per credential type: by default development and acceptance, as most status list signers of PID providers are
+     * only published on the development stage.
+     */
+    val trustListStages: List<LoTEStage> = listOf(LoTEStage.DEVELOPMENT, LoTEStage.ACCEPTANCE),
     /** Policy presentations of wallets are validated under, see [ValidationConfigurationProperties]. */
     val validation: ValidationConfigurationProperties = ValidationConfigurationProperties(),
 )
