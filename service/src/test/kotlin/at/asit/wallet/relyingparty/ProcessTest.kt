@@ -29,7 +29,16 @@ import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.IsoMdocDcapiResponseBuilder
 import at.asitplus.wallet.lib.openid.OpenId4VpSuccess
+import at.asitplus.wallet.lib.HttpExchange
+import at.asitplus.wallet.lib.HttpStep
+import at.asitplus.wallet.lib.ProtocolRequest
+import at.asitplus.wallet.lib.ReceivedHttpResponse
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
+import at.asitplus.wallet.lib.openid.OpenId4VpProtocolClient
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.headersOf
 import at.asitplus.wallet.lib.validation.ValidationDecision
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
@@ -528,19 +537,13 @@ class ProcessTest {
         ).getOrThrow()
         if (revoke) statusListAgent.revoke(issued)
         holder.storeCredential(issued.toStoreCredentialInput()).getOrThrow()
-        val wallet = OpenId4VpHolder(
-            holder = holder,
-            remoteResourceRetriever = { data ->
-                mockMvc.get(data.url).andReturn().awaitAsync().response.let { response ->
-                    assertEquals(200, response.status)
-                    assertEquals("application/oauth-authz-req+jwt", response.contentType)
-                    response.contentAsString
-                }
-            })
+        val wallet = OpenId4VpProtocolClient(OpenId4VpHolder(holder = holder))
         val selectedProfile = profileName?.let { expectedProfileName ->
             transactionResponse.profiles.first { it.name == expectedProfileName }
         } ?: transactionResponse.profiles.first()
-        val authenticationResponseResult = wallet.createAuthnResponse(selectedProfile.url).getOrThrow()
+        val preparationState = wallet.prepareAuthorizationResponse(selectedProfile.url).sendWithMockMvc()
+        val authenticationResponseResult = wallet.openId4VpHolder
+            .finalizeAuthorizationResponse(preparationState).getOrThrow()
 
         authenticationResponseResult as AuthenticationResponseResult.Post
         val acknowledgement = mockMvc.post(authenticationResponseResult.url) {
@@ -560,6 +563,27 @@ class ProcessTest {
         )
 
         return ProcessResult(checkNotNull(transactionStore.getApiItem(selectedProfile.id)), givenName)
+    }
+
+    /** Sends the requests of this exchange, i.e. fetches request objects, to the relying party. */
+    private suspend fun <T> HttpExchange<T>.sendWithMockMvc(): T {
+        var step = next().getOrThrow()
+        while (step is HttpStep.Send) {
+            val request = step.request
+            assertTrue(request is ProtocolRequest.RequestObject, request.toString())
+            assertEquals(HttpMethod.Get, request.http.method)
+            val response = mockMvc.get(request.http.url).andReturn().awaitAsync().response
+            assertEquals(200, response.status)
+            assertEquals("application/oauth-authz-req+jwt", response.contentType)
+            step = next(
+                ReceivedHttpResponse(
+                    status = HttpStatusCode.fromValue(response.status),
+                    headers = headersOf(HttpHeaders.ContentType, response.contentType!!),
+                    body = response.contentAsString,
+                )
+            ).getOrThrow()
+        }
+        return (step as HttpStep.Done).value
     }
 
     private data class ProcessResult(val apiItem: ApiItem, val givenName: String)
