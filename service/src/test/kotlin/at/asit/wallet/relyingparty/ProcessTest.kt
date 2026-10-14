@@ -17,18 +17,29 @@ import at.asitplus.wallet.lib.agent.CredentialToBeIssued
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithSelfSignedCert
 import at.asitplus.wallet.lib.agent.EphemeralKeyWithoutCert
 import at.asitplus.wallet.lib.agent.HolderAgent
-import at.asitplus.wallet.lib.agent.IssuerAgent
+import at.asitplus.wallet.lib.agent.Issuer
+import at.asitplus.wallet.lib.agent.StatusListAgent
 import at.asitplus.wallet.lib.agent.toStoreCredentialInput
 import at.asitplus.wallet.lib.agent.validation.relyingParty.ReaderAuthenticationVerifier
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
-import at.asitplus.wallet.lib.data.rfc3986.UniformResourceIdentifier
+import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
 import at.asitplus.wallet.lib.openid.IsoMdocDcapiResponseBuilder
 import at.asitplus.wallet.lib.openid.OpenId4VpSuccess
+import at.asitplus.wallet.lib.HttpExchange
+import at.asitplus.wallet.lib.HttpStep
+import at.asitplus.wallet.lib.ProtocolRequest
+import at.asitplus.wallet.lib.ReceivedHttpResponse
 import at.asitplus.wallet.lib.openid.OpenId4VpHolder
+import at.asitplus.wallet.lib.openid.OpenId4VpProtocolClient
+import io.ktor.http.HttpHeaders
+import io.ktor.http.HttpMethod
+import io.ktor.http.HttpStatusCode
+import io.ktor.http.headersOf
+import at.asitplus.wallet.lib.validation.ValidationDecision
 import com.benasher44.uuid.uuid4
 import io.github.aakira.napier.Napier
 import io.ktor.http.Url
@@ -60,6 +71,7 @@ import kotlin.io.encoding.Base64
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
+import kotlin.time.Instant
 
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -88,7 +100,7 @@ class ProcessTest {
 
     @Test
     fun `simple transaction roundtrip, DCQL`() = runTest {
-        runProcess()
+        runProcess().assertAccepted(AtomicAttribute2023.sdJwtType)
     }
 
     @Test
@@ -101,6 +113,7 @@ class ProcessTest {
             mapOf(0 to (WrprcConfiguration("Selected", URI("file:/unused.pem")) to wrpacKey.getCertificate()!!.encodeToPEM().getOrThrow()))
         )
         runProcess(selectedWrpacId = 0, selectedWrprcId = 0, profileName = "HAIPd05")
+            .assertAccepted(AtomicAttribute2023.sdJwtType)
     }
 
     @Test
@@ -147,16 +160,47 @@ class ProcessTest {
         runProcess(
             representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
             profileName = "MDOC10",
-        )
+        ).assertAccepted(AtomicAttribute2023.isoDocType)
     }
 
     @Test
-    fun `mdoc from an issuer outside the trust lists is untrusted`() = runTest {
-        runProcess(
+    fun `mdoc from an issuer outside the trust lists is rejected without claims`() = runTest {
+        val result = runProcess(
             representation = ConstantIndex.CredentialRepresentation.ISO_MDOC,
             profileName = "MDOC10",
-            expectedTrustState = TrustState.UNTRUSTED,
+            issuerKey = TestTrust.certificateAuthorityKey(),
         )
+
+        val credentialNode = result.assertRejected(AtomicAttribute2023.isoDocType)
+        val issuerTrust = credentialNode.check("issuerTrust")
+        assertEquals(OutcomeView.FAILED, issuerTrust.outcome)
+        assertFalse(issuerTrust.satisfied)
+        assertTrue(issuerTrust.subject!!.contains(TestTrust.SOURCE), issuerTrust.subject)
+        assertNotNull(issuerTrust.detail)
+    }
+
+    @Test
+    fun `revoked credential is rejected with the status of its status list`() = runTest {
+        val result = runProcess(revoke = true)
+
+        val credentialNode = result.assertRejected(AtomicAttribute2023.sdJwtType)
+        val mechanism = credentialNode.check("status.mechanisms[0]")
+        assertEquals(OutcomeView.FAILED, mechanism.outcome)
+        assertEquals("Status is INVALID", mechanism.detail)
+        assertTrue(mechanism.subject!!.contains("observed INVALID"), mechanism.subject)
+        val statusListToken = credentialNode.children.single()
+        assertEquals("statusListToken", statusListToken.kind)
+        assertEquals(ValidationDecision.ACCEPTED, statusListToken.decision)
+        assertTrue(statusListToken.checks.all { it.outcome == OutcomeView.PASSED }, statusListToken.toString())
+    }
+
+    @Test
+    fun `expired credential is rejected by the strict policy`() = runTest {
+        val result = runProcess(expiration = Clock.System.now() - 10.minutes)
+
+        val timeliness = result.assertRejected(AtomicAttribute2023.sdJwtType).check("timeliness")
+        assertEquals(OutcomeView.FAILED, timeliness.outcome)
+        assertTrue(timeliness.detail!!.startsWith("Expired at"), timeliness.detail)
     }
 
     @Test
@@ -474,8 +518,10 @@ class ProcessTest {
         profileName: String? = null,
         selectedWrpacId: Int? = null,
         selectedWrprcId: Int? = null,
-        expectedTrustState: TrustState? = null,
-    ) {
+        issuerKey: EphemeralKeyWithSelfSignedCert = TestTrust.issuerKey,
+        expiration: Instant = Clock.System.now() + 1.minutes,
+        revoke: Boolean = false,
+    ): ProcessResult {
         val givenName = uuid4().toString()
         val transactionResponse = createTransaction(
             representation,
@@ -485,29 +531,19 @@ class ProcessTest {
 
         val holderKey = EphemeralKeyWithoutCert()
         val holder = HolderAgent(keyMaterial = holderKey)
-        val issuer = IssuerAgent(
-            // mdoc `issuerAuth` is verified against the certificate transported in its COSE headers
-            keyMaterial = EphemeralKeyWithSelfSignedCert(),
-            identifier = UniformResourceIdentifier("https://example.com"),
-        )
-        holder.storeCredential(
-            issuer.issueCredential(
-                credentialToBeIssued(representation, givenName, holderKey.publicKey)
-            ).getOrThrow().toStoreCredentialInput()
-        )
-        val wallet = OpenId4VpHolder(
-            holder = holder,
-            remoteResourceRetriever = { data ->
-                mockMvc.get(data.url).andReturn().awaitAsync().response.let { response ->
-                    assertEquals(200, response.status)
-                    assertEquals("application/oauth-authz-req+jwt", response.contentType)
-                    response.contentAsString
-                }
-            })
+        val (issuer, statusListAgent) = TestTrust.issuer(issuerKey)
+        val issued = issuer.issueCredential(
+            credentialToBeIssued(representation, givenName, holderKey.publicKey, expiration)
+        ).getOrThrow()
+        if (revoke) statusListAgent.revoke(issued)
+        holder.storeCredential(issued.toStoreCredentialInput()).getOrThrow()
+        val wallet = OpenId4VpProtocolClient(OpenId4VpHolder(holder = holder))
         val selectedProfile = profileName?.let { expectedProfileName ->
             transactionResponse.profiles.first { it.name == expectedProfileName }
         } ?: transactionResponse.profiles.first()
-        val authenticationResponseResult = wallet.createAuthnResponse(selectedProfile.url).getOrThrow()
+        val preparationState = wallet.prepareAuthorizationResponse(selectedProfile.url).sendWithMockMvc()
+        val authenticationResponseResult = wallet.openId4VpHolder
+            .finalizeAuthorizationResponse(preparationState).getOrThrow()
 
         authenticationResponseResult as AuthenticationResponseResult.Post
         val acknowledgement = mockMvc.post(authenticationResponseResult.url) {
@@ -526,26 +562,97 @@ class ProcessTest {
             success.redirectUri,
         )
 
-        val user = transactionStore.getApiItem(selectedProfile.id)
-        assertNotNull(user)
-        assertEquals(
-            givenName,
-            user!!.credentials.firstNotNullOfOrNull { it.getClaim(AtomicAttribute2023.CLAIM_GIVEN_NAME) })
-        assertTrue(user.credentials.all { it.trustState != null })
-        expectedTrustState?.let { expected -> assertTrue(user.credentials.all { it.trustState == expected }) }
-        if (representation == ConstantIndex.CredentialRepresentation.ISO_MDOC) {
-            // the mdoc really was presented as one, and its issuerAuth was verified against the certificate
-            // transported in the COSE headers
-            val credential = user.credentials.single()
-            assertEquals(AtomicAttribute2023.isoDocType, credential.credentialType)
-            assertNotNull(credential.issuerCertificate)
+        return ProcessResult(checkNotNull(transactionStore.getApiItem(selectedProfile.id)), givenName)
+    }
+
+    /** Sends the requests of this exchange, i.e. fetches request objects, to the relying party. */
+    private suspend fun <T> HttpExchange<T>.sendWithMockMvc(): T {
+        var step = next().getOrThrow()
+        while (step is HttpStep.Send) {
+            val request = step.request
+            assertTrue(request is ProtocolRequest.RequestObject, request.toString())
+            assertEquals(HttpMethod.Get, request.http.method)
+            val response = mockMvc.get(request.http.url).andReturn().awaitAsync().response
+            assertEquals(200, response.status)
+            assertEquals("application/oauth-authz-req+jwt", response.contentType)
+            step = next(
+                ReceivedHttpResponse(
+                    status = HttpStatusCode.fromValue(response.status),
+                    headers = headersOf(HttpHeaders.ContentType, response.contentType!!),
+                    body = response.contentAsString,
+                )
+            ).getOrThrow()
         }
+        return (step as HttpStep.Done).value
+    }
+
+    private data class ProcessResult(val apiItem: ApiItem, val givenName: String)
+
+    /** The response, its presentation, and its credential are accepted, and the claims shown. */
+    private fun ProcessResult.assertAccepted(credentialType: String) {
+        assertNull(apiItem.presentationError, apiItem.presentationError)
+        val credential = apiItem.credentials.single()
+        assertEquals(ValidationDecision.ACCEPTED, credential.decision, credential.error)
+        assertEquals(credentialType, credential.credentialType)
+        assertEquals(givenName, credential.getClaim(AtomicAttribute2023.CLAIM_GIVEN_NAME))
+        assertNull(credential.error)
+
+        val response = checkNotNull(apiItem.validation)
+        assertEquals("protocolResponse", response.kind)
+        assertEquals(ValidationDecision.ACCEPTED, response.decision)
+        val presentation = response.children.single()
+        assertEquals("presentation", presentation.kind)
+        assertTrue(presentation.title.startsWith("Presentation for query"), presentation.title)
+        assertEquals(ValidationDecision.ACCEPTED, presentation.decision)
+        val credentialNode = presentation.children.single()
+        assertEquals("credential", credentialNode.kind)
+        assertEquals("Credential $credentialType", credentialNode.title)
+        assertEquals(ValidationDecision.ACCEPTED, credentialNode.decision)
+        assertTrue(credentialNode.checks.all { it.satisfied }, credentialNode.toString())
+        assertTrue(credentialNode.check("issuerTrust").subject!!.contains(TestTrust.SOURCE))
+        assertEquals(OutcomeView.PASSED, credentialNode.check("status.mechanisms[0]").outcome)
+    }
+
+    /**
+     * The credential is rejected, so neither claims are shown nor the response is accepted, as the request can not be
+     * satisfied without it; returns the report of the credential.
+     */
+    private fun ProcessResult.assertRejected(credentialType: String): ValidationNodeView {
+        val credential = apiItem.credentials.single()
+        assertEquals(ValidationDecision.REJECTED, credential.decision)
+        assertEquals(credentialType, credential.credentialType)
+        assertNull(credential.allFields)
+        assertNotNull(credential.error)
+        assertNull(credential.getClaim(AtomicAttribute2023.CLAIM_GIVEN_NAME))
+
+        val response = checkNotNull(apiItem.validation)
+        assertEquals(ValidationDecision.REJECTED, response.decision)
+        assertEquals(OutcomeView.FAILED, response.check("submissionRequirements").outcome)
+        assertNotNull(apiItem.presentationError)
+        val presentation = response.children.single()
+        assertEquals(ValidationDecision.REJECTED, presentation.decision)
+        return presentation.children.single().also {
+            assertEquals(ValidationDecision.REJECTED, it.decision)
+            assertTrue(it.checks.any { check -> !check.satisfied }, it.toString())
+        }
+    }
+
+    private fun ValidationNodeView.check(name: String) = checks.single { it.name == name }
+
+    private fun StatusListAgent.revoke(issued: Issuer.IssuedCredential) {
+        val reference = when (issued) {
+            is Issuer.IssuedCredential.Iso -> issued.issuerSigned.issuerAuth.payload?.status
+            is Issuer.IssuedCredential.VcSdJwt -> issued.sdJwtVc.statusElement
+            else -> null
+        } as StatusListInfo
+        assertTrue(revokeCredentialByIndex(reference.uri.string.substringAfterLast('/').toInt(), reference.index))
     }
 
     private fun credentialToBeIssued(
         representation: ConstantIndex.CredentialRepresentation,
         givenName: String,
         subjectPublicKey: CryptoPublicKey,
+        expiration: Instant,
     ): CredentialToBeIssued = when (representation) {
         ConstantIndex.CredentialRepresentation.ISO_MDOC -> CredentialToBeIssued.Iso(
             issuerSignedItems = listOf(
@@ -556,7 +663,7 @@ class ProcessTest {
                     elementValue = givenName,
                 )
             ),
-            expiration = Clock.System.now() + 1.minutes,
+            expiration = expiration,
             scheme = AtomicAttribute2023,
             subjectPublicKey = subjectPublicKey,
             userInfo = dummyUserInfo(),
@@ -564,7 +671,7 @@ class ProcessTest {
 
         else -> CredentialToBeIssued.VcSd(
             claims = listOf(ClaimToBeIssued(AtomicAttribute2023.CLAIM_GIVEN_NAME, givenName)),
-            expiration = Clock.System.now() + 1.minutes,
+            expiration = expiration,
             scheme = AtomicAttribute2023,
             subjectPublicKey = subjectPublicKey,
             userInfo = dummyUserInfo(),

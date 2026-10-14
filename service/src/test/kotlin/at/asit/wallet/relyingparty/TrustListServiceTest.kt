@@ -1,14 +1,13 @@
 package at.asit.wallet.relyingparty
 
-import at.asitplus.signum.indispensable.pki.X509Certificate
 import at.asitplus.wallet.lib.etsi.LoTEStage
 import at.asitplus.wallet.lib.etsi.LoteProfile
-import kotlinx.serialization.json.Json
-import kotlinx.serialization.json.jsonArray
-import kotlinx.serialization.json.jsonObject
-import kotlinx.serialization.json.jsonPrimitive
+import at.asitplus.wallet.lib.validation.CredentialTrustScopes
+import at.asitplus.wallet.lib.validation.TrustPurpose
+import kotlinx.coroutines.test.runTest
 import org.junit.jupiter.api.Assertions.assertEquals
-import org.junit.jupiter.api.Assertions.assertFalse
+import org.junit.jupiter.api.Assertions.assertNull
+import org.junit.jupiter.api.Assertions.assertTrue
 import org.junit.jupiter.api.Test
 
 class TrustListServiceTest {
@@ -17,8 +16,8 @@ class TrustListServiceTest {
 
     @Test
     fun `lists are fetched from the configured stages`() {
-        assertEquals(LoteProfile.fetchUrls(LoTEStage.ACCEPTANCE), service.trustListUrls)
-        val stages = listOf(LoTEStage.ACCEPTANCE, LoTEStage.DEVELOPMENT)
+        assertEquals(LoteProfile.fetchUrls(LoTEStage.DEVELOPMENT, LoTEStage.ACCEPTANCE), service.trustListUrls)
+        val stages = listOf(LoTEStage.ACCEPTANCE)
         assertEquals(
             LoteProfile.fetchUrls(stages),
             TrustListService(TrustListCache(), AppConfigurationProperties(trustListStages = stages)).trustListUrls,
@@ -26,32 +25,52 @@ class TrustListServiceTest {
     }
 
     @Test
-    fun `trust is evaluated for each credential`() {
-        val trustedCertificate = X509Certificate.decodeFromPem(
-            checkNotNull(javaClass.getResource("/asit-root.pem")).readText()
-        ).getOrThrow()
-        val credentials = listOf(
-            ApiItemCredential(
-                credentialType = "eu.europa.ec.eudi.pid.1",
-                issuerCertificate = trustedCertificate,
-            ),
-            ApiItemCredential(
-                credentialType = "org.iso.18013.5.1.mDL",
-                issuerCertificate = null,
-            ),
-        ).map { it.copy(trustState = service.evaluateCredentialIssuerTrust(it)) }
-
-        assertEquals(listOf(TrustState.TRUSTED, TrustState.UNKNOWN), credentials.map { it.trustState })
-
-        val apiItem = User(credentials, null).apiItem
-        val serialized = Json.encodeToJsonElement(ApiItem.serializer(), apiItem).jsonObject
-        assertFalse("trustState" in serialized)
-        assertEquals(
-            listOf("TRUSTED", "UNKNOWN"),
-            serialized.getValue("credentials").jsonArray.map {
-                it.jsonObject.getValue("trustState").jsonPrimitive.content
-            },
+    fun `a list that can not be refreshed does not keep the other lists from being refreshed`() = runTest {
+        val service = TrustListService(
+            TrustListCache(),
+            AppConfigurationProperties(trustListStages = listOf(LoTEStage.DEVELOPMENT, LoTEStage.ACCEPTANCE)),
         )
-        assertFalse(serialized.toString().contains("issuerCertificate"))
+        val failing = LoteProfile.EAA.fetchUrl(LoTEStage.DEVELOPMENT)
+        val refreshed = mutableListOf<String>()
+
+        service.refreshAll { url ->
+            if (url == failing) throw IllegalStateException("403 Access Denied")
+            refreshed += url
+        }
+
+        assertEquals(service.trustListUrls - failing, refreshed)
+    }
+
+    @Test
+    fun `every catalog type is trusted through exactly one scope, its list and the A-SIT root`() = runTest {
+        val asitRoot = CredentialValidationConfiguration().asitRootCertificate()
+        val stages = listOf(LoTEStage.ACCEPTANCE)
+        val requestedLists = mutableSetOf<String>()
+        // Throws if an identifier would be in two scopes
+        val anchors = CredentialTrustScopes(
+            credentialTrustScopes(CredentialCatalog.entries.map { it.identifier }, stages, asitRoot) {
+                requestedLists += it
+                emptyList()
+            }
+        )
+
+        CredentialCatalog.entries.forEach { entry ->
+            TrustPurpose.entries.forEach { purpose ->
+                val anchorSet = checkNotNull(anchors.resolve(entry.identifier, purpose)) { entry.identifier }
+                assertEquals(setOf(asitRoot), anchorSet.certificates, entry.identifier)
+            }
+        }
+        val pid = anchors.resolve("urn:eudi:pid:1", TrustPurpose.ISSUANCE)!!.source
+        assertEquals(pid, anchors.resolve("eu.europa.ec.eudi.pid.1", TrustPurpose.ISSUANCE)!!.source)
+        assertTrue(pid.contains(LoteProfile.PID.fetchUrl(LoTEStage.ACCEPTANCE)), pid)
+        val mdl = anchors.resolve("org.iso.18013.5.1.mDL", TrustPurpose.STATUS)!!.source
+        assertTrue(mdl.contains(LoteProfile.mDL.fetchUrl(LoTEStage.ACCEPTANCE)), mdl)
+        val ehic = anchors.resolve("urn:eudi:ehic:1", TrustPurpose.ISSUANCE)!!.source
+        assertTrue(ehic.contains(LoteProfile.EAA.fetchUrl(LoTEStage.ACCEPTANCE)), ehic)
+        assertEquals(
+            setOf(LoteProfile.PID, LoteProfile.mDL, LoteProfile.EAA).map { it.fetchUrl(LoTEStage.ACCEPTANCE) }.toSet(),
+            requestedLists,
+        )
+        assertNull(anchors.resolve("urn:example:unknown:1", TrustPurpose.ISSUANCE))
     }
 }

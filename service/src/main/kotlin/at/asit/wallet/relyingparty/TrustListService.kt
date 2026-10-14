@@ -3,10 +3,7 @@ package at.asit.wallet.relyingparty
 import at.asitplus.etsi.TrustListPayload
 import at.asitplus.signum.indispensable.josef.JwsCompact
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
-import at.asitplus.signum.indispensable.pki.X509Certificate
-import at.asitplus.wallet.lib.etsi.LoTEFilterService
 import at.asitplus.wallet.lib.etsi.LoteProfile
-import at.asitplus.wallet.lib.etsi.isTrustedBy
 import at.asitplus.wallet.lib.jws.VerifyJwsObjectJades
 import io.github.aakira.napier.Napier
 import io.ktor.client.HttpClient
@@ -19,10 +16,14 @@ import io.ktor.client.request.accept
 import io.ktor.client.request.get
 import io.ktor.http.*
 import jakarta.annotation.PostConstruct
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.runBlocking
-import kotlinx.serialization.Serializable
 import org.springframework.scheduling.annotation.Scheduled
 
+/**
+ * Fetches the Lists of Trusted Entities of the configured stages, verifies their signatures, and caches them in
+ * [TrustListCache], from where [credentialTrustScopes] reads them.
+ */
 @Service
 class TrustListService(
     private val trustListCache: TrustListCache,
@@ -45,11 +46,6 @@ class TrustListService(
         }
     }
 
-    private val asitIssuerCert = X509Certificate.decodeFromPem(
-        checkNotNull(javaClass.getResource("/asit-root.pem")) { "Missing ASIT root certificate" }.readText()
-    ).getOrThrow()
-    private val loTeFilterService = LoTEFilterService()
-
     @PostConstruct
     fun initCacheBootstrap() = runBlocking {
         try {
@@ -68,9 +64,19 @@ class TrustListService(
         refreshAll()
     }
 
-    suspend fun refreshAll() {
+    /**
+     * Fetches every list on its own: a list that can not be fetched or verified, e.g. one a stage does not publish,
+     * keeps its cached version, if any, and does not keep the other lists from being refreshed.
+     */
+    suspend fun refreshAll(sync: suspend (String) -> Unit = ::syncSingleUrl) {
         trustListUrls.forEach { url ->
-            syncSingleUrl(url)
+            try {
+                sync(url)
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Napier.w("Failed to refresh Trust List from $url, keeping the cached one, if any", e)
+            }
         }
     }
 
@@ -85,42 +91,4 @@ class TrustListService(
         trustListCache.updatePayload(url, jws.second)
         Napier.i("Successfully verified and cached Trust List for URL: $url")
     }
-
-    /**
-     * Evaluates if a given issuer is trusted based on the internal root cert and LoTEs.
-     *
-     * Lists not matching [profile] contribute no certificates, so evaluating against every cached list is fine.
-     */
-    fun evaluateIssuer(
-        issuer: X509Certificate,
-        profile: LoteProfile,
-    ): TrustState = try {
-        if (issuer.isTrustedBy(listOf(asitIssuerCert)).isSuccess) {
-            return TrustState.TRUSTED
-        }
-
-        val certificateList: List<X509Certificate> = trustListCache.getAll().values
-            .flatMap { payload -> loTeFilterService.extractIssuanceCertificates(payload.loTe, profile) }
-            .mapNotNull { it.certificate }
-
-        if (certificateList.isEmpty()) {
-            return TrustState.UNTRUSTED
-        }
-
-        val validationResult = issuer.isTrustedBy(certificateList)
-        if (validationResult.isSuccess) TrustState.TRUSTED else TrustState.UNTRUSTED
-    } catch (e: Exception) {
-        Napier.e("Failed to evaluate issuer trust status due to unexpected error", e)
-        TrustState.UNKNOWN
-    }
-
-    fun evaluateCredentialIssuerTrust(credential: ApiItemCredential): TrustState =
-        credential.issuerCertificate?.let {
-            evaluateIssuer(it, LoteProfile.fromSchemeIdentifier(credential.credentialType))
-        } ?: TrustState.UNKNOWN
-}
-
-@Serializable
-enum class TrustState {
-    TRUSTED, UNTRUSTED, UNKNOWN
 }

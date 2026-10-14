@@ -62,3 +62,17 @@ body {
   flex: 1 1 320px;
   min-width: 280px;
 }
+
+/* validation report of a wallet response, see validation-report-comp.js */
+.validation-children {
+  border-left: 2px solid var(--bs-border-color);
+  padding-left: 0.75rem;
+}
+
+.validation-checks .validation-icon {
+  width: 1.5rem;
+}
+
+.validation-checks .validation-label {
+  width: 30%;
+}

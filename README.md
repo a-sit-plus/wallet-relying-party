@@ -266,7 +266,7 @@ app:
   public-context: "http://localhost:8080/"
   transaction-ttl: 30m
   result-ttl: 30m
-  trust-list-stages: [ACCEPTANCE]
+  trust-list-stages: [DEVELOPMENT, ACCEPTANCE]
   verifier-key:
     type: MEMORY
 ```
@@ -307,8 +307,20 @@ minutes, and expired entries are removed by a scheduled cleanup task.
 
 `app.trust-list-stages` selects the stages of the European Commission's trust
 infrastructure (`DEVELOPMENT`, `ACCEPTANCE`, `PRODUCTION`) to fetch the Lists
-of Trusted Entities from, which decide the displayed issuer trust. Defaults to
-`ACCEPTANCE`.
+of Trusted Entities from. Defaults to `[DEVELOPMENT, ACCEPTANCE]`. The lists of
+all configured stages are combined per credential type: issuers are trusted
+through their issuance services, signers of status lists through their
+revocation services, next to the A-SIT root. The development stage is included
+by default, as most PID providers publish the revocation services that
+authorize their status list signers only there. A list a stage does not
+publish, or one that can not be verified, is skipped (and its cached version
+kept), without affecting the other lists.
+
+`app.validation` sets the policy presentations are validated under, see
+`ValidationConfigurationProperties` in
+[`AppConfigurationProperties.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/AppConfigurationProperties.kt).
+It is strict by default; relax it for test setups, e.g. with
+`require-timeliness: false` or `trust: INTEGRITY_ONLY`.
 
 ### Optional Spring Boot Admin Client
 
