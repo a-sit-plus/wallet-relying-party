@@ -1,16 +1,18 @@
 package at.asit.wallet.relyingparty
 
 import at.asitplus.signum.indispensable.asn1.encodeToPEM
+import at.asitplus.signum.indispensable.cosef.CoseSigned
+import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.pki.CertificateChain
 import at.asitplus.wallet.lib.agent.KeyMaterial
 import at.asitplus.wallet.lib.agent.KeyStoreMaterial
 import io.github.aakira.napier.Napier
+import kotlinx.serialization.decodeFromByteArray
 import org.springframework.core.io.ResourceLoader
 import org.springframework.stereotype.Component
-import org.springframework.util.StreamUtils
 import java.net.URI
-import java.nio.charset.StandardCharsets
 import java.security.KeyStore
+import kotlin.io.encoding.Base64
 
 open class WrpPreviewData(
     open val label: String,
@@ -18,10 +20,22 @@ open class WrpPreviewData(
 )
 
 data class RegistrationCertificatePreviewData(
-    override val label: String,
-    override val content: String,
     val id: Int,
-) : WrpPreviewData(label, content)
+    val label: String,
+    /** The WRPRC as compact JWS, if configured. */
+    val jwt: String?,
+    /** The WRPRC as base64url-encoded COSE_Sign1, if configured. */
+    val cwt: String?,
+)
+
+/** One registration of the relying party, see [WrprcConfiguration]. */
+class RegistrationCertificateData(
+    val label: String,
+    /** Sent in OpenID4VP `verifier_info`. */
+    val jwt: String?,
+    /** The untagged COSE_Sign1, sent in ISO 18013-7 Annex C `euWrprc`. */
+    val cwt: ByteArray?,
+)
 
 data class AccessCertificatePreviewData(
     override val label: String,
@@ -43,13 +57,12 @@ class WrpCertificateStore(
     val hasAccessCertificates: Boolean
         get() = accessCertificates.values.any { it.certificateChain?.isNotEmpty() == true }
 
-    val hasRegistrationCertificates: Boolean =
-        configuration.wrp?.rc?.isNotEmpty() == true && configuration.wrp.rc.all { resourceExists(it.path) }
+    val registrationCertificates: Map<Int, RegistrationCertificateData> = configuration.wrp?.rc.orEmpty()
+        .mapIndexed { index, wrprcConfiguration -> index to loadRegistrationCertificate(wrprcConfiguration) }
+        .toMap()
 
-    val registrationCertificates: Map<Int, Pair<WrprcConfiguration, String>>? =
-        configuration.wrp?.rc?.mapIndexed { index, configuration ->
-            index to Pair(configuration, loadResourceAsString(configuration.path))
-        }?.toMap()
+    val hasRegistrationCertificates: Boolean
+        get() = registrationCertificates.isNotEmpty()
 
     val accessCertificates: Map<Int, AccessCertificateData> = configuration.wrp?.ac.orEmpty()
         .mapIndexed { index, wrpacConfiguration ->
@@ -85,19 +98,50 @@ class WrpCertificateStore(
                 }
         }
 
-    fun registrationCertificatePreview(): List<RegistrationCertificatePreviewData>? =
-        registrationCertificates?.map { (index, pair) ->
-            val (config, content) = pair
+    fun registrationCertificatePreview(): List<RegistrationCertificatePreviewData> =
+        registrationCertificates.map { (index, data) ->
             RegistrationCertificatePreviewData(
                 id = index,
-                label = config.label,
-                content = content.trim(),
+                label = data.label,
+                jwt = data.jwt,
+                cwt = data.cwt?.let { Base64.UrlSafe.encode(it) },
             )
         }
 
-    private fun loadResourceAsString(uri: URI): String =
-        StreamUtils.copyToString(resourceLoader.getResource(uri.toString()).inputStream, StandardCharsets.UTF_8)
+    private fun loadRegistrationCertificate(config: WrprcConfiguration): RegistrationCertificateData {
+        require(config.path != null || config.cwtPath != null) {
+            "WRPRC '${config.label}' needs a path or cwt-path"
+        }
+        val fromPath = config.path?.let { loadResource(it) }
+        val cwtFromPath = fromPath?.decodeCwtOrNull()
+        val cwt = config.cwtPath?.let { path ->
+            require(cwtFromPath == null) { "WRPRC '${config.label}' has a CWT in both path and cwt-path" }
+            requireNotNull(loadResource(path).decodeCwtOrNull()) {
+                "WRPRC '${config.label}' in $path is not a COSE_Sign1, neither binary nor base64-encoded"
+            }
+        } ?: cwtFromPath
+        val jwt = fromPath?.takeIf { cwtFromPath == null }?.decodeToString()?.trim()?.takeIf { it.isNotBlank() }
+        Napier.i("Loaded WRPRC '${config.label}' (JWT: ${jwt != null}, CWT: ${cwt != null})")
+        return RegistrationCertificateData(label = config.label, jwt = jwt, cwt = cwt)
+    }
 
-    private fun resourceExists(uri: URI): Boolean = resourceLoader.getResource(uri.toString()).exists()
+    private fun loadResource(uri: URI): ByteArray =
+        resourceLoader.getResource(uri.toString()).inputStream.use { it.readBytes() }
+
+    /** The untagged COSE_Sign1 of a binary or base64-encoded CWT, which may be tagged (RFC 8392, tag 61). */
+    private fun ByteArray.decodeCwtOrNull(): ByteArray? {
+        val text = runCatching { decodeToString(throwOnInvalidSequence = true).trim() }.getOrNull()
+        val candidates = listOf(this) + listOf(
+            Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL),
+            Base64.Default.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL),
+        ).mapNotNull { base64 -> text?.let { runCatching { base64.decode(it) }.getOrNull() } }
+        return candidates
+            .map { if (it.size > 2 && it[0] == CWT_TAG[0] && it[1] == CWT_TAG[1]) it.copyOfRange(2, it.size) else it }
+            .firstOrNull { runCatching { coseCompliantSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(it) }.isSuccess }
+    }
+
+    private companion object {
+        val CWT_TAG = byteArrayOf(0xD8.toByte(), 0x3D)
+    }
 
 }
