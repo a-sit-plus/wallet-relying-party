@@ -9,6 +9,7 @@ import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ResponseMode
 import at.asitplus.openid.VerifierInfo
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.wallet.lib.HttpBody
 import at.asitplus.wallet.lib.PreparedHttpResponse
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -233,14 +234,16 @@ class VerifierProfiles(
             when (profile.deviceFlowConfig.responseMode) {
                 DeviceResponseMode.DirectPost -> PreparedHttpResponse(
                     status = HttpStatusCode.OK,
-                    headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.AUTHZ_REQ_JWT),
                     // The AV profile serves an inline wallet URL rather than a signed request object.
-                    body = verifier.directPost(
-                        transactionId = transactionId,
-                        responseUrl = responseUrl,
-                        dcqlRequest = dcqlRequest,
-                        verifierMetadataMode = profile.deviceFlowConfig.verifierMetadataMode,
-                        verifierInfo = verifierInfo,
+                    body = HttpBody(
+                        contentType = ContentType.parse(MediaTypes.Application.AUTHZ_REQ_JWT),
+                        text = verifier.directPost(
+                            transactionId = transactionId,
+                            responseUrl = responseUrl,
+                            dcqlRequest = dcqlRequest,
+                            verifierMetadataMode = profile.deviceFlowConfig.verifierMetadataMode,
+                            verifierInfo = verifierInfo,
+                        ),
                     ),
                 )
 
