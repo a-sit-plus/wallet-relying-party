@@ -42,7 +42,7 @@ export default {
     },
     methods: {
         wrprcSummary(item) {
-            const payload = this.parseJwsPayload(item?.content)
+            const payload = this.parseJwsPayload(item?.jwt)
             if (!payload || typeof payload !== 'object') {
                 return null
             }
@@ -162,7 +162,7 @@ export default {
                 </div>
                 <div class="mt-3">
                     <label class="form-label mb-1">
-                        WRP Registration Certificate (WRPRC) - <span class="text-primary text-nowrap">verifier_info / registration_cert</span>
+                        WRP Registration Certificate (WRPRC) - <span class="text-primary text-nowrap">verifier_info (JWT) / euWrprc (CWT)</span>
                     </label>
                     <div v-if="wrprcPreviewsWithSummary.length === 0" class="text-muted small">(not available)</div>
                     <div v-else class="form-check">
@@ -188,6 +188,8 @@ export default {
                                @click="$emit('updateSelectedWrprc', item.id)">
                         <label class="form-check-label" :for="certificateInputId('selectedWrprcId', item.id)">
                             {{ item.label }}
+                            <span v-if="item.jwt" class="badge text-bg-light border ms-1">JWT</span>
+                            <span v-if="item.cwt" class="badge text-bg-light border ms-1">CWT</span>
                         </label>
                         <div v-if="item.summary" class="small text-muted mt-1 ms-4">
                             <div v-if="item.summary.service">

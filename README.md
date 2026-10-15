@@ -444,6 +444,7 @@ app:
         path: file:wrprc-alterspruefung.jws
       - label: Identitätsprofil
         path: file:wrprc-identitaetsprofil.jws
+        cwt-path: file:wrprc-identitaetsprofil.cwt
       - label: Adressübersicht
         path: file:wrprc-adressuebersicht.jws
 ```
@@ -461,9 +462,10 @@ Each keystore must contain the key as well as the certificate chain provided thr
 
 Registration certificates: List to load one or multiple registration certificates:
 - `rc.label`: Human readable text describing the registration certificate
-- `rc.path`: Path to the registration certificate, either as JWS (see below) or as base64-encoded CWT (COSE_Sign1)
+- `rc.path`: Path to the registration certificate as JWS (see below)
+- `rc.cwt-path`: Path to the same registration certificate as CWT (COSE_Sign1), binary or base64-encoded, optionally tagged as CWT (tag 61)
 
-A JWS registration certificate is sent in OpenID4VP requests (`verifier_info`), a CWT registration certificate in ISO 18013-7 Annex C requests (`euWrprc` of each document request). Annex C requests carry `readerAuth`, signed with the selected access certificate.
+At least one of `rc.path` and `rc.cwt-path` is required. Selecting a registration certificate sends its JWS in OpenID4VP requests (`verifier_info`) and its CWT in ISO 18013-7 Annex C requests (`euWrprc` of each document request), so a DC API request offering both protocols carries both. Annex C requests carry `readerAuth`, signed with the selected access certificate. For compatibility, a CWT in `rc.path` is used as if it was set in `rc.cwt-path`.
 
 #### Example jws file content
 
