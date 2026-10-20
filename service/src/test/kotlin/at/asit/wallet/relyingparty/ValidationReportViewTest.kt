@@ -14,6 +14,7 @@ import at.asitplus.wallet.lib.validation.DisclosedItemValidation
 import at.asitplus.wallet.lib.validation.HolderBindingPolicy
 import at.asitplus.wallet.lib.validation.PresentationChecks
 import at.asitplus.wallet.lib.validation.ProtocolResponseChecks
+import at.asitplus.wallet.lib.validation.RequiredClaimsValidation
 import at.asitplus.wallet.lib.validation.Requirement
 import at.asitplus.wallet.lib.validation.StatusListTokenChecks
 import at.asitplus.wallet.lib.validation.StatusMechanismValidation
@@ -72,6 +73,7 @@ class ValidationReportViewTest {
         disclosedItems = listOf(
             DisclosedItemValidation(DisclosedItemReference.SdJwt(0, "given_name"), Passed, Passed, Passed),
         ),
+        requiredClaims = RequiredClaimsValidation(NotApplicable),
         holderBinding = NotApplicable,
         timeliness = timeliness,
         status = StatusValidation(Passed, listOf(mechanism), agreement = Passed),

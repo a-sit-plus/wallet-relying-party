@@ -3,6 +3,7 @@ package at.asit.wallet.relyingparty
 import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
 import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest
 import at.asitplus.iso.IssuerSignedItem
+import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.RequestParametersFrom
 import at.asitplus.signum.indispensable.CryptoPublicKey
@@ -66,8 +67,6 @@ import org.springframework.test.web.servlet.get
 import org.springframework.test.web.servlet.post
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders.asyncDispatch
 import java.net.URLDecoder
-import java.net.URI
-import kotlin.io.encoding.Base64
 import kotlin.random.Random
 import kotlin.time.Clock
 import kotlin.time.Duration.Companion.minutes
@@ -110,7 +109,7 @@ class ProcessTest {
             mapOf(0 to AccessCertificateData("Selected", wrpacKey, listOf(wrpacKey.getCertificate()!!)))
         )
         Mockito.`when`(wrpCertificateStore.registrationCertificates).thenReturn(
-            mapOf(0 to (WrprcConfiguration("Selected", URI("file:/unused.pem")) to wrpacKey.getCertificate()!!.encodeToPEM().getOrThrow()))
+            mapOf(0 to RegistrationCertificateData("Selected", wrpacKey.getCertificate()!!.encodeToPEM().getOrThrow(), null))
         )
         runProcess(selectedWrpacId = 0, selectedWrprcId = 0, profileName = "HAIPd05")
             .assertAccepted(AtomicAttribute2023.sdJwtType)
@@ -424,6 +423,39 @@ class ProcessTest {
     }
 
     @Test
+    fun `DC API request carries the JWT WRPRC in verifier_info and its CWT in euWrprc`() = runTest {
+        val wrpac = EphemeralKeyWithSelfSignedCert()
+        val jwt = wrpac.getCertificate()!!.encodeToPEM().getOrThrow()
+        val euWrprc = coseCompliantSerializer.encodeToByteArray(
+            SignCose<ByteArray>(wrpac)(null, null, byteArrayOf(1, 2, 3), ByteArraySerializer()).getOrThrow()
+        )
+        Mockito.`when`(wrpCertificateStore.accessCertificates).thenReturn(
+            mapOf(0 to AccessCertificateData("Selected", wrpac, listOf(wrpac.getCertificate()!!)))
+        )
+        Mockito.`when`(wrpCertificateStore.registrationCertificates).thenReturn(
+            mapOf(0 to RegistrationCertificateData("Selected", jwt, euWrprc))
+        )
+        val profile = createTransaction(
+            ConstantIndex.CredentialRepresentation.ISO_MDOC,
+            selectedWrpacId = 0,
+            selectedWrprcId = 0,
+            profileName = "EUDIW2026",
+        ).profiles.single()
+
+        val requests = joseCompliantSerializer.decodeFromString<CredentialRequestOptions>(
+            dcApiBody(profile.id, "?oid4vpMode=SIGNED&isoMdoc=true&encrypt=true")
+        ).digital.requests
+        val openId4VpRequest = requests.filterIsInstance<DigitalCredentialGetRequest.OpenId4VpSigned>().single()
+        val verifierInfo = openId4VpRequest.data.request
+            .getPayload<AuthenticationRequestParameters>().getOrThrow().verifierInfo
+        assertEquals(jwt, verifierInfo?.single()?.data)
+        requests.filterIsInstance<DigitalCredentialGetRequest.IsoMdoc>().single().data
+            .deviceRequest.docRequests.forEach {
+                assertArrayEquals(euWrprc, it.itemsRequest.value.requestInfo?.euWrprc)
+            }
+    }
+
+    @Test
     fun `DC API Annex C request carries readerAuth of the selected WRPAC and the CWT WRPRC`() = runTest {
         val wrpac = EphemeralKeyWithSelfSignedCert()
         val euWrprc = coseCompliantSerializer.encodeToByteArray(
@@ -433,7 +465,7 @@ class ProcessTest {
             mapOf(0 to AccessCertificateData("Selected", wrpac, listOf(wrpac.getCertificate()!!)))
         )
         Mockito.`when`(wrpCertificateStore.registrationCertificates).thenReturn(
-            mapOf(0 to (WrprcConfiguration("Selected", URI("file:/unused.cwt")) to Base64.UrlSafe.encode(euWrprc)))
+            mapOf(0 to RegistrationCertificateData("Selected", null, euWrprc))
         )
         val profile = createTransaction(
             ConstantIndex.CredentialRepresentation.ISO_MDOC,
@@ -442,9 +474,14 @@ class ProcessTest {
             profileName = "EUDIW2026",
         ).profiles.single()
 
-        val isoMdocRequest = joseCompliantSerializer.decodeFromString<CredentialRequestOptions>(
-            dcApiBody(profile.id, "?oid4vpMode=NONE&isoMdoc=true&encrypt=true")
-        ).digital.requests.single().let { it as DigitalCredentialGetRequest.IsoMdoc }.data
+        val requests = joseCompliantSerializer.decodeFromString<CredentialRequestOptions>(
+            dcApiBody(profile.id, "?oid4vpMode=SIGNED&isoMdoc=true&encrypt=true")
+        ).digital.requests
+        val isoMdocRequest = requests.filterIsInstance<DigitalCredentialGetRequest.IsoMdoc>().single().data
+        val openId4VpRequest = requests.filterIsInstance<DigitalCredentialGetRequest.OpenId4VpSigned>().single()
+        val verifierInfo = openId4VpRequest.data.request
+            .getPayload<AuthenticationRequestParameters>().getOrThrow().verifierInfo
+        assertNull(verifierInfo, "A CWT is not sent in verifier_info")
         isoMdocRequest.deviceRequest.docRequests.forEach {
             assertArrayEquals(euWrprc, it.itemsRequest.value.requestInfo?.euWrprc)
         }

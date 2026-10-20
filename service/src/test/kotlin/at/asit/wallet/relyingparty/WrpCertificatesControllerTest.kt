@@ -66,7 +66,8 @@ class WrpCertificatesControllerTest {
                 RegistrationCertificatePreviewData(
                     id = 0,
                     label = "Identitätsprofil",
-                    content = "token",
+                    jwt = "token",
+                    cwt = "cose",
                 )
             )
         )
@@ -76,7 +77,8 @@ class WrpCertificatesControllerTest {
                 status { isOk() }
                 jsonPath("$[0].id") { value(0) }
                 jsonPath("$[0].label") { value("Identitätsprofil") }
-                jsonPath("$[0].content") { value("token") }
+                jsonPath("$[0].jwt") { value("token") }
+                jsonPath("$[0].cwt") { value("cose") }
             }
     }
 

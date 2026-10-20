@@ -134,7 +134,11 @@ data class WrpacConfiguration(
     val keystore: KeyStoreConfiguration,
 )
 
+/** One registration of the relying party, as JWT and/or CWT, at least one of [path] and [cwtPath] is required. */
 data class WrprcConfiguration(
     val label: String,
-    val path: URI,
+    /** The WRPRC as JWT, sent in OpenID4VP `verifier_info`; a CWT found here is used as if set in [cwtPath]. */
+    val path: URI? = null,
+    /** The WRPRC as CWT (COSE_Sign1, binary or base64-encoded), sent in ISO 18013-7 Annex C `euWrprc`. */
+    val cwtPath: URI? = null,
 )

@@ -92,7 +92,10 @@
         const access = await accessResp.json();
         const registrations = await registrationsResp.json();
         const wrpac = Array.isArray(access) ? access : [];
-        const wrprc = Array.isArray(registrations) ? registrations : [];
+        const wrprc = (Array.isArray(registrations) ? registrations : []).flatMap(item => [
+            item.jwt && {label: `${item.label} (JWT)`, content: item.jwt},
+            item.cwt && {label: `${item.label} (CWT, base64url)`, content: item.cwt},
+        ].filter(Boolean));
         certificatePreviewList.innerHTML =
             renderGroup("WRPAC", wrpac, "No WRPAC loaded yet") +
             renderGroup("WRPRC", wrprc, "No WRPRC loaded yet");

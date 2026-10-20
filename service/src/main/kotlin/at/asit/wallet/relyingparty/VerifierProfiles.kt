@@ -8,9 +8,8 @@ import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
 import at.asitplus.openid.OpenIdConstants
 import at.asitplus.openid.OpenIdConstants.ResponseMode
 import at.asitplus.openid.VerifierInfo
-import at.asitplus.signum.indispensable.cosef.CoseSigned
-import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
 import at.asitplus.signum.indispensable.josef.io.joseCompliantSerializer
+import at.asitplus.wallet.lib.HttpBody
 import at.asitplus.wallet.lib.PreparedHttpResponse
 import at.asitplus.wallet.lib.data.MediaTypes
 import at.asitplus.wallet.lib.agent.KeyMaterial
@@ -29,9 +28,7 @@ import at.asitplus.wallet.lib.validation.CredentialValidator
 import at.asitplus.wallet.lib.validation.ValidationPolicy
 import io.github.aakira.napier.Napier
 import io.ktor.http.*
-import kotlinx.serialization.decodeFromByteArray
 import org.springframework.stereotype.Component
-import kotlin.io.encoding.Base64
 
 
 // Supported options for verifier interactions
@@ -212,7 +209,7 @@ class VerifierProfiles(
                 require(transaction.request.selectedWrpacId == null && transaction.request.selectedWrprcId == null) {
                     "VerifierProfile($name) cannot include a WRPAC or WRPRC"
                 }
-                transaction.transactionGet(context.responseUrl).body
+                transaction.transactionGet(context.responseUrl).body!!.text
             }
 
             WalletUrlStyle.ByReference -> {
@@ -237,14 +234,16 @@ class VerifierProfiles(
             when (profile.deviceFlowConfig.responseMode) {
                 DeviceResponseMode.DirectPost -> PreparedHttpResponse(
                     status = HttpStatusCode.OK,
-                    headers = headersOf(HttpHeaders.ContentType, MediaTypes.Application.AUTHZ_REQ_JWT),
                     // The AV profile serves an inline wallet URL rather than a signed request object.
-                    body = verifier.directPost(
-                        transactionId = transactionId,
-                        responseUrl = responseUrl,
-                        dcqlRequest = dcqlRequest,
-                        verifierMetadataMode = profile.deviceFlowConfig.verifierMetadataMode,
-                        verifierInfo = verifierInfo,
+                    body = HttpBody(
+                        contentType = ContentType.parse(MediaTypes.Application.AUTHZ_REQ_JWT),
+                        text = verifier.directPost(
+                            transactionId = transactionId,
+                            responseUrl = responseUrl,
+                            dcqlRequest = dcqlRequest,
+                            verifierMetadataMode = profile.deviceFlowConfig.verifierMetadataMode,
+                            verifierInfo = verifierInfo,
+                        ),
                     ),
                 )
 
@@ -334,46 +333,36 @@ class VerifierProfiles(
         else -> this
     }
 
-    /** The selected WRPRC for OpenID4VP `verifier_info`, unless it is a CWT, see [buildEuWrprc]. */
+    /** The JWT of the selected WRPRC for OpenID4VP `verifier_info`, see [buildEuWrprc] for its CWT. */
     fun buildVerifierInfo(
         selectedWrprcId: Int?,
     ): NonEmptyList<VerifierInfo>? {
         val wrprc = selectedWrprc(selectedWrprcId) ?: return null
-        if (wrprc.decodeCwtOrNull() != null) {
-            Napier.i("Selected WRPRC '$selectedWrprcId' is a CWT, not usable for OpenID4VP")
-            return null
-        }
-
+        val jwt = wrprc.jwt
+            ?: return null.also { Napier.i("Selected WRPRC '$selectedWrprcId' has no JWT, not usable for OpenID4VP") }
         return listOf(
             VerifierInfo(
                 format = OpenIdConstants.VerifierInfo.REGISTRATION_CERT_FORMAT,
-                data = wrprc,
+                data = jwt,
                 credentialIds = null,
             )
         ).toNonEmptyList()
     }
 
-    /** The selected WRPRC for ISO mdoc `euWrprc`, if it is a CWT, i.e. a base64-encoded COSE_Sign1. */
+    /** The CWT of the selected WRPRC for ISO mdoc `euWrprc`, i.e. a COSE_Sign1, see [buildVerifierInfo] for its JWT. */
     fun buildEuWrprc(
         selectedWrprcId: Int?,
     ): ByteArray? {
         val wrprc = selectedWrprc(selectedWrprcId) ?: return null
-        return wrprc.decodeCwtOrNull()
-            ?: null.also { Napier.i("Selected WRPRC '$selectedWrprcId' is not a CWT, not usable for ISO mdoc") }
+        return wrprc.cwt
+            ?: null.also { Napier.i("Selected WRPRC '$selectedWrprcId' has no CWT, not usable for ISO mdoc") }
     }
 
-    private fun selectedWrprc(selectedWrprcId: Int?): String? {
+    private fun selectedWrprc(selectedWrprcId: Int?): RegistrationCertificateData? {
         val effectiveWrprcId = selectedWrprcId ?: return null
-        return wrpCertificateStore.registrationCertificates?.get(effectiveWrprcId)?.let { (_, content) ->
-            content.trim().takeIf { it.isNotBlank() }
-        } ?: throw ClientFacingException("Selected WRPRC '$effectiveWrprcId' is not available")
+        return wrpCertificateStore.registrationCertificates[effectiveWrprcId]
+            ?: throw ClientFacingException("Selected WRPRC '$effectiveWrprcId' is not available")
     }
-
-    private fun String.decodeCwtOrNull(): ByteArray? = listOf(
-        Base64.UrlSafe.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL),
-        Base64.Default.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL),
-    ).firstNotNullOfOrNull { runCatching { it.decode(this) }.getOrNull() }
-        ?.takeIf { runCatching { coseCompliantSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(it) }.isSuccess }
 
     private fun selectVerifier(
         selectedWrpacId: Int?,

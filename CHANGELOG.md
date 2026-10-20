@@ -7,6 +7,7 @@ Version 9.0.0-SNAPSHOT (unreleased):
  - Validate wallet responses with VC-K validation reports: trust per credential type (LoTEs and A-SIT root), status lists, and a policy configurable in `app.validation` (strict by default); show every check on the result page, and claims only of accepted credentials
  - Trust credential types without a list of their own through the Pub-EAA providers list, and status list signers through the revocation services of the lists; fetch the lists of the development and acceptance stages by default, skipping lists a stage does not publish
  - Cache status list tokens until their `ttl` elapses or they expire, at most 5 minutes, sharing concurrent fetches; time out fetching them after 5 seconds
+ - Configure a WRPRC as JWT (`path`) and CWT (`cwt-path`) in one `app.wrp.rc` entry, sending the JWT in OpenID4VP `verifier_info` and the CWT in ISO 18013-7 Annex C `euWrprc`; load CWTs binary, base64-encoded or tagged
 
 Version 8.0.0 (unreleased):
  - Add WRPAC and WRPRC support, see Readme
