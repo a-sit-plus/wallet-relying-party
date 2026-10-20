@@ -121,6 +121,7 @@ class WrpCertificateStore(
             }
         } ?: cwtFromPath
         val jwt = fromPath?.takeIf { cwtFromPath == null }?.decodeToString()?.trim()?.takeIf { it.isNotBlank() }
+        require(jwt != null || cwt != null) { "WRPRC '${config.label}' has neither a JWT nor a CWT" }
         Napier.i("Loaded WRPRC '${config.label}' (JWT: ${jwt != null}, CWT: ${cwt != null})")
         return RegistrationCertificateData(label = config.label, jwt = jwt, cwt = cwt)
     }
@@ -128,7 +129,10 @@ class WrpCertificateStore(
     private fun loadResource(uri: URI): ByteArray =
         resourceLoader.getResource(uri.toString()).inputStream.use { it.readBytes() }
 
-    /** The untagged COSE_Sign1 of a binary or base64-encoded CWT, which may be tagged (RFC 8392, tag 61). */
+    /**
+     * The untagged COSE_Sign1 of a binary or base64-encoded CWT, which may be tagged as CWT (RFC 8392, tag 61)
+     * and/or as COSE_Sign1 (RFC 9052, tag 18).
+     */
     private fun ByteArray.decodeCwtOrNull(): ByteArray? {
         val text = runCatching { decodeToString(throwOnInvalidSequence = true).trim() }.getOrNull()
         val candidates = listOf(this) + listOf(
@@ -136,12 +140,20 @@ class WrpCertificateStore(
             Base64.Default.withPadding(Base64.PaddingOption.ABSENT_OPTIONAL),
         ).mapNotNull { base64 -> text?.let { runCatching { base64.decode(it) }.getOrNull() } }
         return candidates
-            .map { if (it.size > 2 && it[0] == CWT_TAG[0] && it[1] == CWT_TAG[1]) it.copyOfRange(2, it.size) else it }
+            .map { it.withoutPrefix(CWT_TAG).withoutPrefix(COSE_SIGN1_TAG) }
+            .filter { it.firstOrNull() == UNTAGGED_COSE_SIGN1 }
             .firstOrNull { runCatching { coseCompliantSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(it) }.isSuccess }
     }
 
+    private fun ByteArray.withoutPrefix(prefix: ByteArray): ByteArray =
+        if (size > prefix.size && prefix.indices.all { this[it] == prefix[it] }) copyOfRange(prefix.size, size) else this
+
     private companion object {
         val CWT_TAG = byteArrayOf(0xD8.toByte(), 0x3D)
+        val COSE_SIGN1_TAG = byteArrayOf(0xD2.toByte())
+
+        /** COSE_Sign1 is a CBOR array of four items, i.e. starts with `0x84` when not tagged. */
+        const val UNTAGGED_COSE_SIGN1 = 0x84.toByte()
     }
 
 }

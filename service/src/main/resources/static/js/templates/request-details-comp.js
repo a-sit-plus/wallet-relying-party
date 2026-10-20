@@ -1,4 +1,5 @@
 import AttributeSelectComp from './attribute-select-comp.js'
+import { decodeCoseSign1Payload } from '../cbor.js'
 
 export default {
     props: {
@@ -42,7 +43,7 @@ export default {
     },
     methods: {
         wrprcSummary(item) {
-            const payload = this.parseJwsPayload(item?.jwt)
+            const payload = this.parseJwsPayload(item?.jwt) ?? this.parseCwtPayload(item?.cwt)
             if (!payload || typeof payload !== 'object') {
                 return null
             }
@@ -89,6 +90,15 @@ export default {
                 return JSON.parse(new TextDecoder().decode(bytes))
             } catch (error) {
                 console.warn('Failed to parse WRPRC payload', error)
+                return null
+            }
+        },
+        parseCwtPayload(base64urlCwt) {
+            if (typeof base64urlCwt !== 'string') return null
+            try {
+                return decodeCoseSign1Payload(base64urlCwt)
+            } catch (error) {
+                console.warn('Failed to parse WRPRC CWT payload', error)
                 return null
             }
         },

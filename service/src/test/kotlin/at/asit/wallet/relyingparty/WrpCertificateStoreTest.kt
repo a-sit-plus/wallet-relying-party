@@ -39,13 +39,16 @@ class WrpCertificateStoreTest {
     }
 
     @Test
-    fun `base64-encoded and CWT-tagged COSE_Sign1 are loaded untagged`() = runTest {
+    fun `base64-encoded and tagged COSE_Sign1 are loaded untagged`() = runTest {
         val cwt = cwt()
-        val tagged = byteArrayOf(0xD8.toByte(), 0x3D) + cwt
+        val cwtTag = byteArrayOf(0xD8.toByte(), 0x3D)
+        val coseSign1Tag = byteArrayOf(0xD2.toByte())
         val store = store(
             WrprcConfiguration("Base64url", cwtPath = file("a.cwt", Base64.UrlSafe.encode(cwt))),
             WrprcConfiguration("Base64", cwtPath = file("b.cwt", Base64.Default.encode(cwt) + "\n")),
-            WrprcConfiguration("Tagged", cwtPath = file("c.cwt", tagged)),
+            WrprcConfiguration("CWT tag", cwtPath = file("c.cwt", cwtTag + cwt)),
+            WrprcConfiguration("COSE_Sign1 tag", cwtPath = file("d.cwt", coseSign1Tag + cwt)),
+            WrprcConfiguration("Both tags", cwtPath = file("e.cwt", Base64.UrlSafe.encode(cwtTag + coseSign1Tag + cwt))),
         )
 
         store.registrationCertificates.values.forEach {
@@ -68,6 +71,10 @@ class WrpCertificateStoreTest {
     fun `invalid configurations are rejected`() = runTest {
         val cwt = file("rc.cwt", cwt())
         assertThrows<IllegalArgumentException> { store(WrprcConfiguration("None")) }
+        assertThrows<IllegalArgumentException> { store(WrprcConfiguration("Blank", path = file("blank.jws", "\n"))) }
+        assertThrows<IllegalArgumentException> {
+            store(WrprcConfiguration("Other tag", cwtPath = file("other.cwt", byteArrayOf(0xC1.toByte()) + cwt())))
+        }
         assertThrows<IllegalArgumentException> {
             store(WrprcConfiguration("Not a CWT", cwtPath = file("rc.jws", jwt)))
         }
