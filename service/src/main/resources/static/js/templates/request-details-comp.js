@@ -102,11 +102,12 @@ export default {
                 return null
             }
         },
+        // srv_description is an array of localized strings (ARF RPRC_09, as VC-K encodes it),
+        // or an array of such arrays (ETSI TS 119 475 V1.2.1, B.2.1)
         firstLocalizedValue(value) {
             if (!Array.isArray(value)) return null
             for (const group of value) {
-                if (!Array.isArray(group)) continue
-                for (const entry of group) {
+                for (const entry of Array.isArray(group) ? group : [group]) {
                     if (typeof entry?.value === 'string' && entry.value.trim().length > 0) {
                         return entry.value
                     }

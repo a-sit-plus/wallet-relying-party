@@ -6,6 +6,7 @@ import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OidcUserInfoExtended
 import at.asitplus.openid.RequestParametersFrom
+import at.asitplus.openid.VerifierInfo
 import at.asitplus.signum.indispensable.CryptoPublicKey
 import at.asitplus.signum.indispensable.asn1.encodeToPEM
 import at.asitplus.signum.indispensable.cosef.io.coseCompliantSerializer
@@ -448,7 +449,7 @@ class ProcessTest {
         val openId4VpRequest = requests.filterIsInstance<DigitalCredentialGetRequest.OpenId4VpSigned>().single()
         val verifierInfo = openId4VpRequest.data.request
             .getPayload<AuthenticationRequestParameters>().getOrThrow().verifierInfo
-        assertEquals(jwt, verifierInfo?.single()?.data)
+        assertEquals(VerifierInfo.Data.StringData(jwt), verifierInfo?.single()?.data)
         requests.filterIsInstance<DigitalCredentialGetRequest.IsoMdoc>().single().data
             .deviceRequest.docRequests.forEach {
                 assertArrayEquals(euWrprc, it.itemsRequest.value.requestInfo?.euWrprc)
@@ -492,8 +493,9 @@ class ProcessTest {
                 callingOrigin = configuration.publicContext.toString(),
             )
         )
-        val chain = ReaderAuthenticationVerifier()(isoMdocRequest.deviceRequest, transcript).getOrThrow()
-        assertEquals(wrpac.getCertificate(), chain.leaf)
+        val reader = ReaderAuthenticationVerifier().authenticate(isoMdocRequest.deviceRequest, transcript).getOrThrow()
+        assertTrue(reader.unauthenticatedDocRequests.isEmpty(), "Every document request is reader authenticated")
+        assertEquals(wrpac.getCertificate(), reader.chains.single().leaf)
     }
 
     @Test
