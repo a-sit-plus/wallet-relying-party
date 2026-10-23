@@ -32,7 +32,8 @@ import kotlin.time.Instant
  * Fetches the status list or identifier list a credential references, as JWT or CWT.
  *
  * Servers do not always label the response with the media types of the Token Status List resp. ISO/IEC 18013-5,
- * so for any other content type a CWT is detected from the body, falling back to a JWT.
+ * so for any other content type a CWT is detected from the body, falling back to a JWT. A token that cannot be parsed
+ * is reported with the content type it has been served with.
  *
  * A fetched token is reused for later presentations until its `ttl` elapses (draft-ietf-oauth-status-list-21, 8.3
  * step 4.d) or it expires, but for at most [maxCacheAge], so that verifying a presentation needs no network access for
@@ -93,12 +94,20 @@ class StatusListTokenFetcher(
         }
         check(response.status.isSuccess()) { "Status list $statusListUrl responded with ${response.status}" }
         val body = response.body<ByteArray>()
-        return when (response.contentType()?.withoutParameters()?.toString()?.lowercase()) {
-            MediaTypes.Application.STATUSLIST_JWT -> body.toJwt()
-            MediaTypes.Application.STATUSLIST_CWT,
-            MediaTypes.Application.IDENTIFIERLIST_CWT -> body.toCwt()
+        val contentType = response.contentType()?.withoutParameters()?.toString()?.lowercase()
+        return runCatching {
+            when (contentType) {
+                MediaTypes.Application.STATUSLIST_JWT -> body.toJwt()
+                MediaTypes.Application.STATUSLIST_CWT,
+                MediaTypes.Application.IDENTIFIERLIST_CWT -> body.toCwt()
 
-            else -> runCatching { body.toCwt() }.getOrNull() ?: body.toJwt()
+                else -> runCatching { body.toCwt() }.getOrNull() ?: body.toJwt()
+            }
+        }.getOrElse {
+            throw IllegalStateException(
+                "Status list $statusListUrl served as ${contentType ?: "unknown content type"} is invalid: ${it.message}",
+                it,
+            )
         }
     }
 
@@ -107,13 +116,16 @@ class StatusListTokenFetcher(
         clock.now(),
     )
 
-    /** A CWT may be tagged (RFC 8392, tag 61) around the tagged COSE_Sign1. */
+    /** A CWT may be tagged as CWT (RFC 8392, tag 61) and/or as COSE_Sign1 (RFC 9052, tag 18). */
     private fun ByteArray.toCwt() = StatusListCwt(
         coseCompliantSerializer.decodeFromByteArray<CoseSigned<ByteArray>>(
-            if (size > 2 && this[0] == CWT_TAG[0] && this[1] == CWT_TAG[1]) copyOfRange(2, size) else this
+            withoutPrefix(CWT_TAG).withoutPrefix(COSE_SIGN1_TAG)
         ),
         clock.now(),
     )
+
+    private fun ByteArray.withoutPrefix(prefix: ByteArray): ByteArray =
+        if (size > prefix.size && prefix.indices.all { this[it] == prefix[it] }) copyOfRange(prefix.size, size) else this
 
     private class CachedToken(val token: StatusListToken, val validUntil: Instant)
 
@@ -124,5 +136,6 @@ class StatusListTokenFetcher(
             MediaTypes.Application.IDENTIFIERLIST_CWT,
         )
         val CWT_TAG = byteArrayOf(0xD8.toByte(), 0x3D)
+        val COSE_SIGN1_TAG = byteArrayOf(0xD2.toByte())
     }
 }

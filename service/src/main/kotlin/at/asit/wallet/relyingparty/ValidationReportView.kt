@@ -170,6 +170,7 @@ private val checkLabels = mapOf(
     "issuerTrust" to "Issuer trust",
     "trust" to "Trust",
     "semantics" to "Credential semantics",
+    "requiredClaims" to "Required claims",
     "holderBinding" to "Holder binding",
     "timeliness" to "Validity period",
     "status.claim" to "Status claim",

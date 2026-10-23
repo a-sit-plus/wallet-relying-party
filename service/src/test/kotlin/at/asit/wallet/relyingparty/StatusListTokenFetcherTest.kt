@@ -106,6 +106,35 @@ class StatusListTokenFetcherTest {
     }
 
     @ParameterizedTest
+    @ValueSource(strings = ["D2", "D83DD2"])
+    fun `CWT identifier list tagged as COSE_Sign1 detects the revoked mdoc`(tags: String) = runTest {
+        val revoked = storeReference(RevocationList.Kind.IDENTIFIER_LIST, revoke = true)
+        val valid = storeReference(RevocationList.Kind.IDENTIFIER_LIST, revoke = false)
+        val validator = validatorServing(
+            tags.hexToByteArray() + cwt(RevocationList.Kind.IDENTIFIER_LIST),
+            MediaTypes.Application.IDENTIFIERLIST_CWT,
+        )
+
+        assertEquals(TokenStatus.Invalid, validator.validateMechanism(revoked).observed)
+        assertEquals(TokenStatus.Valid, validator.validateMechanism(valid).observed)
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = ["text/html", MediaTypes.Application.STATUSLIST_JWT, MediaTypes.Application.STATUSLIST_CWT])
+    fun `HTML page served successfully blocks the status, naming its content type`(contentType: String) = runTest {
+        val reference = storeReference(RevocationList.Kind.STATUS_LIST, revoke = false)
+        val validator = validatorServing("<html><body>Not here</body></html>".encodeToByteArray(), contentType)
+
+        val mechanism = validator.validateMechanism(reference)
+        assertTrue(mechanism.outcome is CheckOutcome.Blocked, mechanism.toString())
+        assertNull(mechanism.observed)
+        val retrieval = (mechanism.token.checks as StatusListTokenChecks).retrieval
+        assertTrue(retrieval is CheckOutcome.Blocked, retrieval.toString())
+        val cause = (retrieval as CheckOutcome.Blocked).cause?.message.orEmpty()
+        assertTrue(cause.contains("served as $contentType"), cause)
+    }
+
+    @ParameterizedTest
     @ValueSource(strings = [MediaTypes.Application.STATUSLIST_JWT, "application/jwt", "text/plain", ""])
     fun `JWT status list detects the revoked credential`(contentType: String) = runTest {
         val revoked = storeReference(RevocationList.Kind.STATUS_LIST, revoke = true)

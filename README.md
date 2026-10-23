@@ -10,7 +10,7 @@
 [![GitHub license](https://img.shields.io/badge/license-Apache%20License%202.0-brightgreen.svg?style=flat)](http://www.apache.org/licenses/LICENSE-2.0)
 [![A-SIT Plus Official](https://img.shields.io/badge/A--SIT_Plus-official-005b79?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxNDMuNzYyODYgMTg0LjgxOTk5Ij48ZGVmcz48Y2xpcFBhdGggaWQ9ImEiIGNsaXBQYXRoVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cGF0aCBkPSJNMCA1OTUuMjhoODQxLjg5VjBIMFoiLz48L2NsaXBQYXRoPjwvZGVmcz48ZyBjbGlwLXBhdGg9InVybCgjYSkiIHRyYW5zZm9ybT0ibWF0cml4KDEuMzMzMzMzMyAwIDAgLTEuMzMzMzMzMyAtNDgyLjI1IDUxNy41MykiPjxwYXRoIGZpbGw9IiMwMDViNzkiIGQ9Ik00MTUuNjcgMjQ5LjUzYy03LjE1LjA4LTEzLjk0IDEtMjAuMTcgMi43NWE1Mi4zMyA1Mi4zMyAwIDAgMC0xNy40OCA4LjQ2IDQwLjQzIDQwLjQzIDAgMCAwLTExLjk2IDE0LjU2Yy0yLjY4IDUuNDEtNC4xNCAxMS44NC00LjM1IDE5LjA5bC0uMDIgNi4xMnYyLjE3YS43MS43MSAwIDAgMCAuNy43M2gxNi41MmMuMzkgMCAuNy0uMzIuNzEtLjdsLjAxLTIuMmMwLTIuNi4wMi01LjgyLjAzLTYuMDcuMi00LjYgMS4yNC04LjY2IDMuMDgtMTIuMDZhMjguNTIgMjguNTIgMCAwIDEgOC4yMy05LjU4IDM1LjI1IDM1LjI1IDAgMCAxIDExLjk2LTUuNTggNTUuMzggNTUuMzggMCAwIDEgMTIuNTgtMS43NmM0LjMyLjEgOC42LjcgMTIuNzQgMS44YTM1LjA3IDM1LjA3IDAgMCAxIDExLjk2IDUuNTcgMjguNTQgMjguNTQgMCAwIDEgOC4yNCA5LjU3YzEuOTYgMy42NCAzIDguMDIgMy4xMiAxMy4wMnYyNC4wOUgzNjIuNGEuNy43IDAgMCAwLS43MS43VjMzNWMwIDguNDMuMDEgOC4wNS4wMSA4LjE0LjIgNy4zIDEuNjcgMTMuNzcgNC4zNiAxOS4yMmE0MC40MyA0MC40MyAwIDAgMCAxMS45NiAxNC41N2M1IDMuNzYgMTAuODcgNi42MSAxNy40OCA4LjQ2YTc3LjUgNzcuNSAwIDAgMCAyMC4wMiAyLjc3YzcuMTUtLjA3IDEzLjk0LTEgMjAuMTctMi43NGE1Mi4zIDUyLjMgMCAwIDAgMTcuNDgtOC40NiA0MC40IDQwLjQgMCAwIDAgMTEuOTUtMTQuNTdjMS42Mi0zLjI2IDMuNzctMTAuMDQgMy43Ny0xNC42OCAwLS4zOC0uMTctLjc0LS41NC0uODJsLTE2Ljg5LS40Yy0uMi0uMDQtLjM0LjM0LS4zNC41NCAwIC4yNy0uMDMuNC0uMDYuNi0uNSAyLjgyLTEuMzggNS40LTIuNjEgNy42OWEyOC41MyAyOC41MyAwIDAgMS04LjI0IDkuNTggMzUuMDEgMzUuMDEgMCAwIDEtMTEuOTYgNS41NyA1NS4yNSA1NS4yNSAwIDAgMS0xMi41NyAxLjc3Yy00LjMyLS4xLTguNjEtLjcxLTEyLjc1LTEuOGEzNS4wNSAzNS4wNSAwIDAgMS0xMS45Ni01LjU3IDI4LjUyIDI4LjUyIDAgMCAxLTguMjMtOS41OGMtMS44Ni0zLjQ0LTIuOS03LjU1LTMuMDktMTIuMmwtLjAxLTcuNDdoODkuMTZhLjcuNyAwIDAgMCAuNy0uNzJ2LTM5LjVjLS4xLTcuNjUtMS41OC0xNC40LTQuMzgtMjAuMDZhNDAuNCA0MC40IDAgMCAwLTExLjk1LTE0LjU2IDUyLjM3IDUyLjM3IDAgMCAwLTE3LjQ4LTguNDcgNzcuNTYgNzcuNTYgMCAwIDAtMjAuMDEtMi43N1oiLz48cGF0aCBmaWxsPSIjY2U0OTJlIiBkPSJNNDE5LjM4IDI4MC42M2gtNy41N2EuNy43IDAgMCAwLS43MS43MXYxNS40MmE4LjE3IDguMTcgMCAwIDAtMy43OCA2LjkgOC4yOCA4LjI4IDAgMCAwIDE2LjU0IDAgOC4yOSA4LjI5IDAgMCAwLTMuNzYtNi45di0xNS40MmEuNy43IDAgMCAwLS43Mi0uNzEiLz48L2c%2BPC9zdmc%2B&logoColor=white&labelColor=white)](https://a-sit-plus.github.io)
 [![Powered by VC-K](https://img.shields.io/badge/VC--K-powered-8A2BE2?logo=data%3Aimage%2Fsvg%2Bxml%3Bbase64%2CPHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA4LjAzIDkuNSI+PGcgZmlsbD0iIzhhMmJlMiIgZm9udC1mYW1pbHk9IlZBTE9SQU5UIiBmb250LXNpemU9IjEyLjciIHRleHQtYW5jaG9yPSJtaWRkbGUiPjxwYXRoIGQ9Ik01OS42NCAyMjIuMTNxMC0uOTguMzYtMS44Mi4zNy0uODQuOTgtMS40Ni42Mi0uNjIgMS40Ni0uOTYuODMtLjM2IDEuOC0uMzUgMS4wMy4wMiAxLjkuNDIuODcuNCAxLjUgMS4xMi4wNC4wNS4wMy4xMSAwIC4wNy0uMDUuMWwtMSAuODZxLS4wNi4wMy0uMTIuMDN0LS4xLS4wNnEtLjQyLS40OC0xLS43Ni0uNTYtLjMtMS4yMi0uMjgtLjYuMDEtMS4xMy4yNy0uNTQuMjQtLjkzLjY3LS40LjQyLS42Mi45OC0uMjMuNTYtLjIzIDEuMiAwIC42My4yNCAxLjE4LjI0LjU2LjY1Ljk4LjQuNDIuOTQuNjYuNTMuMjMgMS4xNC4yMy42My0uMDEgMS4yLS4zLjU1LS4yNy45Ni0uNzUuMDQtLjA1LjEtLjA1LjA2LS4wMi4xMS4wM2wxIC44NnEuMDYuMDMuMDYuMS4wMS4wNi0uMDMuMTEtLjY0LjczLTEuNTMgMS4xNC0uOS40MS0xLjk1LjQtLjk1IDAtMS43OS0uMzYtLjgyLS4zNy0xLjQzLS45OS0uNjEtLjYzLS45NS0xLjQ4LS4zNS0uODUtLjM1LTEuODN6IiBzdHlsZT0iLWlua3NjYXBlLWZvbnQtc3BlY2lmaWNhdGlvbjpWQUxPUkFOVDt0ZXh0LWFsaWduOmNlbnRlciIgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTU5LjY0IC0yMTcuNDIpIi8+PHBhdGggZD0iTTY2LjIxIDIyMS4zNWgxLjNjLjEgMCAuMTYuMDYuMTYuMTd2MS4zOGMwIC4xMS0uMDUuMTctLjE2LjE3aC0xLjNjLS4xIDAtLjE2LS4wNi0uMTYtLjE3di0xLjM4YzAtLjExLjA1LS4xNy4xNi0uMTd6IiBsZXR0ZXItc3BhY2luZz0iLTMuMTIiIHN0eWxlPSItaW5rc2NhcGUtZm9udC1zcGVjaWZpY2F0aW9uOlZBTE9SQU5UO3RleHQtYWxpZ246Y2VudGVyIiB0cmFuc2Zvcm09InRyYW5zbGF0ZSgtNTkuNjQgLTIxNy40MikiLz48L2c+PC9zdmc+&logoColor=white&labelColor=white)](https://github.com/a-sit-plus/vck)
-[![Kotlin](https://img.shields.io/badge/kotlin-2.3.0-blue.svg?logo=kotlin)](http://kotlinlang.org)
+[![Kotlin](https://img.shields.io/badge/kotlin-2.3.20-blue.svg?logo=kotlin)](http://kotlinlang.org)
 
 
 </div>
@@ -35,8 +35,12 @@ Digital Credentials API.
 - **Digital Credentials API support** for OpenID4VP and ISO mDoc requests.
 - **DCQL request generation** from selected credential attributes.
 - **Signed authorization requests** using X.509 based client identifier schemes.
-- **Response validation** for OpenID4VP, SD-JWT VC, and ISO mDoc presentations.
-- **Status list resolution** for token status checks.
+- **Response validation** for OpenID4VP, SD-JWT VC, and ISO mDoc presentations, with a **validation report** listing every check of the response, its presentations, credentials and status lists on the result page.
+- **Trust from the EU Lists of Trusted Entities (LoTE)**: issuers and status list signers are trusted per credential type through the lists of the configured stages, next to the A-SIT root.
+- **Status list resolution** for token status checks (JWT and CWT status lists, CWT identifier lists), cached and with a timeout.
+- **Wallet-relying party certificates**: requests signed with a selectable access certificate (WRPAC), carrying a registration certificate (WRPRC) as JWT in OpenID4VP `verifier_info` and as CWT in ISO 18013-7 Annex C `euWrprc`.
+- **EUDI Wallet Launchpad 2026 test cases** for remote presentation, see `remote-case.html`.
+- **Native DC API demonstrators** for iOS and Android.
 - **Verifier key configuration** with ephemeral, PEM file, or Java KeyStore backed keys.
 - **Credential profile examples** for PID, mDL, age verification, EHIC, tax ID, certificate of residence, and power of representation.
 
@@ -45,10 +49,12 @@ Digital Credentials API.
 The service delegates the protocol-heavy work to VC-K and related A-SIT Plus wallet
 libraries:
 
-- `OpenId4VpVerifier` creates OpenID4VP authorization requests and validates wallet responses.
-- `Iso180137AnnexCVerifier` creates and validates ISO 18013-7 Annex C mDoc requests for DC API flows.
+- `OpenId4VpVerifier` creates OpenID4VP authorization requests (as a `CreatedRequest` with the wallet URL and the request object to serve) and validates wallet responses.
+- `DcApiVerifier` creates Digital Credentials API requests for OpenID4VP (signed or unsigned) and ISO 18013-7 Annex C, the latter with reader authentication, and validates their responses.
 - `CredentialPresentationRequestBuilder` converts selected credentials and attributes into DCQL and ISO mDoc device requests.
-- `VerifierAgent`, `ValidatorSdJwt`, and `ValidatorMdoc` validate credential presentations and their cryptographic material.
+- `CredentialValidator` validates every presented credential under a `ValidationPolicy`: issuer signature and trust, holder binding, validity period, and status with a `StatusValidator`. Both verifiers return a `ValidationReport` of the response, which the result page shows check by check.
+- `LoTEFilterService` and `LoteProfile` select the trust anchors of each credential type from the Lists of Trusted Entities, whose signatures are verified with `VerifyJwsObjectJades`.
+- `PreparedHttpResponse` carries the status, headers and encoded body VC-K prepares, e.g. request objects and response acknowledgements, which are passed to Spring unchanged.
 - `ClientIdScheme.CertificateHash`, `ClientIdScheme.CertificateSanDns`, and `ClientIdScheme.RedirectUri` model the different verifier identification profiles.
 - Credential schemes are no longer compiled in per credential. Instead a `RemoteCredentialMetadataRegistry` (from `vck-openid-ktor`) resolves [SD-JWT Type Metadata](https://github.com/a-sit-plus/credentials-collection) documents over HTTP at runtime; no `Initializer.initWithVCK()` calls are needed. The `eupid` and `mobiledrivinglicence` libraries are still on the classpath, but only to register the ISO mdoc value serializers for non-primitive claims (dates, portrait, driving privileges).
 
@@ -58,6 +64,9 @@ The main integration points are:
 - [`RelyingPartyConfiguration.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/RelyingPartyConfiguration.kt) loads verifier signing keys and registers the remote metadata registry and ISO value serializers with VC-K.
 - [`VerifierProfiles.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/VerifierProfiles.kt) defines the supported verifier profiles and builds OpenID4VP, DC API, and ISO mDoc requests.
 - [`ApiController.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/ApiController.kt) creates transactions, returns request objects, receives wallet responses, and invokes VC-K validation.
+- [`CredentialValidation.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/CredentialValidation.kt) configures the `CredentialValidator`: one trust scope per credential type from the Lists of Trusted Entities, fetched by [`TrustListService.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/TrustListService.kt), and status lists fetched by [`StatusListTokenFetcher.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/StatusListTokenFetcher.kt).
+- [`ValidationReportView.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/ValidationReportView.kt) turns VC-K's validation report into the view of the result page.
+- [`WrpCertificateStore.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/WrpCertificateStore.kt) loads the configured access and registration certificates.
 - [`TransactionRequest.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/TransactionRequest.kt) maps UI selections to VC-K credential request options.
 - [`LoginConfigController.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/LoginConfigController.kt) serves the UI's credential/attribute picker (`/js/login-config.js`), generated from the type-metadata documents instead of a hand-maintained static file.
 
@@ -112,7 +121,7 @@ Wallet
    v
 VC-K validation
    |
-   | validated credentials and validation summaries
+   | validated credentials and validation report
    v
 Result API and demo UI
 ```
@@ -123,12 +132,15 @@ Important endpoints:
 | --- | --- |
 | `POST /transaction/create` | Creates transactions for all supported profiles and returns QR codes, wallet URLs, and DC API URLs. |
 | `GET /transaction/get/{id}` | Returns the signed or unsigned authorization request for device handover flows. |
-| `GET /transaction/get/dcapi/{id}` | Returns Digital Credentials API request options. The optional `dcApiSignedOid4vp` query parameter (boolean, default `true`) controls whether the DC API request expects signed or unsigned OpenID4VP responses. |
+| `GET /transaction/get/dcapi/{id}` | Returns Digital Credentials API request options. Query parameters: `oid4vpMode` (`SIGNED`, `UNSIGNED`, or `NONE`; default `SIGNED`) selects the OpenID4VP request, `isoMdoc` (default `false`) adds an ISO 18013-7 Annex C request, `encrypt` (default `true`) requests an encrypted OpenID4VP response. At least one request type is required. |
 | `POST /transaction/result/{id}` | Receives wallet responses and validates them with VC-K. |
 | `POST /utilities/buildCredentialQueries` | Builds a DCQL query from credential selections. |
 | `GET /api/items` | Returns validated presentation results stored by the demo. |
-| `GET /api/single/{id}` | Returns one validated presentation result. |
-| `POST /api/remove` | Removes a stored demo result. |
+| `GET /api/single/{id}` | Returns one validated presentation result, with its validation report. |
+| `GET /api/wrp/certs/access` | Lists the configured access certificates (WRPAC) to select from. |
+| `GET /api/wrp/certs/registrations` | Lists the configured registration certificates (WRPRC) to select from. |
+| `GET /api/wrp/availability` | Tells whether access and registration certificates are configured. |
+| `GET /js/login-config.js` | The credential and attribute picker of the UI, generated from the type-metadata documents. |
 | `GET /logs/{id}` | Returns log messages captured during processing of a specific transaction. Useful for debugging individual wallet presentation flows. |
 
 ## Quick Start
@@ -156,6 +168,8 @@ Build and test:
 ```bash
 ./gradlew clean assemble test build
 ```
+
+The VC-K version is set in [`gradle/libs.versions.toml`](gradle/libs.versions.toml). If a VC-K checkout exists next to this repository (`../vck`), Gradle includes it as a composite build instead, so changes to VC-K can be tested here without publishing them.
 
 ### Native iOS demonstrator
 
@@ -235,7 +249,7 @@ service/build/libs/
 
 ### Docker
 
-A multi-stage `Dockerfile` is provided in the project root. It builds the application using JDK 17 and produces a minimal JRE-based image.
+A multi-stage `Dockerfile` is provided in the project root. It builds the application using JDK 21 and produces a minimal JRE-based image.
 
 Build the image:
 
@@ -320,7 +334,26 @@ kept), without affecting the other lists.
 `ValidationConfigurationProperties` in
 [`AppConfigurationProperties.kt`](service/src/main/kotlin/at/asit/wallet/relyingparty/AppConfigurationProperties.kt).
 It is strict by default; relax it for test setups, e.g. with
-`require-timeliness: false` or `trust: INTEGRITY_ONLY`.
+`require-timeliness: false` or `trust: INTEGRITY_ONLY`. Parsing, signatures and
+holder binding are always checked.
+
+```yaml
+app:
+  validation:
+    trust: REQUIRE_AUTHORIZED_SIGNER          # or INTEGRITY_ONLY: issuers are reported, but need not be trusted
+    status: VALIDATE_IF_PRESENT               # or SKIP, or REQUIRE_CLAIM: every credential needs a status
+    status-signer-trust: REQUIRE_AUTHORIZED_SIGNER
+    accepted-status: [0]                      # token statuses accepted, 0 being valid
+    require-timeliness: true                  # reject expired or not yet valid credentials
+    time-leeway: 5m
+```
+
+The result page shows the decision of every check under this policy; a
+credential that is rejected is listed with the reason, but without its claims.
+Status lists are fetched while the wallet waits for its response to be
+acknowledged: a status list server that does not answer within 5 seconds leaves
+the status undetermined. Fetched status lists are cached until their `ttl`
+elapses or they expire, but at most for 5 minutes.
 
 ### Optional Spring Boot Admin Client
 
@@ -478,19 +511,16 @@ eyJ4NWMiOlsiTUlJQ1NqQ0NBZStnQXdJQkFnSVZBTlRMWXAwMXQ2VWY5dVVWWU5yMmJLaXZsbC9JTUFv
 ```json
 {
   "name": "Demo Services",
-  "sub_ln": "Service",
+  "sub_ln": [ "Service" ],
   "sub": "WRP-5BF7F0FA3DBB",
   "country": "AT",
   "registry_uri": "https://wrp-registrar.a-sit.plus/wrp",
-  "srv_description": [
-    [ { "lang": "en", "value": "Identity Check" } ]
-  ],
-  "entitlements": [ "access-service" ],
-  "privacy_policy": "https://services.example.at/privacy/identity-check",
-  "info_uri": "",
-  "support_uri": "https://wallet.a-sit.plus/support",
-  "supervisory_authority": {},
-  "policy_id": [],
+  "srv_description": [ { "lang": "en", "value": "Identity Check" } ],
+  "entitlements": [ "https://uri.etsi.org/19475/Entitlement/Service_Provider" ],
+  "privacy_policy": [ "https://services.example.at/privacy/identity-check" ],
+  "support_uri": [ "https://wallet.a-sit.plus/support" ],
+  "supervisory_authority": { "uri": [ "https://www.dsb.gv.at" ] },
+  "policy_id": [ "0.4.0.19475.3.1" ],
   "certificate_policy": "https://wrp-registrar.a-sit.plus/certificate-policy",
   "iat": 1783589391,
   "status": {
@@ -502,16 +532,18 @@ eyJ4NWMiOlsiTUlJQ1NqQ0NBZStnQXdJQkFnSVZBTlRMWXAwMXQ2VWY5dVVWWU5yMmJLaXZsbC9JTUFv
   "credentials": [
     {
       "format": "mso_mdoc",
-      "meta": { "doctype_value": "eu.europa.ec.eudi.pid.1", "vct_values": [] },
+      "meta": { "doctype_value": "eu.europa.ec.eudi.pid.1" },
       "claim": [ { "path": [ "eu.europa.ec.eudi.pid.1", "given_name" ] } ]
     }
   ],
   "intended_use_id": "urn:uuid:ba626804-d6a1-5147-b3c9-b888f58e8bb5",
-  "provides_attestations": [],
   "public_body": false,
   "exp": 1815125391
 }
 ```
+
+Wallets validating WRPRCs with VC-K 9 apply the multiplicities of ETSI TS 119 475 V1.2.1, Annex B: `support_uri`, `supervisory_authority` and `policy_id` (with the WRPRC policy `0.4.0.19475.3.1`) are required, an entitlement of Annex A.2 is required, a service provider needs a `purpose`, and empty arrays, e.g. an empty `provides_attestations`, are rejected. `sub_ln`, `privacy_policy`, `info_uri` and `support_uri` may hold several values. `srv_description` holds the localized descriptions of the one service the WRPRC is issued for; the request page also reads it as an array of such arrays.
+
 Reference: https://www.etsi.org/deliver/etsi_ts/119400_119499/119475/01.02.01_60/ts_119475v010201p.pdf
 
 
@@ -552,7 +584,7 @@ not a drop-in production service. Keep these points in mind when using it:
 - **Supported profiles are hard-coded**: verifier profiles are defined in `VerifierProfiles.kt`. Adjust that file if your wallet requires a different client identifier scheme, response mode, protocol draft, or DC API variant.
 - **The static UI is a demo client**: the frontend is intentionally simple and mirrors some backend constants. Treat it as an example, not as a finished application UI.
 - **Browser DC API support depends on the runtime environment**: Digital Credentials API behavior is browser, platform, flag, and wallet dependent.
-- **Remote issuer metadata and status list resolution are used during validation**: make sure the service can reach issuer metadata and status list endpoints required by the presented credentials.
+- **Trust lists and status lists are fetched over the network**: make sure the service can reach the Lists of Trusted Entities of the configured stages and the status list endpoints referenced by the presented credentials. Without the lists, only the A-SIT root is trusted.
 - **Credential type metadata is fetched at runtime**: credential schemes and the UI picker are resolved from the documents at the `CredentialCatalog.BASE_URL` branch of [`credentials-collection`](https://github.com/a-sit-plus/credentials-collection). The service must be able to reach those raw URLs; a credential whose document is unreachable on cold start is omitted until the next request (successful documents are cached). The default branch is `main` — point it at a branch that actually hosts the documents.
 
 ## Contributing
