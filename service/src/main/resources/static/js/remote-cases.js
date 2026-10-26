@@ -4,6 +4,8 @@
 const pidSd = {schemeType: 'urn:eudi:pid:1', representation: 'SD_JWT'}
 const pidMdoc = {schemeType: 'eu.europa.ec.eudi.pid.1', representation: 'ISO_MDOC'}
 const mdl = {schemeType: 'org.iso.18013.5.1.mDL', representation: 'ISO_MDOC'}
+const photoId = {schemeType: 'org.iso.23220.photoid.1', representation: 'ISO_MDOC', label: 'Photo ID'}
+const mvc = {schemeType: 'org.iso.7367.1.mVRC', representation: 'ISO_MDOC', label: 'mVC'}
 
 const flow = {
     redirect: {label: 'OpenID4VP redirect (eu-eaap://)', profileName: 'EUDIW2026', selection: null},
@@ -14,7 +16,8 @@ const flow = {
 function presentation(number, title, flowKey, credentials, note = '') {
     return {
         id: number, title, flow: flowKey, credentials,
-        description: `Present ${title.toLowerCase()} to the remote verifier using ${flow[flowKey].label}.`,
+        // Lower-case only a leading word, keeping abbreviations such as PID, mDL or Photo ID.
+        description: `Present ${title.replace(/^[A-Z](?=[a-z])/, letter => letter.toLowerCase())} to the remote verifier using ${flow[flowKey].label}.`,
         precondition: 'The wallet contains the requested credential(s). The verifier trusts the issuer anchor from the LoTE, and the wallet trusts the reader WRPAC and WRPRC.',
         expected: 'The wallet asks for consent. After sharing, the reader displays the credential data.',
         note,
@@ -27,8 +30,12 @@ export const remoteCases = [
     presentation(3, 'mDL in mdoc format', 'redirect', [mdl]),
     presentation(4, 'Combined PID and mDL', 'redirect', [pidMdoc, pidSd, mdl],
         'Combine only credentials that worked individually. Remove any unavailable credential in Request Details.'),
-    presentation(5, 'PID in SD-JWT format', 'annex', [pidSd],
-        'Optional playbook case. This service cannot encode SD-JWT VC in the ISO device request/response; the Annex C action is unavailable.'),
+    {
+        ...presentation(5, 'PID in SD-JWT format', 'annex', [pidSd],
+            'Optional playbook case. This service cannot encode SD-JWT VC in the ISO device request/response; the Annex C action is unavailable.'),
+        unsupported: 'ISO Annex C with SD-JWT VC cannot be started by this service. Use a reader with SD-JWT VC device request/response support for this optional case.',
+        badge: 'Optional · service limitation',
+    },
     presentation(6, 'PID in mdoc format', 'annex', [pidMdoc]),
     presentation(7, 'mDL in mdoc format', 'annex', [mdl]),
     presentation(8, 'Combined PID and mDL in mdoc format', 'annex', [pidMdoc, mdl],
@@ -88,6 +95,16 @@ export const remoteCases = [
         note: 'The external signature service performs the document-signing flow.',
         externalUrl: 'https://apps.egiz.gv.at/drivingapp/',
     },
+    ...[
+        [22, photoId, 'redirect'], [23, mvc, 'redirect'],
+        [24, photoId, 'annex'], [25, mvc, 'annex'],
+        [26, photoId, 'dcapi'], [27, mvc, 'dcapi'],
+    ].map(([number, credential, flowKey]) => ({
+        ...presentation(number, `${credential.label} in mdoc format`, flowKey, [credential]),
+        precondition: `The wallet contains the ${credential.label}. The verifier trusts the issuer anchor from the VICAL, and the wallet trusts the reader WRPAC and WRPRC.`,
+        unsupported: `This service has no credential definition for the ${credential.label} (${credential.schemeType}) and does not load the VICAL that the playbook uses as its issuer trust anchor.`,
+        badge: 'Not supported by this service',
+    })),
 ]
 
 export function caseById(id) {

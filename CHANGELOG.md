@@ -13,6 +13,7 @@ Version 9.0.0-SNAPSHOT (unreleased):
  - Create signed requests by reference with VC-K: the QR code carries the wallet URL VC-K generates, and the request object is served by the request VC-K created for it, with the selected WRPAC
  - BREAKING: Rename the verifier profile `MDOCd23` to `MDOC10`, as it uses OpenID4VP 1.0; clients selecting it by `profileName` have to use the new name
  - Fetch the WRPRC providers lists of the configured stages, too, as VC-K 9.0.0-RC1 knows them
+ - Test cases of the EUDI.Wallet Launchpad 2026 playbook v3: offer only the Digital Credentials API for ISO 18013-7 Annex C and OpenID4VP DC API cases, and report when the browser lacks the API or the protocol of the case (`DigitalCredential.userAgentAllowsProtocol`); list Photo ID and mVC cases (Remote_Presentation_22 to 27) as not supported
 
 Version 8.0.0 (unreleased):
  - Add WRPAC and WRPRC support, see Readme
