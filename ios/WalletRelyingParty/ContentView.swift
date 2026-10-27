@@ -13,6 +13,12 @@ struct ContentView: View {
                 Button("Login again", action: authentication.login)
                     .buttonStyle(.bordered)
             } else {
+                Picker("PID format", selection: $authentication.pidFormat) {
+                    ForEach(PidFormat.allCases) { format in
+                        Text(format.label).tag(format)
+                    }
+                }
+                .pickerStyle(.segmented)
                 Button("Login", action: authentication.login)
                     .buttonStyle(.borderedProminent)
             }

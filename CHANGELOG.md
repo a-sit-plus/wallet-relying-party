@@ -13,6 +13,8 @@ Version 9.0.0-SNAPSHOT (unreleased):
  - Create signed requests by reference with VC-K: the QR code carries the wallet URL VC-K generates, and the request object is served by the request VC-K created for it, with the selected WRPAC
  - BREAKING: Rename the verifier profile `MDOCd23` to `MDOC10`, as it uses OpenID4VP 1.0; clients selecting it by `profileName` have to use the new name
  - Fetch the WRPRC providers lists of the configured stages, too, as VC-K 9.0.0-RC1 knows them
+ - ISO 18013-7 Annex C: Request the PID, and other SD-JWT VCs with selected claims, in SD-JWT format in the ISO device request, and validate it from the device response, as proposed by WG10 N2933 (experimental), in the request form, the remote test case Remote_Presentation_05, and the Android and iOS demonstrators, which select the PID format; the wallet has to support it, which Valera's Digital Credentials API matcher does not yet. Requires VC-K with N2933 support, i.e. its `feature/iso-sdjwt-n2933` branch as composite build until released
+ - Label the check of the requested credentials of a response without referring to DCQL, as ISO 18013-7 Annex C requests documents
  - Test cases of the EUDI.Wallet Launchpad 2026 playbook v3: offer only the Digital Credentials API for ISO 18013-7 Annex C and OpenID4VP DC API cases, and report when the browser lacks the API or the protocol of the case (`DigitalCredential.userAgentAllowsProtocol`); list Photo ID and mVC cases (Remote_Presentation_22 to 27) as not supported
 
 Version 8.0.0 (unreleased):

@@ -8,11 +8,14 @@ import android.net.Uri
 import android.os.Bundle
 import android.util.Base64
 import android.view.Gravity
+import android.view.View
 import android.view.ViewGroup
 import android.widget.Button
 import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.RadioButton
+import android.widget.RadioGroup
 import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
@@ -39,6 +42,7 @@ class MainActivity : ComponentActivity() {
     private val authLauncher = AuthTabIntent.registerActivityResultLauncher(this, ::handleAuthResult)
     private val credentialManager by lazy { CredentialManager.create(this) }
     private var expectedState: UUID? = null
+    private var pidFormat = PidFormat.MDOC
     private lateinit var content: LinearLayout
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -46,6 +50,9 @@ class MainActivity : ComponentActivity() {
         expectedState = savedInstanceState?.getString(STATE_KEY)?.let {
             runCatching { UUID.fromString(it) }.getOrNull()
         }
+        pidFormat = savedInstanceState?.getString(PID_FORMAT_KEY)
+            ?.let { name -> PidFormat.entries.firstOrNull { it.name == name } }
+            ?: PidFormat.MDOC
 
         content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -64,6 +71,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         expectedState?.let { outState.putString(STATE_KEY, it.toString()) }
+        outState.putString(PID_FORMAT_KEY, pidFormat.name)
         super.onSaveInstanceState(outState)
     }
 
@@ -71,7 +79,7 @@ class MainActivity : ComponentActivity() {
         val state = UUID.randomUUID()
         expectedState = state
         val loginUrl = Uri.parse("$SERVICE_URL/remote-case.html").buildUpon()
-            .appendQueryParameter("id", "6")
+            .appendQueryParameter("id", pidFormat.remoteCaseId)
             .appendQueryParameter("client", "android")
             .appendQueryParameter("state", state.toString())
             .build()
@@ -130,10 +138,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun createDirectAuthentication(): DirectAuthentication {
-        val credential = JSONObject()
-            .put("credentialType", "eu.europa.ec.eudi.pid.1")
-            .put("representation", "ISO_MDOC")
-            .put("attributes", JSONArray(PID_ATTRIBUTES))
+        val credential = pidFormat.credentialJson()
         val queries = JSONObject(
             request(
                 "$SERVICE_URL/utilities/buildCredentialQueries",
@@ -238,6 +243,18 @@ class MainActivity : ComponentActivity() {
         content.removeAllViews()
         content.gravity = Gravity.CENTER
         error?.let { addText(it, 16f).setTextColor(0xffb00020.toInt()) }
+        addText("PID format", 16f)
+        content.addView(RadioGroup(this).apply {
+            orientation = RadioGroup.HORIZONTAL
+            PidFormat.entries.forEach { format ->
+                addView(RadioButton(this@MainActivity).apply {
+                    id = View.generateViewId()
+                    text = format.label
+                    isChecked = format == pidFormat
+                    setOnCheckedChangeListener { _, checked -> if (checked) pidFormat = format }
+                })
+            }
+        })
         content.addView(Button(this).apply {
             text = "Login with Android"
             setOnClickListener { directLogin() }
@@ -314,15 +331,7 @@ class MainActivity : ComponentActivity() {
         const val SERVICE_URL = "https://wallet-rp.a-sit.plus"
         const val CALLBACK_SCHEME = "wallet-rp"
         const val STATE_KEY = "authentication-state"
-        val PID_ATTRIBUTES = listOf(
-            "family_name",
-            "given_name",
-            "birth_date",
-            "nationality",
-            "expiry_date",
-            "issuing_authority",
-            "issuing_country",
-        )
+        const val PID_FORMAT_KEY = "pid-format"
     }
 }
 

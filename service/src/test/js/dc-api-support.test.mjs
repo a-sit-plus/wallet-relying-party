@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import {DC_API_PROTOCOLS, dcApiSupport} from '../../main/resources/static/js/dc-api-support.mjs'
+import {DC_API_PROTOCOLS, dcApiSupport, isAnnexCRequest} from '../../main/resources/static/js/dc-api-support.mjs'
 
 test('reports no protocol without the Digital Credentials API', () => {
     const support = dcApiSupport({})
@@ -32,4 +32,21 @@ test('can not tell when the browser throws for a protocol', () => {
     })
 
     assert.equal(support.allows(DC_API_PROTOCOLS.openId4VpUnsigned), null)
+})
+
+function credential(representation, ...selected) {
+    return {representation: {value: representation}, attributes: selected.map(isSelected => ({isSelected}))}
+}
+
+test('ISO Annex C carries mdocs, and SD-JWT VCs with selected claims', () => {
+    assert.equal(isAnnexCRequest([credential('ISO_MDOC')]), true)
+    assert.equal(isAnnexCRequest([credential('SD_JWT', false, true)]), true)
+    assert.equal(isAnnexCRequest([credential('ISO_MDOC'), credential('SD_JWT', true)]), true)
+})
+
+test('ISO Annex C can not request all claims of an SD-JWT VC, other formats, or nothing', () => {
+    assert.equal(isAnnexCRequest([credential('SD_JWT', false)]), false)
+    assert.equal(isAnnexCRequest([credential('SD_JWT')]), false)
+    assert.equal(isAnnexCRequest([credential('ISO_MDOC'), credential('PLAIN_JWT', true)]), false)
+    assert.equal(isAnnexCRequest([]), false)
 })

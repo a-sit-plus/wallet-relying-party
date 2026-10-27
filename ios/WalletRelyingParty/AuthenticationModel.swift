@@ -6,19 +6,13 @@ final class AuthenticationModel: NSObject, ObservableObject, ASWebAuthentication
     @Published private(set) var isAuthenticating = false
     @Published private(set) var result: AuthenticationResult?
     @Published private(set) var errorMessage: String?
+    @Published var pidFormat: PidFormat = .mdoc
 
     private var session: ASWebAuthenticationSession?
 
     func login() {
         let state = UUID()
-        var components = URLComponents(string: "https://wallet-rp.a-sit.plus/remote-case.html")!
-        components.queryItems = [
-            URLQueryItem(name: "id", value: "6"),
-            URLQueryItem(name: "client", value: "ios"),
-            URLQueryItem(name: "state", value: state.uuidString),
-        ]
-
-        guard let loginURL = components.url else {
+        guard let loginURL = pidFormat.loginURL(state: state) else {
             errorMessage = AuthenticationError.invalidLoginURL.localizedDescription
             return
         }

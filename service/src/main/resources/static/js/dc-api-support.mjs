@@ -27,3 +27,20 @@ export function dcApiSupport(scope = globalThis) {
         },
     }
 }
+
+// Whether an ISO 18013-7 Annex C (org-iso-mdoc) request can carry the selected credentials: ISO mdocs, and SD-JWT VCs
+// as proposed by WG10 N2933. The device request lists the requested claims of an SD-JWT VC explicitly, so at least one
+// has to be selected; it can not request all claims. Credentials are as selected in the request form, i.e. with
+// `representation.value` and `attributes` that are `isSelected`.
+export function isAnnexCRequest(credentials = []) {
+    return credentials.length > 0 && credentials.every(credential => {
+        switch (credential?.representation?.value) {
+            case 'ISO_MDOC':
+                return true
+            case 'SD_JWT':
+                return (credential.attributes || []).some(attribute => attribute.isSelected)
+            default:
+                return false
+        }
+    })
+}

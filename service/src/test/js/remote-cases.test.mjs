@@ -25,5 +25,12 @@ test('transport groups select the requested protocol', () => {
 })
 
 test('cases this service can not run explain why', () => {
-    assert.deepEqual(remoteCases.filter(item => item.unsupported).map(item => item.id), [5, 22, 23, 24, 25, 26, 27])
+    assert.deepEqual(remoteCases.filter(item => item.unsupported).map(item => item.id), [22, 23, 24, 25, 26, 27])
+})
+
+test('the PID in SD-JWT format is requested over ISO Annex C', () => {
+    const pidSdJwtAnnexC = remoteCases.find(item => item.id === 5)
+    assert.equal(pidSdJwtAnnexC.flow, 'annex')
+    assert.deepEqual(pidSdJwtAnnexC.credentials, [{schemeType: 'urn:eudi:pid:1', representation: 'SD_JWT'}])
+    assert.deepEqual(caseFlow(pidSdJwtAnnexC).selection, {oid4vpMode: 'NONE', isoMdoc: true, encrypt: true})
 })

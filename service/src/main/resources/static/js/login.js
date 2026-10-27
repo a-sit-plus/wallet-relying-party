@@ -1,4 +1,5 @@
 import {createApp, ref, watch, computed, nextTick} from 'vue'
+import {isAnnexCRequest} from './dc-api-support.mjs'
 
 // --- STATIC --------------------------------------------------------
 
@@ -46,11 +47,8 @@ const createBasicSetup = function (config, options = {}) {
         oldRequestJSON: null,
         changed: false,
     })
-    // ISO 18013-7 Annex C only works when the whole request is mdoc (the DCQL can't otherwise be converted).
-    const isMdocRequest = computed(() => {
-        const credentials = reqSelection.value.credentials || []
-        return credentials.length > 0 && credentials.every(c => c?.representation?.value === 'ISO_MDOC')
-    })
+    // ISO 18013-7 Annex C carries ISO mdocs, and SD-JWT VCs with selected claims (WG10 N2933), see isAnnexCRequest.
+    const annexCRequest = computed(() => isAnnexCRequest(reqSelection.value.credentials || []))
     const requestedCredentialsChanged = ref({
         oldRequestedCredentialsJSON: null,
         changed: false,
@@ -133,8 +131,8 @@ const createBasicSetup = function (config, options = {}) {
 
     function validateDcApiSelection(selection) {
         const errors = [];
-        // ISO Annex C only counts as a selection when the current request is actually mdoc.
-        const isoSelected = selection?.isoMdoc === true && isMdocRequest.value
+        // ISO Annex C only counts as a selection when Annex C can carry the current request.
+        const isoSelected = selection?.isoMdoc === true && annexCRequest.value
         if (!selection || !['NONE', 'SIGNED', 'UNSIGNED'].includes(selection.oid4vpMode)) {
             errors.push("Please choose an OpenID4VP mode for the Digital Credentials API request.");
         } else if (selection.oid4vpMode === 'NONE' && !isoSelected) {
@@ -163,7 +161,7 @@ const createBasicSetup = function (config, options = {}) {
             }
 
             requestUrl.searchParams.set('oid4vpMode', selection.oid4vpMode)
-            requestUrl.searchParams.set('isoMdoc', String(selection.isoMdoc === true && isMdocRequest.value))
+            requestUrl.searchParams.set('isoMdoc', String(selection.isoMdoc === true && annexCRequest.value))
             requestUrl.searchParams.set('encrypt', String(selection.encrypt !== false))
             console.log("Going to pre-fetch from requestUri", requestUrl.toString())
 
@@ -670,7 +668,7 @@ const createBasicSetup = function (config, options = {}) {
         wrpacPreviews,
         wrprcPreviews,
         reqSelection,
-        isMdocRequest,
+        annexCRequest,
         selections,
         reqResult,
         activeProfileName,
