@@ -8,6 +8,7 @@ Version 9.0.0-SNAPSHOT (unreleased):
  - Trust credential types without a list of their own through the Pub-EAA providers list, and status list signers through the revocation services of the lists; fetch the lists of the development and acceptance stages by default, skipping lists a stage does not publish
  - Cache status list tokens until their `ttl` elapses or they expire, at most 5 minutes, sharing concurrent fetches; time out fetching them after 5 seconds
  - Status lists: Accept CWTs tagged as COSE_Sign1 (tag 18), and report a token that cannot be parsed with the content type it has been served with
+ - Status lists: Verify the signature of CWTs whose protected header is encoded in deterministic order, e.g. of the EUDI Wallet reference implementation, until Signum verifies the protected header as received
  - Configure a WRPRC as JWT (`path`) and CWT (`cwt-path`) in one `app.wrp.rc` entry, sending the JWT in OpenID4VP `verifier_info` and the CWT in ISO 18013-7 Annex C `euWrprc`; load CWTs binary, base64-encoded, or tagged as CWT (tag 61) and/or COSE_Sign1 (tag 18), and always send them untagged; reject a WRPRC entry that has neither
  - Show the summary of a WRPRC given only as CWT, and the service description of WRPRCs that encode `srv_description` as one array of localized strings
  - Create signed requests by reference with VC-K: the QR code carries the wallet URL VC-K generates, and the request object is served by the request VC-K created for it, with the selected WRPAC

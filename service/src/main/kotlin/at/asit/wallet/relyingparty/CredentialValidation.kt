@@ -12,6 +12,7 @@ import at.asitplus.wallet.lib.validation.CredentialTrustAnchors
 import at.asitplus.wallet.lib.validation.CredentialTrustScope
 import at.asitplus.wallet.lib.validation.CredentialTrustScopes
 import at.asitplus.wallet.lib.validation.CredentialValidator
+import at.asitplus.wallet.lib.validation.SignatureCheck
 import at.asitplus.wallet.lib.validation.StatusValidator
 import at.asitplus.wallet.lib.validation.ValidationPolicy
 import at.asitplus.wallet.lib.validation.credentialTrustScope
@@ -89,7 +90,11 @@ class CredentialValidationConfiguration {
         statusListTokenResolver: StatusListTokenResolver,
     ) = CredentialValidator(
         trustAnchors = credentialTrustAnchors,
-        statusValidator = StatusValidator(statusListTokenResolver),
+        statusValidator = StatusValidator(
+            statusListTokenResolver = statusListTokenResolver,
+            // TODO Remove once Signum verifies the protected header of COSE_Sign1 as received
+            signatureCheck = SignatureCheck(DeterministicCoseHeaderVerifySignature()),
+        ),
     )
 }
 
