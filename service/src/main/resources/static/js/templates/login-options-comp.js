@@ -12,7 +12,7 @@ export default {
         'changed',
         'error',
         'dcapiSelection',
-        'isoMdocRequest',
+        'annexCRequest',
         'profileNames',
         'flow'
     ],
@@ -36,7 +36,7 @@ export default {
             return [
                 selection.oid4vpMode === 'SIGNED' ? DC_API_PROTOCOLS.openId4VpSigned : null,
                 selection.oid4vpMode === 'UNSIGNED' ? DC_API_PROTOCOLS.openId4VpUnsigned : null,
-                this.isoMdocRequest && selection.isoMdoc ? DC_API_PROTOCOLS.isoMdoc : null,
+                this.annexCRequest && selection.isoMdoc ? DC_API_PROTOCOLS.isoMdoc : null,
             ].filter(Boolean)
         },
         unsupportedProtocols() {
@@ -203,7 +203,7 @@ export default {
                             <label class="form-check-label" :for="'dcapi-oid4vp-unsigned-' + profile.name">Unsigned OpenID4VP</label>
                         </div>
                     </fieldset>
-                    <div v-if="!flow && isoMdocRequest" class="form-check text-start">
+                    <div v-if="!flow && annexCRequest" class="form-check text-start">
                         <input class="form-check-input" type="checkbox" :id="'dcapi-iso-' + profile.name"
                                :checked="dcapiSelection.isoMdoc === true"
                                @change="$emit('update:dcapiSelection', { ...dcapiSelection, isoMdoc: $event.target.checked })">
@@ -222,7 +222,7 @@ export default {
                     </div>
                     <div class="text-center mt-3">
                         <button @click="$emit('invokeDCAPI', profile.dcApiUrl || profile.url, dcapiSelection)"
-                                :disabled="(dcapiSelection.oid4vpMode === 'NONE' && !(isoMdocRequest && dcapiSelection.isoMdoc)) || noSupportedProtocol"
+                                :disabled="(dcapiSelection.oid4vpMode === 'NONE' && !(annexCRequest && dcapiSelection.isoMdoc)) || noSupportedProtocol"
                                 class="btn btn-primary">Start Request</button>
                     </div>
                     </template>

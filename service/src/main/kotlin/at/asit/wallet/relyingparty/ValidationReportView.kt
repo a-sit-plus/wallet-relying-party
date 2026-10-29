@@ -182,7 +182,7 @@ private val checkLabels = mapOf(
     "encryption" to "Response encryption",
     "expectedOrigin" to "Expected origin",
     "requestState" to "Request state",
-    "submissionRequirements" to "Requested credentials (DCQL)",
+    "submissionRequirements" to "Requested credentials",
     "retrieval" to "Retrieval",
     "signerTrust" to "Signer trust",
     "subject" to "Subject",

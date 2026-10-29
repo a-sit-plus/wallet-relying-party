@@ -1,7 +1,11 @@
 package at.asit.wallet.relyingparty
 
+import at.asitplus.dcapi.DCAPIResponse
+import at.asitplus.dcapi.DigitalCredentialInterface
+import at.asitplus.dcapi.IsoMdocResponse
 import at.asitplus.dcapi.request.verifier.CredentialRequestOptions
 import at.asitplus.dcapi.request.verifier.DigitalCredentialGetRequest
+import at.asitplus.iso.DocRequestInfo
 import at.asitplus.iso.IssuerSignedItem
 import at.asitplus.openid.AuthenticationRequestParameters
 import at.asitplus.openid.OidcUserInfoExtended
@@ -26,6 +30,8 @@ import at.asitplus.wallet.lib.agent.validation.relyingParty.ReaderAuthentication
 import at.asitplus.wallet.lib.cbor.SignCose
 import at.asitplus.wallet.lib.data.ConstantIndex
 import at.asitplus.wallet.lib.data.ConstantIndex.AtomicAttribute2023
+import at.asitplus.wallet.lib.data.CredentialPresentation
+import at.asitplus.wallet.lib.data.CredentialPresentationRequest
 import at.asitplus.wallet.lib.data.rfc.tokenStatusList.StatusListInfo
 import at.asitplus.wallet.lib.openid.AuthenticationResponseResult
 import at.asitplus.wallet.lib.openid.CredentialPresentationRequestBuilder
@@ -334,6 +340,89 @@ class ProcessTest {
     }
 
     @Test
+    fun `DC API Annex C requests an SD-JWT VC with its claims identified by their path`() = runTest {
+        val profile = createTransaction(ConstantIndex.CredentialRepresentation.SD_JWT, profileName = "EUDIW2026")
+            .profiles.single()
+
+        val itemsRequest = joseCompliantSerializer.decodeFromString<CredentialRequestOptions>(
+            dcApiBody(profile.id, "?oid4vpMode=NONE&isoMdoc=true&encrypt=true")
+        ).digital.requests.filterIsInstance<DigitalCredentialGetRequest.IsoMdoc>().single()
+            .data.deviceRequest.docRequests.single().itemsRequest.value
+        assertEquals(AtomicAttribute2023.sdJwtType, itemsRequest.docType)
+        assertEquals(DocRequestInfo.DOC_FORMAT_SD_JWT, itemsRequest.requestInfo?.docFormat)
+        assertEquals(
+            listOf(AtomicAttribute2023.CLAIM_GIVEN_NAME),
+            itemsRequest.namespaces.getValue(DocRequestInfo.SD_JWT_NAMESPACE).entries.map { it.dataElementIdentifier },
+        )
+    }
+
+    @Test
+    fun `DC API Annex C can not request all claims of an SD-JWT VC`() = runTest {
+        val profile = createTransaction(
+            ConstantIndex.CredentialRepresentation.SD_JWT,
+            profileName = "EUDIW2026",
+            attributes = emptyList(),
+        ).profiles.single()
+
+        assertEquals(400, dcApiResult(profile.id, "?oid4vpMode=NONE&isoMdoc=true&encrypt=true").response.status)
+    }
+
+    @Test
+    fun `DC API Annex C roundtrip with an SD-JWT VC in the device response`() = runTest {
+        val givenName = uuid4().toString()
+        val profile = createTransaction(ConstantIndex.CredentialRepresentation.SD_JWT, profileName = "EUDIW2026")
+            .profiles.single()
+        val isoMdocRequest = joseCompliantSerializer.decodeFromString<CredentialRequestOptions>(
+            dcApiBody(profile.id, "?oid4vpMode=NONE&isoMdoc=true&encrypt=true")
+        ).digital.requests.filterIsInstance<DigitalCredentialGetRequest.IsoMdoc>().single().data
+
+        val holderKey = EphemeralKeyWithoutCert()
+        val holder = HolderAgent(keyMaterial = holderKey)
+        val (issuer, _) = TestTrust.issuer(TestTrust.issuerKey)
+        holder.storeCredential(
+            issuer.issueCredential(
+                credentialToBeIssued(
+                    ConstantIndex.CredentialRepresentation.SD_JWT,
+                    givenName,
+                    holderKey.publicKey,
+                    Clock.System.now() + 1.minutes,
+                )
+            ).getOrThrow().toStoreCredentialInput()
+        ).getOrThrow()
+        // the wallet answers as VC-K's DC API holder does, for the origin of the relying party
+        val encryptedResponse = IsoMdocDcapiResponseBuilder.buildEncryptedResponse(
+            credentialPresentation = CredentialPresentation.IsoDeviceRetrievalPresentation(
+                presentationRequest = CredentialPresentationRequest.IsoDeviceRetrieval(isoMdocRequest.deviceRequest),
+                submissions = null,
+            ),
+            isoMdocWalletRequest = RequestParametersFrom.IsoMdocDcApi(
+                parameters = RequestParametersFrom.IsoMdocDcApi.IsoMdocRequestWrapper(isoMdocRequest),
+                jsonString = "",
+                callingOrigin = configuration.publicContext.toString(),
+            ),
+            holder = holder,
+        )
+        val response = mockMvc.post("${Paths.Transaction.ResultUrl}/${profile.id}") {
+            content = joseCompliantSerializer.encodeToString<DigitalCredentialInterface>(
+                IsoMdocResponse(DCAPIResponse(encryptedResponse))
+            )
+            contentType = MediaType.APPLICATION_JSON
+        }.andReturn().awaitAsync()
+        assertEquals(200, response.response.status, response.response.contentAsString)
+
+        val apiItem = checkNotNull(transactionStore.getApiItem(profile.id))
+        assertNull(apiItem.presentationError, apiItem.presentationError)
+        val credential = apiItem.credentials.single()
+        assertEquals(ValidationDecision.ACCEPTED, credential.decision, credential.error)
+        assertEquals(AtomicAttribute2023.sdJwtType, credential.credentialType)
+        assertEquals(givenName, credential.getClaim(AtomicAttribute2023.CLAIM_GIVEN_NAME))
+        val report = checkNotNull(apiItem.validation)
+        assertEquals(ValidationDecision.ACCEPTED, report.decision)
+        assertEquals(OutcomeView.PASSED, report.check("submissionRequirements").outcome)
+        assertTrue(report.children.single().children.single().check("issuerTrust").subject!!.contains(TestTrust.SOURCE))
+    }
+
+    @Test
     fun `DC API rejects an empty selection`() = runTest {
         val p = createTransaction(ConstantIndex.CredentialRepresentation.SD_JWT).profiles.first()
         assertEquals(400, dcApiResult(p.id, "?oid4vpMode=NONE&isoMdoc=false").response.status)
@@ -527,6 +616,7 @@ class ProcessTest {
         selectedWrpacId: Int? = null,
         selectedWrprcId: Int? = null,
         profileName: String? = null,
+        attributes: List<String> = listOf(AtomicAttribute2023.CLAIM_GIVEN_NAME),
     ): TransactionResponse {
         val requestBuilder = CredentialPresentationRequestBuilder(
             listOf(
@@ -534,7 +624,7 @@ class ProcessTest {
                     credentialType = if (representation == ConstantIndex.CredentialRepresentation.ISO_MDOC)
                         AtomicAttribute2023.isoDocType else AtomicAttribute2023.sdJwtType,
                     representation = representation.name,
-                    attributes = listOf(AtomicAttribute2023.CLAIM_GIVEN_NAME),
+                    attributes = attributes,
                 )
             ).map { it.toRequestOptionsCredential() }
         )

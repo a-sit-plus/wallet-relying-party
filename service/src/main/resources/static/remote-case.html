@@ -114,7 +114,7 @@
             <error-alert-comp :error="error"></error-alert-comp>
             <login-options-comp
                     :result="reqResult" :changed="reqChanged" :error="error"
-                    :iso-mdoc-request="isMdocRequest" :dcapi-selection="selections[activeProfileName] || {}"
+                    :annex-c-request="annexCRequest" :dcapi-selection="selections[activeProfileName] || {}"
                     :profile-names="profileNames" :flow="uiFlow"
                     @update:dcapi-selection="selections[activeProfileName] = $event"
                     @generate-qr-code="generateQrCode" @invoke-d-c-a-p-i="invokeDCAPI"

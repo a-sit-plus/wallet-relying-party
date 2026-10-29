@@ -13,6 +13,8 @@
 		A10000000000000000000004 /* AuthenticationCallbackTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000006 /* AuthenticationCallbackTests.swift */; };
 		A10000000000000000000005 /* AuthenticationResult.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000008 /* AuthenticationResult.swift */; };
 		A10000000000000000000006 /* AuthenticationResultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A20000000000000000000009 /* AuthenticationResultTests.swift */; };
+		A10000000000000000000007 /* PidFormat.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000A /* PidFormat.swift */; };
+		A10000000000000000000008 /* PidFormatTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A2000000000000000000000B /* PidFormatTests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -35,6 +37,8 @@
 		A20000000000000000000007 /* WalletRelyingPartyTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = WalletRelyingPartyTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		A20000000000000000000008 /* AuthenticationResult.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationResult.swift; sourceTree = "<group>"; };
 		A20000000000000000000009 /* AuthenticationResultTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuthenticationResultTests.swift; sourceTree = "<group>"; };
+		A2000000000000000000000A /* PidFormat.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PidFormat.swift; sourceTree = "<group>"; };
+		A2000000000000000000000B /* PidFormatTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PidFormatTests.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -59,6 +63,7 @@
 				A20000000000000000000002 /* ContentView.swift */,
 				A20000000000000000000003 /* AuthenticationModel.swift */,
 				A20000000000000000000008 /* AuthenticationResult.swift */,
+				A2000000000000000000000A /* PidFormat.swift */,
 				A20000000000000000000004 /* Info.plist */,
 			);
 			path = WalletRelyingParty;
@@ -66,7 +71,7 @@
 		};
 		A70000000000000000000003 /* WalletRelyingPartyTests */ = {
 			isa = PBXGroup;
-			children = (A20000000000000000000006 /* AuthenticationCallbackTests.swift */, A20000000000000000000009 /* AuthenticationResultTests.swift */);
+			children = (A20000000000000000000006 /* AuthenticationCallbackTests.swift */, A20000000000000000000009 /* AuthenticationResultTests.swift */, A2000000000000000000000B /* PidFormatTests.swift */);
 			path = WalletRelyingPartyTests;
 			sourceTree = "<group>";
 		};
@@ -140,13 +145,13 @@
 		A90000000000000000000001 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (A10000000000000000000001, A10000000000000000000002, A10000000000000000000003, A10000000000000000000005);
+			files = (A10000000000000000000001, A10000000000000000000002, A10000000000000000000003, A10000000000000000000005, A10000000000000000000007);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		A90000000000000000000003 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
-			files = (A10000000000000000000004, A10000000000000000000006);
+			files = (A10000000000000000000004, A10000000000000000000006, A10000000000000000000008);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
