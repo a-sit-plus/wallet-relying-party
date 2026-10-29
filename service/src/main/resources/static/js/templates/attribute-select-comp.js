@@ -49,11 +49,11 @@ export default {
 <p v-if="credential.attributes.length == 0">Please select a Credential Type.</p>
 <template v-else-if="selectable">
     <div v-for="node in attributeTree"
-         :key="credential.schemeType + '-' + node.label">
+         :key="credential.uid + '-' + node.label">
         <div v-if="node.item" class="form-check">
             <input class="attributes form-check-input"
                    type="checkbox"
-                   :name="(credential.schemeType ? credential.schemeType.label : 'unknown') + '-attributes'"
+                   :name="credential.uid + '-attributes'"
                    :value="node.item.value"
                    :checked="node.item.isSelected"
                    @click="$emit('updateAttribute', node.item)">
@@ -66,11 +66,11 @@ export default {
         </div>
         <div v-if="node.children.length > 0" class="ms-4">
             <div v-for="child in node.children"
-                 :key="credential.schemeType + '-' + child.item.value"
+                 :key="credential.uid + '-' + child.item.value"
                  class="form-check">
                 <input class="attributes form-check-input"
                        type="checkbox"
-                       :name="(credential.schemeType ? credential.schemeType.label : 'unknown') + '-attributes'"
+                       :name="credential.uid + '-attributes'"
                        :value="child.item.value"
                        :checked="child.item.isSelected"
                        @click="$emit('updateAttribute', child.item)">

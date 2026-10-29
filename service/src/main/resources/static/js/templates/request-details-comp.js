@@ -225,7 +225,7 @@ export default {
 
 <div class="row border-top pt-2"
      v-for="credential in request.credentials"
-     :key="credential.schemeType">
+     :key="credential.uid">
     <legend class="">
         <span v-if="credential.schemeType && credential.schemeType.label">
             Credential: {{ credential.schemeType.label }}
@@ -242,10 +242,10 @@ export default {
             <legend class="col-form-label col-sm-4 pt-0 fw-bold">Credential Type</legend>
             <div class="col-sm-8">
                 <div v-for="item in config.schemeTypes"
-                     :key="credential.schemeType + '-' + item.value"
+                     :key="credential.uid + '-' + item.value"
                      class="form-check">
                     <input class="form-check-input" type="radio"
-                           :name="(credential.schemeType ? credential.schemeType.label : 'unknown') + '-credentialScheme'"
+                           :name="credential.uid + '-credentialScheme'"
                            :value="item.value"
                            :checked="credential.schemeType && credential.schemeType.value == item.value"
                            @click="$emit('updateSchemeType', credential, item)">
@@ -260,10 +260,10 @@ export default {
             <legend class="col-form-label col-sm-4 pt-0 fw-bold">Presentation Type</legend>
             <div class="col-sm-8">
                 <div v-for="item in config.representation"
-                     :key="credential.schemeType + '-' + item.value"
+                     :key="credential.uid + '-' + item.value"
                      class="form-check">
                     <input class="form-check-input" type="radio"
-                           :name="(credential.schemeType ? credential.schemeType.label : 'unknown') + '-representation'"
+                           :name="credential.uid + '-representation'"
                            :value="item.value"
                            :disabled="credential.validRepresentations && !credential.validRepresentations.includes(item.value)"
                            :checked="credential.representation && credential.representation.value == item.value"

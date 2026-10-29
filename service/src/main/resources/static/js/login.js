@@ -13,6 +13,9 @@ const URLs = {
     postUrl: 'transaction/result/'
 }
 
+// identifies a requested credential in the form (keys, radio groups), as scheme labels are not unique
+let nextCredentialUid = 0
+
 function normalizeCertificateItems(items) {
     if (!Array.isArray(items)) return []
     return items.filter(item => item && typeof item === "object")
@@ -208,12 +211,13 @@ const createBasicSetup = function (config, options = {}) {
                 // find attributes that are marked as isSelected in profile
                 const selected = credential.attributes.filter(x => x.isSelected).map(x => x.value)
 
-                // take all attribtues from config for this credential type, and mark some as isSelected
-                schemeType.attributes.forEach(attr => attr.isSelected = selected.includes(attr.value))
-                attrs = schemeType.attributes
+                // copy all attributes from config for this credential type, and mark some as isSelected;
+                // copies keep the selection per credential when the same type is requested twice
+                attrs = schemeType.attributes.map(attr => ({...attr, isSelected: selected.includes(attr.value)}))
             }
 
             credentials.push({
+                uid: nextCredentialUid++,
                 schemeType: schemeType,
                 representation: representation,
                 // sd/validRepresentations come from the resolved scheme (as in updateSchemeType), not the
@@ -239,7 +243,7 @@ const createBasicSetup = function (config, options = {}) {
     async function updateSchemeType(credential, schemeType) {
         console.log('updateSchemeType', schemeType)
         credential.schemeType = schemeType
-        credential.attributes = schemeType.attributes
+        credential.attributes = schemeType.attributes.map(attr => ({...attr}))
         credential.validRepresentations = schemeType.validRepresentations
         credential.sd = schemeType.sd
         // pre-select the first valid representation if none is selected or the current one is not supported
@@ -277,6 +281,7 @@ const createBasicSetup = function (config, options = {}) {
     async function addCredential() {
         console.log('addCredential')
         reqSelection.value.credentials.push({
+            "uid": nextCredentialUid++,
             "schemeType": null,
             "representation": null,
             "sd": null,
