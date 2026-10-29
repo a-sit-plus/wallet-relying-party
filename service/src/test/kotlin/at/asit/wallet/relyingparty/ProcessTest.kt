@@ -253,6 +253,15 @@ class ProcessTest {
     }
 
     @Test
+    fun `wallet URLs of all profiles have no localhost host`() = runTest {
+        val response = createTransaction(ConstantIndex.CredentialRepresentation.SD_JWT)
+        response.profiles.forEach {
+            val scheme = it.url.substringBefore("://")
+            assertTrue(it.url.startsWith("$scheme://?"), "profile ${it.name}: ${it.url}")
+        }
+    }
+
+    @Test
     fun `DC API is offered for every profile with a dcApiUrl`() = runTest {
         val response = createTransaction(ConstantIndex.CredentialRepresentation.SD_JWT)
         assertEquals(
@@ -274,7 +283,8 @@ class ProcessTest {
         assertEquals(1, response.profiles.size)
         val profile = response.profiles.single()
         assertEquals("EUDIW2026", profile.name)
-        assertTrue(profile.url.startsWith("eu-eaap://"), profile.url)
+        assertTrue(profile.url.startsWith("eu-eaap://?"), profile.url)
+        assertFalse(profile.url.startsWith("eu-eaap://localhost"), profile.url)
         val requestObject = mockMvc.get("/transaction/get/${profile.id}") {
             accept = MediaType.ALL
         }.andReturn().awaitAsync().response.contentAsString

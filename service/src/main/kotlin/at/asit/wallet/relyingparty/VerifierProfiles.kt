@@ -221,7 +221,7 @@ class VerifierProfiles(
                     urlPrefix = urlPrefix,
                     requestUrl = context.transactionGetUrl,
                 ).also { deviceRequest = it }
-                createdRequest.url
+                createdRequest.url.normalizeWalletUrl()
             }
         }
 
@@ -304,7 +304,7 @@ class VerifierProfiles(
             verifierInfo = verifierInfo,
         ),
         creationOptions = CreationOptions.Query("av://"),
-    ).getOrThrow().url.normalizeAvWalletUrl()
+    ).getOrThrow().url.normalizeWalletUrl()
 
     private suspend fun OpenId4VpVerifier.createDirectPostJwtRequest(
         transactionId: String,
@@ -327,11 +327,8 @@ class VerifierProfiles(
         ),
     ).getOrThrow()
 
-    private fun String.normalizeAvWalletUrl(): String = when {
-        startsWith("av://localhost/?") -> "av://?" + removePrefix("av://localhost/?")
-        startsWith("av://localhost?") -> "av://?" + removePrefix("av://localhost?")
-        else -> this
-    }
+    /** Strips the `localhost` host from wallet URLs, e.g. `eu-eaap://localhost/?` becomes `eu-eaap://?`. */
+    private fun String.normalizeWalletUrl(): String = replaceFirst(walletUrlLocalhost, "$1?")
 
     /** The JWT of the selected WRPRC for OpenID4VP `verifier_info`, see [buildEuWrprc] for its CWT. */
     fun buildVerifierInfo(
@@ -505,3 +502,5 @@ fun ClientIdScheme.canBuildCertificateHash() = when (this) {
     is CertificateHash -> true
     else -> false
 }
+
+private val walletUrlLocalhost = Regex("^([A-Za-z][A-Za-z0-9+.-]*://)localhost/?\\?")
