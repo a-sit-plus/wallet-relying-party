@@ -34,8 +34,8 @@
         const params = new URLSearchParams(location.search)
         const testCase = caseById(params.get('id'))
         const nativeAuth = params.has('pre') ? null : nativeAuthConfiguration(location.search)
-        const unsupported = testCase?.id === 5
-        const missingCredentials = testCase?.credentials.filter(credential =>
+        const unsupported = !!testCase?.unsupported
+        const missingCredentials = unsupported ? [] : testCase?.credentials.filter(credential =>
             !config.schemeTypes.some(type => type.value === credential.schemeType)) || []
         if (testCase) document.title = `Remote_Presentation_${testCase.id} · EUDI.Wallet 2026`
         if (testCase && testCase.credentials.length && !unsupported) {
@@ -106,9 +106,7 @@
             Credential metadata is unavailable for {{ missingCredentials.map(item => item.schemeType).join(', ') }}.
             Configure the type metadata service, then reload this case.
         </div>
-        <div v-if="unsupported" class="alert alert-warning" role="alert">
-            ISO Annex C with SD-JWT VC cannot be started by this service. Use a reader with SD-JWT VC device request/response support for this optional case.
-        </div>
+        <div v-if="testCase.unsupported" class="alert alert-warning" role="alert">{{ testCase.unsupported }}</div>
         <a v-else-if="testCase.externalUrl" :href="testCase.externalUrl" class="btn btn-primary mb-4" target="_blank" rel="noopener">
             Open signature service <i class="bi bi-box-arrow-up-right ms-1"></i>
         </a>

@@ -10,8 +10,8 @@ import at.asitplus.wallet.lib.openid.Iso180137AnnexCWrapper
 import at.asitplus.wallet.lib.validation.CredentialChecks
 import at.asitplus.wallet.lib.validation.PresentationValidationResult
 import at.asitplus.wallet.lib.validation.ValidatedCredential
+import at.asitplus.wallet.lib.data.VcDataModelConstants
 import at.asitplus.wallet.lib.validation.ValidationDecision
-import at.asitplus.wallet.lib.validation.credentialIdentifier
 import at.asitplus.wallet.mdl.MobileDrivingLicenceDataElements
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.Transient
@@ -129,6 +129,19 @@ private fun PresentationValidationResult.toApiItemCredentials(
         error = rejection()?.describe(),
     )
 )
+
+/**
+ * The signed type of this credential: the `vct` of an SD-JWT VC, the `docType` of an ISO mdoc, or the only type of a
+ * VC-JWT other than `VerifiableCredential`, `null` if it has several.
+ */
+private val ValidatedCredential.credentialIdentifier: String?
+    get() = when (this) {
+        is ValidatedCredential.SdJwtVc -> credential.verifiableCredentialType
+        is ValidatedCredential.IsoMdoc -> issuerSigned.issuerAuth.payload?.docType
+        is ValidatedCredential.VcJwt -> credential.vc.type
+            .filter { it != VcDataModelConstants.VERIFIABLE_CREDENTIAL }
+            .singleOrNull()
+    }
 
 /** Claims to display: the elements of all namespaces of an mdoc in one object, as type metadata lists them. */
 private fun ValidatedCredential.claims(): JsonObject = CredentialToJsonConverter.toJsonElement(this).let { claims ->

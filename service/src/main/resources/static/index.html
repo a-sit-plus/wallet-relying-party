@@ -22,6 +22,7 @@
                     {title: 'Reader and issuer trust', description: 'Negative presentation cases', cases: remoteCases.filter(c => c.id >= 13 && c.id <= 17)},
                     {title: 'Revocation', description: 'Identifier and status lists', cases: remoteCases.filter(c => c.id >= 18 && c.id <= 20)},
                     {title: 'Qualified signature', description: 'External signing service', cases: remoteCases.filter(c => c.id === 21)},
+                    {title: 'Photo ID and mVC', description: 'Issuer trust from the VICAL', cases: remoteCases.filter(c => c.id >= 22 && c.id <= 27)},
                 ]}
             }
         }).mount('#app')
@@ -47,7 +48,7 @@
                         <span class="small text-primary fw-semibold">Remote_Presentation_{{ item.id }}</span>
                         <h3 class="h5 mt-2">{{ item.title }}</h3>
                         <p class="card-text text-muted small mb-2">{{ item.description }}</p>
-                        <span v-if="item.id === 5" class="badge text-bg-warning">Optional · service limitation</span>
+                        <span v-if="item.badge" class="badge text-bg-warning">{{ item.badge }}</span>
                         <span v-else class="small text-primary">Open test case <i class="bi bi-arrow-right"></i></span>
                     </div>
                 </a>

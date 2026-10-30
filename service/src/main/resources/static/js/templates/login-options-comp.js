@@ -1,3 +1,11 @@
+import {DC_API_PROTOCOLS, dcApiSupport} from '../dc-api-support.mjs'
+
+const PROTOCOL_LABELS = {
+    [DC_API_PROTOCOLS.openId4VpSigned]: 'signed OpenID4VP',
+    [DC_API_PROTOCOLS.openId4VpUnsigned]: 'unsigned OpenID4VP',
+    [DC_API_PROTOCOLS.isoMdoc]: 'ISO 18013-7 Annex C',
+}
+
 export default {
     props: [
         'result',
@@ -11,11 +19,36 @@ export default {
     data() {
         return {
             activeProfileName: null,
-            // Digital Credentials API availability in this browser (the DigitalCredential response interface).
-            dcApiSupported: typeof window.DigitalCredential !== 'undefined'
+            // Digital Credentials API availability in this browser, and the protocols it offers.
+            dcApi: dcApiSupport(window)
         }
     },
     computed: {
+        // Test cases of a DC API flow ('annex-c', 'dcapi') offer only the DC API, redirect test cases only links.
+        offersLinks() {
+            return !this.flow || this.flow === 'redirect'
+        },
+        offersDcApi() {
+            return this.flow !== 'redirect'
+        },
+        selectedProtocols() {
+            const selection = this.dcapiSelection || {}
+            return [
+                selection.oid4vpMode === 'SIGNED' ? DC_API_PROTOCOLS.openId4VpSigned : null,
+                selection.oid4vpMode === 'UNSIGNED' ? DC_API_PROTOCOLS.openId4VpUnsigned : null,
+                this.isoMdocRequest && selection.isoMdoc ? DC_API_PROTOCOLS.isoMdoc : null,
+            ].filter(Boolean)
+        },
+        unsupportedProtocols() {
+            return this.selectedProtocols.filter(protocol => this.dcApi.allows(protocol) === false)
+        },
+        unsupportedProtocolLabels() {
+            return this.unsupportedProtocols.map(protocol => `${PROTOCOL_LABELS[protocol]} (${protocol})`).join(', ')
+        },
+        // The browser ignores requests of protocols it does not offer, so the call fails only if none is left.
+        noSupportedProtocol() {
+            return this.selectedProtocols.length > 0 && this.unsupportedProtocols.length === this.selectedProtocols.length
+        },
         regularProfiles() {
             return this.displayProfiles.filter(profile => !this.isDcApiProfile(profile))
         },
@@ -119,7 +152,7 @@ export default {
 
                  <p>Details: {{profile.description}}</p>
                 <div class="options-grid">
-                <div v-if="flow !== 'dcapi' && profile.supportedOptions.includes('CROSS_DEVICE')" class="option-card border rounded p-2 bg-white">
+                <div v-if="offersLinks && profile.supportedOptions.includes('CROSS_DEVICE')" class="option-card border rounded p-2 bg-white">
                     <h2>Option A: Cross device</h2>
                     <p>Scan the QR code with your Wallet App:</p>
                     <div class="text-left">
@@ -128,7 +161,7 @@ export default {
                         </a>
                     </div>
                 </div>
-                <div v-if="flow !== 'dcapi' && profile.supportedOptions.includes('SAME_DEVICE')" class="option-card border rounded p-2 bg-white">
+                <div v-if="offersLinks && profile.supportedOptions.includes('SAME_DEVICE')" class="option-card border rounded p-2 bg-white">
                     <h2>Option B: Same device</h2>
                     <p>Click the following button to open the Wallet App on this device:</p>
                     <div class="text-center">
@@ -137,10 +170,11 @@ export default {
                     <p>The whole link is: <a target="_blank" :href="profile.url">{{ profile.url }}</a></p>
                 </div>
                 
-                <div v-if="flow !== 'redirect' && profile.supportedOptions.includes('DC_API')" class="option-card border rounded p-2 bg-white">
-                    <h2>Option C: Digital Credentials API</h2>
-                    <div v-if="!dcApiSupported" class="alert alert-info mb-0" role="alert">
-                        This browser does not support the Digital Credentials API. <span v-if="!flow">Use Option A or B, or </span>Try a browser that supports <code>navigator.credentials.get({ digital })</code>.
+                <div v-if="offersDcApi && profile.supportedOptions.includes('DC_API')" class="option-card border rounded p-2 bg-white">
+                    <h2>{{ offersLinks ? 'Option C: ' : '' }}Digital Credentials API</h2>
+                    <div v-if="!dcApi.available" class="alert mb-0" :class="flow ? 'alert-danger' : 'alert-info'" role="alert">
+                        This browser does not support the Digital Credentials API<span v-if="flow">, which this test case requires</span>.
+                        <span v-if="!flow">Use Option A or B, or </span>Open this page in a browser that supports <code>navigator.credentials.get({ digital })</code>.
                     </div>
                     <template v-else>
                     <p v-if="!flow">Select the request types to offer in a single browser call:</p>
@@ -181,9 +215,14 @@ export default {
                                @change="$emit('update:dcapiSelection', { ...dcapiSelection, encrypt: $event.target.checked })">
                         <label class="form-check-label" :for="'dcapi-encrypt-' + profile.name">Encrypt response (OpenID4VP)</label>
                     </div>
+                    <div v-if="unsupportedProtocols.length" class="alert mt-3 mb-0 text-start"
+                         :class="noSupportedProtocol ? 'alert-danger' : 'alert-warning'" role="alert">
+                        This browser does not offer {{ unsupportedProtocolLabels }} over the Digital Credentials API<span v-if="!noSupportedProtocol">, so it will not be part of the request</span>.
+                        <span v-if="noSupportedProtocol">Open this page in a browser that supports this protocol<span v-if="!flow">, or select another one</span>.</span>
+                    </div>
                     <div class="text-center mt-3">
                         <button @click="$emit('invokeDCAPI', profile.dcApiUrl || profile.url, dcapiSelection)"
-                                :disabled="dcapiSelection.oid4vpMode === 'NONE' && !(isoMdocRequest && dcapiSelection.isoMdoc)"
+                                :disabled="(dcapiSelection.oid4vpMode === 'NONE' && !(isoMdocRequest && dcapiSelection.isoMdoc)) || noSupportedProtocol"
                                 class="btn btn-primary">Start Request</button>
                     </div>
                     </template>
