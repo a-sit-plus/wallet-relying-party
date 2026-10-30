@@ -1,7 +1,7 @@
 # Changelog
 
 Version 9.0.0-SNAPSHOT (unreleased):
- - Update to VC-K 9.0.0-RC3
+ - Update to VC-K 9.0.0-RC4
  - Use VC-K prepared HTTP responses for signed OpenID4VP request objects and response acknowledgements
  - Preserve prepared response status, headers and encoded body through the Spring adapter, including `Cache-Control: no-store` on acknowledgements
  - Validate wallet responses with VC-K validation reports: trust per credential type (LoTEs and A-SIT root), status lists, and a policy configurable in `app.validation` (strict by default); show every check on the result page, and claims only of accepted credentials
