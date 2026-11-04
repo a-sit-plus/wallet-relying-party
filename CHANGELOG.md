@@ -1,7 +1,7 @@
 # Changelog
 
-Version 9.0.0-SNAPSHOT (unreleased):
- - Update to VC-K 9.0.0-RC4
+Version 9.0.0:
+ - Update to VC-K 9.0.0
  - Use VC-K prepared HTTP responses for signed OpenID4VP request objects and response acknowledgements
  - Preserve prepared response status, headers and encoded body through the Spring adapter, including `Cache-Control: no-store` on acknowledgements
  - Validate wallet responses with VC-K validation reports: trust per credential type (LoTEs and A-SIT root), status lists, and a policy configurable in `app.validation` (strict by default); show every check on the result page, and claims only of accepted credentials
@@ -16,7 +16,7 @@ Version 9.0.0-SNAPSHOT (unreleased):
  - Fetch the WRPRC providers lists of the configured stages, too, as VC-K 9.0.0-RC1 knows them
  - Test cases of the EUDI.Wallet Launchpad 2026 playbook v3: offer only the Digital Credentials API for ISO 18013-7 Annex C and OpenID4VP DC API cases, and report when the browser lacks the API or the protocol of the case (`DigitalCredential.userAgentAllowsProtocol`); list Photo ID and mVC cases (Remote_Presentation_22 to 27) as not supported
 
-Version 8.0.0 (unreleased):
+Version 8.0.0:
  - Add WRPAC and WRPRC support, see Readme
  - Allow configuring and selecting multiple WRP access certificates per transaction
  - DC API: Authenticate the reader in ISO 18013-7 Annex C requests (`readerAuth`) with the selected WRPAC
